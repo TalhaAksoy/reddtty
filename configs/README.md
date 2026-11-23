@@ -122,6 +122,19 @@ Then run:
 reddtty
 ```
 
+## Instances checked on 2026-11-23
+
+These were not added because they did not pass the full feed/sort/comment test:
+
+| Instance | Result |
+|---|---|
+| `redlib.catsarch.com` | 429 Too Many Requests |
+| `redlib-1.privadency.com` | Bot/CAPTCHA page |
+| `redlib.nadeko.net` | 418 Bot check |
+| `redlib.privadency.com` | Bot/CAPTCHA page |
+| `redlib.reallyaweso.me` | Redirects to `redlib.blueberry.reallyaweso.me`; Hot feed is partial, New/Rising return access-denied |
+| `reddit.nerdvpn.de` | HTTP/2 protocol error / empty reply |
+
 ## Important limitations
 
 - These configs send requests to third-party Redlib instances. The instance can

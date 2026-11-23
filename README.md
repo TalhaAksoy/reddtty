@@ -1,5 +1,9 @@
 # ReddTTY
 
+<p align="center">
+  <img src="assets/reddtty-logo.png" alt="ReddTTY logo" width="220">
+</p>
+
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 

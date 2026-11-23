@@ -347,6 +347,21 @@ The encoder probe and PTY pass cover the terminal-facing path separately.
   page's own nested replies are parsed; unsupported expansion is visible as a
   normal error rather than a fake success.
 
+### Additional Redlib instance checks (2026-11-23)
+
+None of these passed the full feed/sort/comment test, so no configs were added:
+
+| Instance | Observed result |
+|---|---|
+| `redlib.catsarch.com` | HTTP 429 |
+| `redlib-1.privadency.com` | bot/CAPTCHA page |
+| `redlib.nadeko.net` | HTTP 418 bot check |
+| `redlib.privadency.com` | bot/CAPTCHA page |
+| `redlib.reallyaweso.me` | redirects to `redlib.blueberry.reallyaweso.me`; Hot was partial, New/Rising returned access-denied |
+| `reddit.nerdvpn.de` | HTTP/2 protocol error / empty reply |
+
+The working configs remain `redlib-hbubli.toml` and `redlib-zanity.toml`.
+
 ## Known limitations
 
 1. Live Reddit mode is not verified against Reddit; new public access is closed
