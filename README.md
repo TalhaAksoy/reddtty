@@ -42,6 +42,27 @@ or:
 make install        # /usr/local/bin/reddtty
 ```
 
+## Ready-made configs
+
+The [`configs/`](configs/) directory contains tested provider configs, including
+Redlib instances. Install one with an interactive picker:
+
+```bash
+make configs
+```
+
+Or choose directly:
+
+```bash
+make configs CONFIG=redlib-hbubli.toml
+make configs CONFIG=2
+make configs-list
+```
+
+The Makefile creates `${XDG_CONFIG_HOME:-$HOME/.config}/reddtty/`, backs up an
+existing config as `config.toml.bckp_<unixtimestamp>`, and installs the selected
+file with mode `0600`.
+
 ## Run
 
 ```bash
@@ -49,13 +70,6 @@ reddtty --demo
 reddtty --provider redlib --redlib-instance https://redlib.example
 reddtty --subreddit rust --sort new
 reddtty --diagnostics
-```
-
-Ready-to-use Redlib configs are in [`configs/`](configs/):
-
-```bash
-make configs
-make configs CONFIG=redlib-hbubli.toml
 ```
 
 ## Keys
