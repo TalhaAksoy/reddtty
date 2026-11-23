@@ -865,7 +865,7 @@ async fn top_bar_shows_html_provider_and_error_status() {
 #[tokio::test]
 async fn narrow_top_bar_keeps_provider_badge_over_help() {
     let (mut app, _provider, _posts) = app_with_posts(60, 20).await;
-    app.provider_label = "REDLIB · hbubli.cc".into();
+    app.provider_label = "REDLIB · redlib.hbubli.cc".into();
     app.provider_status = Some(reddtty::providers::ProviderStatus::LoginRequired);
     let terminal = draw(&mut app, 60, 20);
     let text = screen(&terminal);

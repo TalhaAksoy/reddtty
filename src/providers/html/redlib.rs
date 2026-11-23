@@ -152,12 +152,10 @@ impl ContentProvider for RedlibProvider {
     }
 
     fn display_name(&self) -> String {
-        let host = self.client.base().host_str().unwrap_or("unknown");
-        let host = host
-            .strip_prefix("redlib.")
-            .or_else(|| host.strip_prefix("www."))
-            .unwrap_or(host);
-        format!("REDLIB · {host}")
+        format!(
+            "REDLIB · {}",
+            self.client.base().host_str().unwrap_or("unknown")
+        )
     }
 
     fn is_demo(&self) -> bool {
@@ -660,7 +658,7 @@ mod tests {
             "reddtty/test",
         ))
         .unwrap();
-        assert_eq!(provider.display_name(), "REDLIB · hbubli.cc");
+        assert_eq!(provider.display_name(), "REDLIB · redlib.hbubli.cc");
     }
 
     #[test]

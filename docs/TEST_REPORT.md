@@ -155,7 +155,7 @@ cargo build --release --example stress
   install with a timestamped backup. The Settings modal and config picker are
   rendered in `TestBackend`; installing a preset is covered by an app test.
 - The Redlib provider label includes the configured host (for example
-  `REDLIB · hbubli.cc`) so the active source is visible in the top bar.
+  `REDLIB · redlib.hbubli.cc`) so the active source is visible in the top bar.
 - Top bar shows `OLD REDDIT`/`REDLIB` instead of `DEMO`, includes
   `Access denied`/`HTML changed`/`Login required` statuses, and keeps the
   provider badge at 60 columns when space is tight.
