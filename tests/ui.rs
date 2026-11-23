@@ -860,6 +860,12 @@ async fn top_bar_shows_html_provider_and_error_status() {
     let terminal = draw(&mut app, 120, 30);
     let text = screen(&terminal);
     assert!(text.contains("HTML changed"), "{text}");
+
+    app.provider_label = "REDLIB · redlib.hbubli.cc".into();
+    app.provider_status = None;
+    let terminal = draw(&mut app, 130, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("REDLIB · redlib.hbubli.cc"), "{text}");
 }
 
 #[tokio::test]

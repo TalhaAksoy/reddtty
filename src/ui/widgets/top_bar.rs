@@ -25,7 +25,9 @@ pub fn render(
     frame.render_widget(Paragraph::new("").style(theme.surface_alt_style()), area);
 
     let label = crate::utils::text::sanitize(provider_label);
+    let short_label = label.split(" · ").next().unwrap_or(&label);
     let mode = format!("● {label}");
+    let short_mode = format!("● {short_label}");
     let status = provider_status.map(crate::utils::text::sanitize);
     let mode_style = if demo {
         theme.warning()
@@ -44,13 +46,19 @@ pub fn render(
         vec![
             format!("{spinner_prefix}{mode} — {status}   ? Help "),
             format!("{spinner_prefix}{mode} — {status} "),
+            format!("{spinner_prefix}{short_mode} — {status}   ? Help "),
+            format!("{spinner_prefix}{short_mode} — {status} "),
             format!("{spinner_prefix}{mode}   ? Help "),
+            format!("{spinner_prefix}{short_mode}   ? Help "),
             format!("{spinner_prefix}{mode} "),
+            format!("{spinner_prefix}{short_mode} "),
         ]
     } else {
         vec![
             format!("{spinner_prefix}{mode}   ? Help "),
+            format!("{spinner_prefix}{short_mode}   ? Help "),
             format!("{spinner_prefix}{mode} "),
+            format!("{spinner_prefix}{short_mode} "),
         ]
     };
     let right = candidates
@@ -61,6 +69,11 @@ pub fn render(
     let show_right = !right.is_empty() && area.width > right_width;
     let show_help = right.contains("? Help");
     let show_status = status.is_some() && right.contains('—');
+    let selected_mode = if right.contains(&mode) {
+        mode.clone()
+    } else {
+        short_mode
+    };
 
     let brand = Span::styled(
         " REDDTTY ",
@@ -103,7 +116,10 @@ pub fn render(
                 Style::default().fg(theme.accent),
             ));
         }
-        spans.push(Span::styled(mode, mode_style.add_modifier(Modifier::BOLD)));
+        spans.push(Span::styled(
+            selected_mode,
+            mode_style.add_modifier(Modifier::BOLD),
+        ));
         if show_status {
             spans.push(Span::styled(
                 format!(" — {}", status.unwrap_or_default()),
