@@ -275,15 +275,23 @@ fn settings_config_picker_installs_preset_and_backs_up() {
     ));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("config.toml");
-    std::fs::write(&path, "favorites = [\"rust\"]\n").unwrap();
+    std::fs::write(&path, "favorites = [\"linux\"]\n").unwrap();
     app.config_path = path.clone();
+    app.settings.favorites = vec!["rust".into()];
     app.modal = Some(Modal::ConfigPicker(ConfigPickerModal { selected: 0 }));
     app.activate_config_picker_item(0);
     assert!(app.modal.is_none());
     let (loaded, warnings) = Settings::load(&path);
     assert!(warnings.is_empty(), "{warnings:?}");
     assert_eq!(loaded.provider.kind, crate::config::ProviderKind::Demo);
-    assert!(loaded.favorites.is_empty());
+    assert_eq!(loaded.favorites, vec!["rust"]);
+
+    // Exiting must not restore the old provider over the newly installed file.
+    app.persist();
+    let (persisted, warnings) = Settings::load(&path);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert_eq!(persisted.provider.kind, crate::config::ProviderKind::Demo);
+    assert_eq!(persisted.favorites, vec!["rust"]);
     let backups = std::fs::read_dir(&dir)
         .unwrap()
         .filter_map(Result::ok)

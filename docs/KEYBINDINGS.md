@@ -152,8 +152,9 @@ names show an inline error and do not trigger a request.
 | `Enter` in Change config | Install the selected config (existing config is backed up) |
 | `Esc` in Change config | Return to Settings |
 
-Provider changes take effect after restarting ReddTTY. Theme changes apply
-immediately and are persisted.
+Changing the config replaces only the provider settings; favorites, recents,
+theme, image and UI preferences are preserved. Provider changes take effect after
+restarting ReddTTY. Theme changes apply immediately and are persisted.
 
 ## Favorite removal confirmation
 

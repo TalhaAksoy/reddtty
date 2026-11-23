@@ -45,7 +45,8 @@ make install        # /usr/local/bin/reddtty
 ## Ready-made configs
 
 On first launch with no config, ReddTTY asks you to choose a starter config.
-The same picker is available later from **Settings** (`S`).
+The same picker is available later from **Settings** (`S`). Changing provider
+keeps favorites, recents, theme and UI settings; restart to apply it.
 
 The [`configs/`](configs/) directory contains tested provider configs, including
 a fully offline demo and Redlib instances. Install one with an interactive picker:

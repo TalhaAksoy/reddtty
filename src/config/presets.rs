@@ -45,6 +45,32 @@ pub fn find(id: &str) -> Option<&'static ConfigPreset> {
     PRESETS.iter().find(|preset| preset.id == id)
 }
 
+/// Back up an existing config before replacing it. Returns `None` if the file
+/// does not exist.
+pub fn backup_existing(destination: &Path) -> Result<Option<PathBuf>, String> {
+    if !destination.is_file() {
+        return Ok(None);
+    }
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    let mut backup = destination.with_extension(format!("toml.bckp_{stamp}"));
+    let mut suffix = 1;
+    while backup.exists() {
+        backup = destination.with_extension(format!("toml.bckp_{stamp}_{suffix}"));
+        suffix += 1;
+    }
+    fs::copy(destination, &backup)
+        .map_err(|error| format!("could not back up {}: {error}", destination.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&backup, fs::Permissions::from_mode(0o600));
+    }
+    Ok(Some(backup))
+}
+
 pub struct InstallResult {
     pub destination: PathBuf,
     pub backup: Option<PathBuf>,
@@ -60,28 +86,7 @@ pub fn install(id: &str, destination: &Path) -> Result<InstallResult, String> {
     fs::create_dir_all(parent)
         .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
 
-    let backup = if destination.is_file() {
-        let stamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|duration| duration.as_secs())
-            .unwrap_or(0);
-        let mut backup = destination.with_extension(format!("toml.bckp_{stamp}"));
-        let mut suffix = 1;
-        while backup.exists() {
-            backup = destination.with_extension(format!("toml.bckp_{stamp}_{suffix}"));
-            suffix += 1;
-        }
-        fs::copy(destination, &backup)
-            .map_err(|error| format!("could not back up {}: {error}", destination.display()))?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&backup, fs::Permissions::from_mode(0o600));
-        }
-        Some(backup)
-    } else {
-        None
-    };
+    let backup = backup_existing(destination)?;
 
     let tmp = parent.join(format!(".config.toml.installing-{}", std::process::id()));
     fs::write(&tmp, preset.contents)

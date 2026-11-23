@@ -951,29 +951,46 @@ impl App {
         let Some(preset) = crate::config::presets::PRESETS.get(index) else {
             return;
         };
-        match crate::config::presets::install(preset.id, &self.config_path) {
-            Ok(installed) => {
-                self.modal = None;
-                let backup = installed
-                    .backup
-                    .as_ref()
-                    .map(|path| format!(" Previous config: {}.", path.display()))
-                    .unwrap_or_default();
-                self.notify(
-                    NoticeKind::Success,
-                    format!(
-                        "Installed {}. Restart ReddTTY to apply provider changes.{}",
-                        preset.name, backup
-                    ),
-                );
-            }
+        let preset_settings: Settings = match toml::from_str(preset.contents) {
+            Ok(settings) => settings,
             Err(error) => {
                 self.notify(
                     NoticeKind::Error,
-                    format!("Could not install config: {error}"),
+                    format!("Could not read bundled config: {error}"),
                 );
+                return;
             }
+        };
+        let backup = match crate::config::presets::backup_existing(&self.config_path) {
+            Ok(backup) => backup,
+            Err(error) => {
+                self.notify(NoticeKind::Error, error);
+                return;
+            }
+        };
+        // Change the content source only. Favorites, recents, theme, images and
+        // UI preferences stay with the user.
+        let mut to_save = self.settings.clone();
+        to_save.provider = preset_settings.provider;
+        to_save.general.theme = self.persist_theme;
+        to_save.images.enabled = self.persist_images_enabled;
+        to_save.images.protocol = self.persist_images_protocol;
+        if let Err(error) = to_save.save(&self.config_path) {
+            self.notify(NoticeKind::Error, format!("Could not save config: {error}"));
+            return;
         }
+        self.settings.provider = to_save.provider;
+        self.modal = None;
+        let backup = backup
+            .map(|path| format!(" Previous config: {}.", path.display()))
+            .unwrap_or_default();
+        self.notify(
+            NoticeKind::Success,
+            format!(
+                "Changed to {}. Restart ReddTTY to apply provider changes.{}",
+                preset.name, backup
+            ),
+        );
     }
 
     fn apply_feed_sort(&mut self, sort: FeedSort) {
