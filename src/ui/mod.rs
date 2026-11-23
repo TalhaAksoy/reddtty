@@ -42,7 +42,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             frame,
             root.top,
             &title,
-            app.provider_label,
+            &app.provider_label,
             app.demo,
             app.provider_status
                 .filter(|status| *status != crate::providers::ProviderStatus::Available)

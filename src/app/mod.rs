@@ -127,7 +127,7 @@ pub struct App {
     pub dirty: bool,
     pub demo: bool,
     /// Short badge shown in the top bar (`DEMO`, `REDDIT`, `OLD REDDIT`, ...).
-    pub provider_label: &'static str,
+    pub provider_label: String,
     /// Last provider health observed by the UI. `None` means no request has
     /// completed yet in this session.
     pub provider_status: Option<crate::providers::ProviderStatus>,
@@ -152,7 +152,7 @@ impl App {
         notices: Vec<String>,
     ) -> Self {
         let demo = provider.is_demo();
-        let provider_label = provider.short_name();
+        let provider_label = provider.display_name();
         let spec = initial_spec.unwrap_or_else(|| default_spec(&settings));
         let requested_sort =
             initial_sort.or_else(|| FeedSort::from_str_loose(&settings.general.default_sort));
@@ -2039,7 +2039,7 @@ impl App {
         result: Result<FeedPage, ProviderError>,
     ) {
         tracing::debug!(?view_id, request, append, "handling FeedLoaded");
-        let provider_label = self.provider.short_name();
+        let provider_label = self.provider.display_name();
         let status = Some(
             result
                 .as_ref()
@@ -2085,7 +2085,7 @@ impl App {
                         view.refreshing = false;
                         if view.posts.is_empty() {
                             let message =
-                                describe_feed_error(provider_label, &view.spec, view.sort, &error);
+                                describe_feed_error(&provider_label, &view.spec, view.sort, &error);
                             view.set_error(message);
                         } else {
                             error_toast = Some(error);
@@ -2259,10 +2259,10 @@ fn describe_feed_error(
     sort: FeedSort,
     error: &ProviderError,
 ) -> String {
-    if !matches!(provider_label, "REDLIB" | "OLD REDDIT") {
+    if !(provider_label.starts_with("REDLIB") || provider_label.starts_with("OLD REDDIT")) {
         return error.to_string();
     }
-    let reddit_source = if provider_label == "REDLIB" {
+    let reddit_source = if provider_label.starts_with("REDLIB") {
         "The Redlib instance's Reddit backend"
     } else {
         "Reddit"

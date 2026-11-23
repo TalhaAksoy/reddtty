@@ -34,7 +34,7 @@ impl App {
             next_request_id: 1,
             dirty: true,
             demo: true,
-            provider_label: "DEMO",
+            provider_label: "DEMO".into(),
             provider_status: None,
             persist_error_shown: true,
             persist_theme: Settings::default().general.theme,

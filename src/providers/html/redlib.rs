@@ -151,6 +151,15 @@ impl ContentProvider for RedlibProvider {
         "REDLIB"
     }
 
+    fn display_name(&self) -> String {
+        let host = self.client.base().host_str().unwrap_or("unknown");
+        let host = host
+            .strip_prefix("redlib.")
+            .or_else(|| host.strip_prefix("www."))
+            .unwrap_or(host);
+        format!("REDLIB · {host}")
+    }
+
     fn is_demo(&self) -> bool {
         false
     }
@@ -642,6 +651,16 @@ mod tests {
         assert_eq!(comments[0].replies[1].id, "c4");
         assert_eq!(comments[0].replies[1].parent_id.as_deref(), Some("c1"));
         assert!(comments[1].deleted);
+    }
+
+    #[test]
+    fn display_name_includes_the_instance_host() {
+        let provider = RedlibProvider::new(HtmlClientConfig::new(
+            "https://redlib.hbubli.cc",
+            "reddtty/test",
+        ))
+        .unwrap();
+        assert_eq!(provider.display_name(), "REDLIB · hbubli.cc");
     }
 
     #[test]

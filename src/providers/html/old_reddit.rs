@@ -167,6 +167,13 @@ impl ContentProvider for OldRedditProvider {
         "OLD REDDIT"
     }
 
+    fn display_name(&self) -> String {
+        format!(
+            "OLD REDDIT · {}",
+            self.client.base().host_str().unwrap_or("old.reddit.com")
+        )
+    }
+
     fn is_demo(&self) -> bool {
         false
     }

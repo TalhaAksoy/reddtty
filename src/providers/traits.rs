@@ -74,6 +74,11 @@ pub trait ContentProvider: Send + Sync {
         "LIVE"
     }
 
+    /// Provider label with the configured source, shown in the top bar.
+    fn display_name(&self) -> String {
+        self.short_name().to_string()
+    }
+
     fn is_demo(&self) -> bool;
 
     fn capabilities(&self) -> ProviderCapabilities;

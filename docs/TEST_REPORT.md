@@ -19,7 +19,7 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 219 passed, 0 failed, 0 ignored
+cargo test                                 # 220 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
 python3 scripts/pty_verify.py              # 36 captures, 66 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
@@ -31,12 +31,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 161 | 161 | 0 | 0 |
+| Library unit tests (`src/**`) | 162 | 162 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
 | UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 34 | 34 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **219** | **219** | **0** | **0** |
+| **Total** | **220** | **220** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -154,6 +154,8 @@ cargo build --release --example stress
 - First-run/setup presets embed every file in `configs/`, parse as settings, and
   install with a timestamped backup. The Settings modal and config picker are
   rendered in `TestBackend`; installing a preset is covered by an app test.
+- The Redlib provider label includes the configured host (for example
+  `REDLIB · hbubli.cc`) so the active source is visible in the top bar.
 - Top bar shows `OLD REDDIT`/`REDLIB` instead of `DEMO`, includes
   `Access denied`/`HTML changed`/`Login required` statuses, and keeps the
   provider badge at 60 columns when space is tight.
