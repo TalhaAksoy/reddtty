@@ -1,0 +1,56 @@
+# ReddTTY configuration — Redlib via safereddit.com
+#
+# This is a ready-to-copy example for the third-party Redlib instance
+# https://safereddit.com.
+#
+# IMPORTANT:
+# - Redlib is not Reddit's official API.
+# - safereddit.com is a third-party service: its operator can see request paths,
+#   headers and your IP address.
+# - Live HTML network access is explicitly enabled below. Keep it enabled only
+#   if you accept the instance's terms and Reddit's access rules.
+# - The instance can rate-limit or block individual listings at any time.
+#   ReddTTY does not rotate instances or bypass access controls.
+
+favorites = []
+recent = []
+
+[general]
+theme = "dark"
+default_feed = "home"
+# HTML listings do not support the "best" sort; "hot" avoids the fallback notice.
+default_sort = "hot"
+show_sidebar = true
+
+[images]
+enabled = true
+protocol = "auto"
+preview_in_feed = true
+max_cache_mb = 128
+max_download_mb = 10
+
+[content]
+show_nsfw = false
+hide_spoilers = true
+default_post_limit = 25
+
+[ui]
+mouse_enabled = true
+show_right_panel = true
+relative_time = true
+sidebar_width = 24
+
+[reddit]
+client_id = ""
+client_secret = ""
+refresh_token = ""
+username = ""
+user_agent = "reddtty/0.1.0 (terminal Reddit reader; +https://example.invalid/reddtty)"
+use_environment = true
+
+[provider]
+type = "redlib"
+
+[provider.html]
+redlib_instance = "https://safereddit.com"
+allow_network = true

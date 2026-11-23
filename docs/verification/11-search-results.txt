@@ -1,0 +1,38 @@
+ REDDTTY   ›  ⌕ terminal                                                                                                    ● DEMO   ? Help
+ NAVIGATION            │ Search: terminal  search results                                               5 posts │ABOUT
+  Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │Search: terminal
+  Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │Demo mode: synthetic posts
+                       │ │ r/linux  •  u/sunset_terminal  •  25m ago                                         │┃ │and comments, stored
+ COMMUNITIES           │ │                                                                                   │┃ │locally.
+  r/rust               │ │ Sunset over my terminal                                                           │┃ │
+  r/linux              │ │                                                                                   │┃ │SUGGESTED COMMUNITIES
+  r/programming        │ │ The wallpaper changes with the time of day.                                       │┃ │▸ r/rust
+  r/technology         │ │                                                                                   │┃ │▸ r/linux
+  r/opensource         │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                │┃ │▸ r/programming
+  r/unixporn           │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                │┃ │▸ r/technology
+  r/webdev             │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄                                │┃ │▸ r/opensource
+  r/machinelearning    │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                │┃ │▸ r/unixporn
+  r/askscience         │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                │┃ │
+  r/gaming             │ │                                   ▀▀▀▀▀      ▀▀▀▀▀                                │┃ │SHORTCUTS
+                       │ │                                                                                   │┃ │j/k   navigate
+ FAVORITES             │ │ ▲ 290   ◍ 14   Image  Screenshot                                                  │┃ │Enter open post
+  f to add             │ ╰───────────────────────────────────────────────────────────────────────────────────╯┃ │s     sort
+                       │                                                                                      │ │g     subreddit
+ RECENT                │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │/     search
+  r/rust               │ │ r/rust  •  u/ferris_fan  •  2h ago                                                ││ │v     image
+                       │ │                                                                                   ││ │?     help
+                       │ │ Why I love building CLI applications with Rust                                    ││ │
+                       │ │                                                                                   ││ │
+                       │ │ I have been writing command-line tools for a decade, and Rust is the first        ││ │
+                       │ │ language where shipping feels this good.…                                         ││ │
+                       │ │                                                                                   ││ │
+                       │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                                 ││ │
+                       │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+                       │                                                                                      │ │
+                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
+                       │ │ r/technology  •  u/packet_garden  •  23h ago                                      ││ │
+                       │ │                                                                                   ││ │
+                       │ │ A new open standard for portable terminal graphics                                ││ │
+                       │ │                                                                                   ││ │
+ h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · o Open · v Image · ? Help · q Quit

@@ -1,0 +1,373 @@
+{
+  "captures": [
+    "docs/verification/01-feed-140x38.txt",
+    "docs/verification/02-post-detail.txt",
+    "docs/verification/03-post-body-scrolled.txt",
+    "docs/verification/04-comments-collapsed.txt",
+    "docs/verification/05-comments-expanded.txt",
+    "docs/verification/06-feed-return.txt",
+    "docs/verification/06b-gallery-post-selected.txt",
+    "docs/verification/07-gallery.txt",
+    "docs/verification/08-gallery-next.txt",
+    "docs/verification/09-sort-menu.txt",
+    "docs/verification/10-subreddit-rust.txt",
+    "docs/verification/11-search-results.txt",
+    "docs/verification/12-after-quit.txt",
+    "docs/verification/size-60x20.txt",
+    "docs/verification/detail-60x20.txt",
+    "docs/verification/help-60x20.txt",
+    "docs/verification/size-60x20-after-quit.txt",
+    "docs/verification/size-80x24.txt",
+    "docs/verification/detail-80x24.txt",
+    "docs/verification/help-80x24.txt",
+    "docs/verification/size-80x24-after-quit.txt",
+    "docs/verification/size-100x30.txt",
+    "docs/verification/detail-100x30.txt",
+    "docs/verification/help-100x30.txt",
+    "docs/verification/size-100x30-after-quit.txt",
+    "docs/verification/size-130x36.txt",
+    "docs/verification/detail-130x36.txt",
+    "docs/verification/help-130x36.txt",
+    "docs/verification/size-130x36-after-quit.txt",
+    "docs/verification/size-160x45.txt",
+    "docs/verification/detail-160x45.txt",
+    "docs/verification/help-160x45.txt",
+    "docs/verification/size-160x45-after-quit.txt",
+    "docs/verification/size-30x10.txt",
+    "docs/verification/help-30x10.txt",
+    "docs/verification/size-30x10-after-quit.txt"
+  ],
+  "assertions": [
+    {
+      "name": "feed brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "feed title",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "demo label",
+      "needle": "DEMO",
+      "ok": true
+    },
+    {
+      "name": "feed cards",
+      "needle": "\u25b2",
+      "ok": true
+    },
+    {
+      "name": "feed sort tabs",
+      "needle": "Controversial",
+      "ok": true
+    },
+    {
+      "name": "feed not stuck loading",
+      "needle": "NOT Loading posts\u2026",
+      "ok": true
+    },
+    {
+      "name": "post detail title",
+      "needle": "Why I love building CLI applications with Rust",
+      "ok": true
+    },
+    {
+      "name": "post detail author",
+      "needle": "u/ferris_fan",
+      "ok": true
+    },
+    {
+      "name": "post detail body",
+      "needle": "shipping",
+      "ok": true
+    },
+    {
+      "name": "post detail comments",
+      "needle": "COMMENTS",
+      "ok": true
+    },
+    {
+      "name": "post detail sort",
+      "needle": "Sort: Best",
+      "ok": true
+    },
+    {
+      "name": "body scroll indicator",
+      "needle": "\u2195",
+      "ok": true
+    },
+    {
+      "name": "comment collapse marker",
+      "needle": "\u25b6",
+      "ok": true
+    },
+    {
+      "name": "hidden reply count",
+      "needle": "replies hidden",
+      "ok": true
+    },
+    {
+      "name": "comment expansion removes hidden marker",
+      "needle": "NOT \u25b6 u/",
+      "ok": true
+    },
+    {
+      "name": "returned feed",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "gallery post selected",
+      "needle": "Visualising a black hole merger",
+      "ok": true
+    },
+    {
+      "name": "gallery position",
+      "needle": "1 / 2",
+      "ok": true
+    },
+    {
+      "name": "gallery controls",
+      "needle": "Esc close",
+      "ok": true
+    },
+    {
+      "name": "gallery next position",
+      "needle": "2 / 2",
+      "ok": true
+    },
+    {
+      "name": "sort menu range row",
+      "needle": "Top time range",
+      "ok": true
+    },
+    {
+      "name": "subreddit title",
+      "needle": "r/rust",
+      "ok": true
+    },
+    {
+      "name": "subreddit metadata",
+      "needle": "Rust",
+      "ok": true
+    },
+    {
+      "name": "search feed",
+      "needle": "Search: terminal",
+      "ok": true
+    },
+    {
+      "name": "alternate screen left",
+      "needle": "0",
+      "ok": true
+    },
+    {
+      "name": "shell resumed after quit",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "60x20 brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "60x20 feed",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "60x20 no loading",
+      "needle": "NOT Loading posts\u2026",
+      "ok": true
+    },
+    {
+      "name": "60x20 status bar",
+      "needle": "Quit",
+      "ok": true
+    },
+    {
+      "name": "60x20 detail title",
+      "needle": "Why I love",
+      "ok": true
+    },
+    {
+      "name": "60x20 help close",
+      "needle": "Esc",
+      "ok": true
+    },
+    {
+      "name": "60x20 shell resumed",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "80x24 brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "80x24 feed",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "80x24 no loading",
+      "needle": "NOT Loading posts\u2026",
+      "ok": true
+    },
+    {
+      "name": "80x24 status bar",
+      "needle": "Quit",
+      "ok": true
+    },
+    {
+      "name": "80x24 detail title",
+      "needle": "Why I love",
+      "ok": true
+    },
+    {
+      "name": "80x24 help close",
+      "needle": "Esc",
+      "ok": true
+    },
+    {
+      "name": "80x24 shell resumed",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "100x30 brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "100x30 feed",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "100x30 no loading",
+      "needle": "NOT Loading posts\u2026",
+      "ok": true
+    },
+    {
+      "name": "100x30 status bar",
+      "needle": "Quit",
+      "ok": true
+    },
+    {
+      "name": "100x30 detail title",
+      "needle": "Why I love",
+      "ok": true
+    },
+    {
+      "name": "100x30 help close",
+      "needle": "Esc",
+      "ok": true
+    },
+    {
+      "name": "100x30 shell resumed",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "130x36 brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "130x36 feed",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "130x36 no loading",
+      "needle": "NOT Loading posts\u2026",
+      "ok": true
+    },
+    {
+      "name": "130x36 status bar",
+      "needle": "Quit",
+      "ok": true
+    },
+    {
+      "name": "130x36 detail title",
+      "needle": "Why I love",
+      "ok": true
+    },
+    {
+      "name": "130x36 help close",
+      "needle": "Esc",
+      "ok": true
+    },
+    {
+      "name": "130x36 shell resumed",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "160x45 brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "160x45 feed",
+      "needle": "Home",
+      "ok": true
+    },
+    {
+      "name": "160x45 no loading",
+      "needle": "NOT Loading posts\u2026",
+      "ok": true
+    },
+    {
+      "name": "160x45 status bar",
+      "needle": "Quit",
+      "ok": true
+    },
+    {
+      "name": "160x45 detail title",
+      "needle": "Why I love",
+      "ok": true
+    },
+    {
+      "name": "160x45 help close",
+      "needle": "Esc",
+      "ok": true
+    },
+    {
+      "name": "160x45 shell resumed",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "tiny brand",
+      "needle": "REDDTTY",
+      "ok": true
+    },
+    {
+      "name": "tiny demo label",
+      "needle": "DEMO",
+      "ok": true
+    },
+    {
+      "name": "tiny help hidden-shortcut notice",
+      "needle": "more",
+      "ok": true
+    },
+    {
+      "name": "tiny help close hint",
+      "needle": "Esc",
+      "ok": true
+    },
+    {
+      "name": "tiny shell resumed",
+      "needle": "EXIT:0",
+      "ok": true
+    }
+  ],
+  "ok": true
+}

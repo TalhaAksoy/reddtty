@@ -1,0 +1,20 @@
+ REDDTTY   ›  Home                          ● DEMO   ? Help
+Home                                         25 posts · more
+ Best   Hot   New   Top   Rising   Controversial
+╭─────────────────────────────────────────────────────────╮┃
+│ r/rust  •  u/ferris_fan  •  2h ago                      ││
+│                                                         ││
+│ Why I love building CLI applications with Rust          ││
+│ I have been writing command-line tools for a decade,…   ││
+│ ▲ 3.2k   ◍ 248   Text  Discussion                       ││
+╰─────────────────────────────────────────────────────────╯│
+                                                           │
+╭─────────────────────────────────────────────────────────╮│
+│ r/linux  •  u/quiet_daemon  •  8h ago                   ││
+│                                                         ││
+│ I switched my entire workflow to Linux                  ││
+│ After using another OS for years, I moved my whole…     ││
+│                                                         ││
+│                                                         ││
+╰─────────────────────────────────────────────────────────╯│
+j/k Move · Enter Open · s Sort · ? Help · q Quit

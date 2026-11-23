@@ -1,0 +1,24 @@
+ REDDTTY   ›  Home                                              ● DEMO   ? Help
+ NAVIGATION        │ Home                                        25 posts · more
+┃ Home             │  Best   Hot   New   Top   Rising   Controversial
+  Popular          │ ╭────────────────────────────────────────────────────────╮┃
+                   │ │ r/rust  •  u/ferris_fan  •  2h ago                     │┃
+ COMMUNITIES       │ │                                                        ││
+  r/rust           │ │ Why I love building CLI applications with Rust         ││
+  r/linux          │ │ I have been writing command-line tools for a decade,…  ││
+  r/programming    │ │ ▲ 3.2k   ◍ 248   Text  Discussion                      ││
+  r/technology     │ ╰────────────────────────────────────────────────────────╯│
+  r/opensource     │                                                           │
+  r/unixporn       │ ╭────────────────────────────────────────────────────────╮│
+  r/webdev         │ │ r/linux  •  u/quiet_daemon  •  8h ago                  ││
+  r/machinelearni… │ │                                                        ││
+  r/askscience     │ │ I switched my entire workflow to Linux                 ││
+  r/gaming         │ │ After using another OS for years, I moved my whole…    ││
+                   │ │                                                        ││
+ FAVORITES         │ │                       ▄▄▄▄▄▄▄▄▄▄                       ││
+  f to add         │ │                       ▄▄▀▄▄▀▀▄▄▄                       ││
+                   │ │                       ▀▀▀▀▀▀▀▀▀▀                       ││
+ RECENT            │ │ ▲ 2.4k   ◍ 187   Image  Story                          ││
+  r/rust           │ ╰────────────────────────────────────────────────────────╯│
+                   │                                                           │
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

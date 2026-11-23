@@ -1,0 +1,82 @@
+[
+  {
+    "name": "rust",
+    "title": "The Rust Programming Language",
+    "subscribers": 412000,
+    "active": 8400,
+    "description": "A place for all things Rust: news, questions, crates and the occasional Ferris drawing.",
+    "created_utc": 1375200000
+  },
+  {
+    "name": "linux",
+    "title": "Linux, GNU and open source",
+    "subscribers": 1920000,
+    "active": 22000,
+    "description": "News, tips and stories from the Linux community. Beginners welcome.",
+    "created_utc": 1167840000
+  },
+  {
+    "name": "programming",
+    "title": "Programming",
+    "subscribers": 6400000,
+    "active": 41000,
+    "description": "Computer programming: articles, discussion and the craft of building software.",
+    "created_utc": 1150560000
+  },
+  {
+    "name": "technology",
+    "title": "Technology",
+    "subscribers": 16800000,
+    "active": 63000,
+    "description": "The latest technology news and analysis from around the world.",
+    "created_utc": 1159200000
+  },
+  {
+    "name": "opensource",
+    "title": "Open Source",
+    "subscribers": 248000,
+    "active": 3200,
+    "description": "Projects, maintainers and the people who keep open source running.",
+    "created_utc": 1262880000
+  },
+  {
+    "name": "unixporn",
+    "title": "Unixporn",
+    "subscribers": 690000,
+    "active": 4100,
+    "description": "Screenshots of beautiful, efficient and unusual desktop setups.",
+    "created_utc": 1297440000
+  },
+  {
+    "name": "webdev",
+    "title": "Web Development",
+    "subscribers": 2300000,
+    "active": 18000,
+    "description": "A community for web developers of every level.",
+    "created_utc": 1228320000
+  },
+  {
+    "name": "machinelearning",
+    "title": "Machine Learning",
+    "subscribers": 3100000,
+    "active": 12000,
+    "description": "Papers, projects and practical discussion about machine learning.",
+    "created_utc": 1280160000
+  },
+  {
+    "name": "askscience",
+    "title": "Ask a Science Question",
+    "subscribers": 26000000,
+    "active": 14000,
+    "description": "Got a question about science? Ask experts and enthusiasts.",
+    "created_utc": 1202400000
+  },
+  {
+    "name": "gaming",
+    "title": "Gaming",
+    "subscribers": 42000000,
+    "active": 52000,
+    "description": "A community for everything gaming, from AAA to tiny indie experiments.",
+    "created_utc": 1176480000
+  }
+]

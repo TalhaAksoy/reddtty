@@ -1,0 +1,13 @@
+/target
+**/*.rs.bk
+.DS_Store
+
+# Local configuration, credentials and logs must never be committed.
+.env
+.env.*
+*.log
+reddtty.toml
+.reddtty/
+
+# Generated fixture images can be regenerated with scripts/generate_fixtures.py,
+# but they are intentionally committed so the binary is self-contained.

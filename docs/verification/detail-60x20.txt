@@ -1,0 +1,20 @@
+ REDDTTY   ›  r/rust · Post                 ● DEMO   ? Help
+ r/rust   •   u/ferris_fan   •   2h ago   Discussion
+ Why I love building CLI applications with Rust
+
+ ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open
+ I have been writing command-line tools for a decade, and
+ Rust is the first language where shipping feels this good.
+
+ What changed for me
+                                                     ↕ 5/29
+ COMMENTS  248                                 Sort: Best ▾
+ ──────────────────────────────────────────────────────────
+ ▌u/byte_wanderer   ▲ 1.3k   2h ago                       ┃
+ ▌The part about documentation is underrated. Half of my  ┃
+ ▌bookmarks are just good READMEs.                        │
+ ▌                                                        │
+  u/firefox_fox   ▲ 1.3k   2h ago                         │
+  The examples are great, but I would add a warning about │
+  running this as root.                                   │
+j/k Move · Enter Toggle · Esc Back · ? Help · q Quit

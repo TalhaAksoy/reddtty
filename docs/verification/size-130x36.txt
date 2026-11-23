@@ -1,0 +1,36 @@
+ REDDTTY   ›  Home                                                                                                ● DEMO   ? Help
+ NAVIGATION            │ Home                                                         25 posts · more │ABOUT
+┃ Home                 │  Best   Hot   New   Top   Rising   Controversial                             │Home
+  Popular              │ ╭─────────────────────────────────────────────────────────────────────────╮┃ │Demo mode: synthetic posts
+                       │ │ r/rust  •  u/ferris_fan  •  2h ago                                      │┃ │and comments, stored
+ COMMUNITIES           │ │                                                                         │┃ │locally.
+  r/rust               │ │ Why I love building CLI applications with Rust                          ││ │
+  r/linux              │ │                                                                         ││ │SUGGESTED COMMUNITIES
+  r/programming        │ │ I have been writing command-line tools for a decade, and Rust is the    ││ │▸ r/rust
+  r/technology         │ │ first language where shipping feels this good.…                         ││ │▸ r/linux
+  r/opensource         │ │                                                                         ││ │▸ r/programming
+  r/unixporn           │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                       ││ │▸ r/technology
+  r/webdev             │ ╰─────────────────────────────────────────────────────────────────────────╯│ │▸ r/opensource
+  r/machinelearning    │                                                                            │ │▸ r/unixporn
+  r/askscience         │ ╭─────────────────────────────────────────────────────────────────────────╮│ │
+  r/gaming             │ │ r/linux  •  u/quiet_daemon  •  8h ago                                   ││ │SHORTCUTS
+                       │ │                                                                         ││ │j/k   navigate
+ FAVORITES             │ │ I switched my entire workflow to Linux                                  ││ │Enter open post
+  f to add             │ │                                                                         ││ │s     sort
+                       │ │ After using another OS for years, I moved my whole workflow over a long ││ │g     subreddit
+ RECENT                │ │ weekend. The surprises were smaller than I expected.                    ││ │/     search
+  r/rust               │ │                                                                         ││ │v     image
+                       │ │                          ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                           ││ │?     help
+                       │ │                          ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                           ││ │
+                       │ │                          ▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄                           ││ │
+                       │ │                          ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                           ││ │
+                       │ │                          ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                           ││ │
+                       │ │                              ▀▀▀▀▀      ▀▀▀▀▀                           ││ │
+                       │ │                                                                         ││ │
+                       │ │ ▲ 2.4k   ◍ 187   Image  Story                                           ││ │
+                       │ ╰─────────────────────────────────────────────────────────────────────────╯│ │
+                       │                                                                            │ │
+                       │ ╭─────────────────────────────────────────────────────────────────────────╮│ │
+                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                ││ │
+ h hide · Tab focus    │ ╰─────────────────────────────────────────────────────────────────────────╯│ │
+j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · ↓ More · o Open · v Image · ? Help · q Quit

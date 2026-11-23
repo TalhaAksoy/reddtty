@@ -1,0 +1,38 @@
+ REDDTTY   ›  r/rust                                                                                                        ● DEMO   ? Help
+ NAVIGATION            │ r/rust  ·  The Rust Programming Language                                       7 posts │ABOUT
+  Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │r/rust
+  Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │412k members  ·  8.4k
+                       │ │ r/rust  •  u/ferris_fan  •  2h ago                                                │┃ │online
+ COMMUNITIES           │ │                                                                                   │┃ │
+┃ r/rust               │ │ Why I love building CLI applications with Rust                                    │┃ │A place for all things
+  r/linux              │ │                                                                                   │┃ │Rust: news, questions,
+  r/programming        │ │ I have been writing command-line tools for a decade, and Rust is the first        │┃ │crates and the occasional
+  r/technology         │ │ language where shipping feels this good.…                                         │┃ │Ferris drawing.
+  r/opensource         │ │                                                                                   │┃ │
+  r/unixporn           │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                                 │┃ │SUGGESTED COMMUNITIES
+  r/webdev             │ ╰───────────────────────────────────────────────────────────────────────────────────╯┃ │▸ r/rust
+  r/machinelearning    │                                                                                      ┃ │▸ r/linux
+  r/askscience         │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │▸ r/programming
+  r/gaming             │ │ r/rust  •  u/oxide_orchard  •  25m ago                                            │┃ │▸ r/technology
+                       │ │                                                                                   ││ │▸ r/opensource
+ FAVORITES             │ │ Rust 2026: my terminal setup after three years                                    ││ │▸ r/unixporn
+  f to add             │ │                                                                                   ││ │
+                       │ │ Three years of tweaking, and I finally stopped changing my prompt every week.     ││ │SHORTCUTS
+ RECENT                │ │                                                                                   ││ │j/k   navigate
+┃ r/rust               │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │Enter open post
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │s     sort
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │g     subreddit
+                       │ │                               ▀▀▀▀▀▀▀▀▄▀▀▀▀▀▀▀▀▀▀                                 ││ │/     search
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │v     image
+                       │ │                               ▀▀▀▀   ▀▀▀▀▀   ▀▀▀▀                                 ││ │?     help
+                       │ │                                                                                   ││ │
+                       │ │ ▲ 1.2k   ◍ 86   Image  Show & Tell                                                ││ │
+                       │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+                       │                                                                                      │ │
+                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
+                       │ │ r/rust  •  u/mod_ferris  •  55m ago                                               ││ │
+                       │ │                                                                                   ││ │
+                       │ │ 📌 Weekly help thread — ask anything                                              ││ │
+                       │ │                                                                                   ││ │
+ h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · o Open · v Image · ? Help · q Quit

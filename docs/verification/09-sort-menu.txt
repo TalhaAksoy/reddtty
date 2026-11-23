@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                              ╭ Sort ────────────────────────────────────────╮
+                                              │  ▸ Best                                      │
+                                              │    Hot                                       │
+                                              │    New                                       │
+                                              │    Top                                       │
+                                              │    Rising                                    │
+                                              │    Controversial                             │
+                                              │    Top time range · This week  ‹ ›           │
+                                              │          Enter apply · h/l range · Esc close │
+                                              ╰──────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+j/k Move · Enter Apply · h/l Range · Esc Close

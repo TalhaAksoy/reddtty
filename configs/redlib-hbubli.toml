@@ -1,0 +1,62 @@
+# ReddTTY configuration — Redlib via redlib.hbubli.cc
+#
+# Manual smoke test on 2026-11-23 passed:
+# - Home feed loaded (25 posts)
+# - New and Rising returned different listings
+# - Top · All time returned posts
+# - r/burdurland opened
+# - Post detail loaded
+# - Comments and nested replies loaded
+# - Post links pointed back to the same Redlib instance
+#
+# IMPORTANT:
+# - Redlib is not Reddit's official API.
+# - This is a third-party instance: its operator can see request paths,
+#   headers and your IP address.
+# - Live HTML access is explicitly enabled below. Keep it enabled only if you
+#   accept the instance's terms and Reddit's access rules.
+# - The instance may rate-limit or block individual listings later.
+#   ReddTTY does not rotate instances or bypass access controls.
+
+favorites = []
+recent = []
+
+[general]
+theme = "dark"
+default_feed = "home"
+# Redlib HTML has no "best" listing; using hot avoids a fallback notice.
+default_sort = "hot"
+show_sidebar = true
+
+[images]
+enabled = true
+protocol = "auto"
+preview_in_feed = true
+max_cache_mb = 128
+max_download_mb = 10
+
+[content]
+show_nsfw = false
+hide_spoilers = true
+default_post_limit = 25
+
+[ui]
+mouse_enabled = true
+show_right_panel = true
+relative_time = true
+sidebar_width = 24
+
+[reddit]
+client_id = ""
+client_secret = ""
+refresh_token = ""
+username = ""
+user_agent = "reddtty/0.1.0 (terminal Reddit reader; +https://example.invalid/reddtty)"
+use_environment = true
+
+[provider]
+type = "redlib"
+
+[provider.html]
+redlib_instance = "https://redlib.hbubli.cc"
+allow_network = true
