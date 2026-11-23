@@ -40,6 +40,12 @@ pub fn render(
                 ("Ctrl+U", "Clear"),
             ],
             Some(Modal::Confirm(_)) => vec![("Enter/y", "Remove"), ("Esc/n", "Cancel")],
+            Some(Modal::Settings(_)) => {
+                vec![("j/k", "Move"), ("Enter", "Select"), ("Esc", "Close")]
+            }
+            Some(Modal::ConfigPicker(_)) => {
+                vec![("j/k", "Move"), ("Enter", "Install"), ("Esc", "Back")]
+            }
             None => Vec::new(),
         }
     } else {

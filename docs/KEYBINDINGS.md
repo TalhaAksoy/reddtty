@@ -14,6 +14,7 @@ detail it behaves as the reverse of `Tab` (both toggle the two panes).
 | `Ctrl+C` | Quit immediately |
 | `q` | Quit from any screen except a modal text field |
 | `?` | Open keyboard help |
+| `S` | Open Settings |
 | `T` | Toggle dark/light theme (persisted) |
 | Terminal resize | Layout recalculates automatically; no restart required |
 
@@ -137,6 +138,22 @@ Accepted subreddit forms: `rust`, `r/rust`, `/r/rust/`,
 `https://www.reddit.com/r/rust`, `rust.json`. Names are normalised; invalid
 names show an inline error and do not trigger a request.
 
+
+## Settings
+
+`S` opens the Settings modal.
+
+| Key | Action |
+|---|---|
+| `j` / `k` | Move between Settings rows |
+| `Enter` | Open Change config / toggle Theme |
+| `Esc` | Close Settings |
+| `j` / `k` in Change config | Choose a bundled config preset |
+| `Enter` in Change config | Install the selected config (existing config is backed up) |
+| `Esc` in Change config | Return to Settings |
+
+Provider changes take effect after restarting ReddTTY. Theme changes apply
+immediately and are persisted.
 
 ## Favorite removal confirmation
 

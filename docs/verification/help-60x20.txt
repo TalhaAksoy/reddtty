@@ -1,20 +1,20 @@
  REDDTTY   ›  Home                          ● DEMO   ? Help
 
  ╭ Keyboard Shortcuts ────────────────────────────────────╮
- │ j / k       Navigate       v           Image viewer    │
- │ ↑ / ↓       Same           x           Reveal NSFW     │
- │ Enter       Open / toggle  c           Collapse        │
- │ Esc         Back / close   f           Favorite        │
- │ Tab         Switch focus   h           Sidebar         │
- │ s           Sort           T           Theme           │
- │ t           Top range      PgUp / PgDn Page            │
- │ g           Go to sub      Home / End  Jump            │
- │ /           Search         Mouse       Click / scroll  │
- │ r           Refresh        ?           Help            │
+ │ j / k       Navigate       x           Reveal NSFW     │
+ │ ↑ / ↓       Same           c           Collapse        │
+ │ Enter       Open / toggle  f           Favorite        │
+ │ Esc         Back / close   h           Sidebar         │
+ │ Tab         Switch focus   T           Theme           │
+ │ s           Sort           PgUp / PgDn Page            │
+ │ t           Top range      Home / End  Jump            │
+ │ g           Go to sub      Mouse       Click / scroll  │
+ │ /           Search         ?           Help            │
+ │ r           Refresh        S           Settings        │
  │ o           Browser        q           Quit            │
+ │ v           Image viewer                               │
  │                                                        │
  │                                      Esc or ? to close │
  ╰────────────────────────────────────────────────────────╯
-
 
 Esc/? Close help

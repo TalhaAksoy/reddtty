@@ -34,7 +34,10 @@ use feed::FeedView;
 use gallery::GalleryView;
 use hit::{HitMap, HitTarget, Pane};
 pub use modal::Modal;
-use modal::{ConfirmAction, RangeModal, SortChoice, SortContext, SortModal, TextKind, TextModal};
+use modal::{
+    ConfigPickerModal, ConfirmAction, RangeModal, SettingsModal, SortChoice, SortContext,
+    SortModal, TextKind, TextModal,
+};
 use post::{PostView, ToggleOutcome};
 use sidebar::{SidebarEntry, SidebarState};
 
@@ -922,6 +925,57 @@ impl App {
         self.modal = Some(Modal::Help);
     }
 
+    pub fn open_settings(&mut self) {
+        self.modal = Some(Modal::Settings(SettingsModal::new(
+            self.settings.general.theme,
+        )));
+    }
+
+    fn activate_settings_item(&mut self, index: usize) {
+        match index {
+            0 => {
+                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+            }
+            1 => {
+                self.toggle_theme();
+                self.modal = Some(Modal::Settings(SettingsModal {
+                    selected: 1,
+                    theme: self.settings.general.theme,
+                }));
+            }
+            _ => {}
+        }
+    }
+
+    fn activate_config_picker_item(&mut self, index: usize) {
+        let Some(preset) = crate::config::presets::PRESETS.get(index) else {
+            return;
+        };
+        match crate::config::presets::install(preset.id, &self.config_path) {
+            Ok(installed) => {
+                self.modal = None;
+                let backup = installed
+                    .backup
+                    .as_ref()
+                    .map(|path| format!(" Previous config: {}.", path.display()))
+                    .unwrap_or_default();
+                self.notify(
+                    NoticeKind::Success,
+                    format!(
+                        "Installed {}. Restart ReddTTY to apply provider changes.{}",
+                        preset.name, backup
+                    ),
+                );
+            }
+            Err(error) => {
+                self.notify(
+                    NoticeKind::Error,
+                    format!("Could not install config: {error}"),
+                );
+            }
+        }
+    }
+
     fn apply_feed_sort(&mut self, sort: FeedSort) {
         let Some(view) = self.current_feed() else {
             return;
@@ -1181,6 +1235,42 @@ impl App {
                 _ => {}
             },
             Modal::Text(_) => {}
+            Modal::Settings(settings) => match key.code {
+                KeyCode::Esc => self.modal = None,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let next = (settings.selected + 1).min(1);
+                    self.modal = Some(Modal::Settings(SettingsModal {
+                        selected: next,
+                        theme: settings.theme,
+                    }));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.modal = Some(Modal::Settings(SettingsModal {
+                        selected: settings.selected.saturating_sub(1),
+                        theme: settings.theme,
+                    }));
+                }
+                KeyCode::Enter => self.activate_settings_item(settings.selected),
+                _ => {}
+            },
+            Modal::ConfigPicker(picker) => match key.code {
+                KeyCode::Esc => {
+                    self.modal = Some(Modal::Settings(SettingsModal::new(
+                        self.settings.general.theme,
+                    )));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let next = (picker.selected + 1).min(crate::config::presets::PRESETS.len() - 1);
+                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal { selected: next }));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                        selected: picker.selected.saturating_sub(1),
+                    }));
+                }
+                KeyCode::Enter => self.activate_config_picker_item(picker.selected),
+                _ => {}
+            },
             Modal::Confirm(confirm) => match key.code {
                 KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
                     self.modal = None;
@@ -1402,6 +1492,11 @@ impl App {
             .modifiers
             .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
         {
+            return;
+        }
+
+        if key.code == KeyCode::Char('S') {
+            self.open_settings();
             return;
         }
 
@@ -1785,6 +1880,10 @@ impl App {
                     self.activate_range_modal_item(index);
                 } else if matches!(self.modal, Some(Modal::Sort(_))) {
                     self.activate_sort_modal_item(index);
+                } else if matches!(self.modal, Some(Modal::Settings(_))) {
+                    self.activate_settings_item(index);
+                } else if matches!(self.modal, Some(Modal::ConfigPicker(_))) {
+                    self.activate_config_picker_item(index);
                 }
             }
             Some(HitTarget::ModalRangeItem(_)) => {

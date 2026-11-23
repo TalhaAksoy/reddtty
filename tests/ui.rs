@@ -901,6 +901,29 @@ async fn long_provider_error_wraps_instead_of_truncating_feedback() {
 }
 
 #[tokio::test]
+async fn settings_modal_shows_change_config_and_theme() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('S'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("Settings"), "{text}");
+    assert!(text.contains("Change config"), "{text}");
+    assert!(text.contains("Theme:"), "{text}");
+
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Enter,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("Choose config"), "{text}");
+    assert!(text.contains("Demo (offline)"), "{text}");
+}
+
+#[tokio::test]
 async fn empty_favorites_section_is_visible_with_add_hint() {
     let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
     assert!(app.settings.favorites.is_empty());

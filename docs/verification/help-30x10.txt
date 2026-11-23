@@ -5,6 +5,6 @@
  │ Enter       Open / togg… │
  │ Esc         Back / close │
  │                          │
- │      18 more · Esc close │
+ │      19 more · Esc close │
  ╰──────────────────────────╯
 Esc/? Close help

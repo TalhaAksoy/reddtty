@@ -48,6 +48,18 @@ UI → App state → Provider trait / models / media
 No widget performs HTTP, parses JSON, or spawns downloads. No provider knows
 about Ratatui.
 
+## First-run setup and Settings
+
+- If the default config path is missing, `src/setup.rs` runs before App
+  construction, shows the embedded presets from `configs/`, and installs the
+  selected one through `config::presets::install`. The normal startup path then
+  reloads the file. Esc skips installation and uses demo data for that session.
+- `S` opens the Settings modal inside the running app. Theme changes apply
+  immediately; changing the config installs/backs up the file and asks the user
+  to restart so the provider and all in-memory state are rebuilt cleanly.
+- Presets are embedded with `include_str!`, so `cargo install` users do not need
+  a repository checkout.
+
 ## Runtime and event flow
 
 ```text

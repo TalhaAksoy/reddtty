@@ -44,8 +44,11 @@ make install        # /usr/local/bin/reddtty
 
 ## Ready-made configs
 
+On first launch with no config, ReddTTY asks you to choose a starter config.
+The same picker is available later from **Settings** (`S`).
+
 The [`configs/`](configs/) directory contains tested provider configs, including
-Redlib instances. Install one with an interactive picker:
+a fully offline demo and Redlib instances. Install one with an interactive picker:
 
 ```bash
 make configs
@@ -84,6 +87,7 @@ reddtty --diagnostics
 | `g` | Go to subreddit |
 | `/` | Search |
 | `f` | Add favorite; confirm before removing |
+| `S` | Settings: change config / theme |
 | `v` | Image viewer / gallery |
 | `o` | Open in browser |
 | `?` | Help |
@@ -102,7 +106,8 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/reddtty/config.toml
 Windows: `%APPDATA%\reddtty\config.toml`.
 
 Settings from older `threadline` installs are migrated on first run without
-overwriting an existing ReddTTY config. Environment variables use the
+overwriting an existing ReddTTY config. If no config exists at all, the first-run
+picker installs a starter config and backs up any existing file before replacement. Environment variables use the
 `REDDTTY_*` prefix; legacy `THREADLINE_*` names are accepted only as fallback.
 
 Example:

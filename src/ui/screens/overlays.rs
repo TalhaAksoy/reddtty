@@ -8,9 +8,11 @@ use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Wr
 
 use crate::app::hit::{HitMap, HitTarget};
 use crate::app::modal::{
-    ConfirmModal, Modal, SearchScopeChoice, SortChoice, SortContext, TextKind, TextModal,
+    ConfigPickerModal, ConfirmModal, Modal, SearchScopeChoice, SettingsModal, SortChoice,
+    SortContext, TextKind, TextModal,
 };
 use crate::app::{NoticeKind, Notification};
+use crate::config::presets;
 use crate::models::TopRange;
 use crate::ui::layout;
 use crate::ui::theme::Theme;
@@ -30,6 +32,8 @@ pub fn render_modal(
         Modal::Range(range) => render_range(frame, area, range.selected, theme, hit_map),
         Modal::Text(text) => render_text(frame, area, text, theme, hit_map),
         Modal::Confirm(confirm) => render_confirm(frame, area, confirm, theme, hit_map),
+        Modal::Settings(settings) => render_settings(frame, area, settings, theme, hit_map),
+        Modal::ConfigPicker(picker) => render_config_picker(frame, area, picker, theme, hit_map),
     }
 }
 
@@ -67,7 +71,7 @@ fn inner_of(rect: Rect) -> Rect {
 }
 
 fn render_help(frame: &mut Frame, area: Rect, theme: &Theme, hit_map: &mut HitMap) {
-    let shortcuts: [(&str, &str); 22] = [
+    let shortcuts: [(&str, &str); 23] = [
         ("j / k", "Navigate"),
         ("↑ / ↓", "Same"),
         ("Enter", "Open / toggle"),
@@ -89,6 +93,7 @@ fn render_help(frame: &mut Frame, area: Rect, theme: &Theme, hit_map: &mut HitMa
         ("Home / End", "Jump"),
         ("Mouse", "Click / scroll"),
         ("?", "Help"),
+        ("S", "Settings"),
         ("q", "Quit"),
     ];
     let two_columns = area.width >= 56;
@@ -179,6 +184,132 @@ fn shortcut_line(
         ),
         Span::styled(desc, Style::default().fg(theme.text_dim).bg(bg)),
     ])
+}
+
+fn render_settings(
+    frame: &mut Frame,
+    area: Rect,
+    settings: &SettingsModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let rect = layout::centered(area, area.width.min(48), 9);
+    modal_frame(frame, rect, "Settings", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+    let rows = [
+        (
+            "Change config".to_string(),
+            "replace the active config file".to_string(),
+        ),
+        (
+            format!("Theme: {}", settings.theme.label()),
+            "toggle dark / light".to_string(),
+        ),
+    ];
+    for (index, (title, description)) in rows.iter().enumerate() {
+        let y = inner.y.saturating_add(index as u16 * 2);
+        if y >= inner.bottom().saturating_sub(1) {
+            break;
+        }
+        let selected = index == settings.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{title}")).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        frame.render_widget(
+            Paragraph::new(format!("    {description}"))
+                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 2),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k move · Enter select · Esc close")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_config_picker(
+    frame: &mut Frame,
+    area: Rect,
+    picker: &ConfigPickerModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(76);
+    let height = (presets::PRESETS.len() as u16 * 3 + 5)
+        .min(area.height.saturating_sub(2))
+        .max(10);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Choose config", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+    for (index, preset) in presets::PRESETS.iter().enumerate() {
+        let y = inner.y.saturating_add(index as u16 * 3);
+        if y >= inner.bottom().saturating_sub(1) {
+            break;
+        }
+        let selected = index == picker.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{}", preset.name)).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        frame.render_widget(
+            Paragraph::new(format!("    {}", preset.description))
+                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 3),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k move · Enter install · Esc back")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
 }
 
 fn render_confirm(

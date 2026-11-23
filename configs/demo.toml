@@ -1,0 +1,44 @@
+# ReddTTY configuration — offline demo
+#
+# No network access and no Reddit credentials are required.
+
+favorites = []
+
+[general]
+theme = "dark"
+default_feed = "home"
+default_sort = "hot"
+show_sidebar = true
+
+[images]
+enabled = true
+protocol = "auto"
+preview_in_feed = true
+max_cache_mb = 128
+max_download_mb = 10
+
+[content]
+show_nsfw = false
+hide_spoilers = true
+default_post_limit = 25
+
+[ui]
+mouse_enabled = true
+show_right_panel = true
+relative_time = true
+sidebar_width = 24
+
+[reddit]
+client_id = ""
+client_secret = ""
+refresh_token = ""
+username = ""
+user_agent = "reddtty/0.1.0 (terminal Reddit reader; +https://example.invalid/reddtty)"
+use_environment = true
+
+[provider]
+type = "demo"
+
+[provider.html]
+redlib_instance = ""
+allow_network = false

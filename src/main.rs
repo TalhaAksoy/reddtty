@@ -23,6 +23,8 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 
+mod setup;
+
 #[tokio::main]
 async fn main() {
     if let Err(error) = run().await {
@@ -42,6 +44,46 @@ async fn run() -> Result<()> {
     };
     let (mut settings, load_warnings) = Settings::load(&config_path);
     warnings.extend(load_warnings);
+
+    let first_run = cli.config.is_none()
+        && !cli.demo
+        && cli.provider.is_none()
+        && !cli.diagnostics
+        && !config_path.exists()
+        && stdout().is_terminal();
+    if first_run {
+        install_panic_hook();
+        let mut terminal = ratatui::try_init().context("could not open the setup screen")?;
+        let selected = setup::run(&mut terminal);
+        let _ = ratatui::try_restore();
+        std::thread::sleep(Duration::from_millis(40));
+        match selected.context("could not read the setup screen input")? {
+            Some(id) => {
+                let installed = reddtty::config::presets::install(id, &config_path)
+                    .map_err(anyhow::Error::msg)?;
+                warnings.push(format!(
+                    "Installed config: {}{}.",
+                    installed.destination.display(),
+                    installed
+                        .backup
+                        .as_ref()
+                        .map(|backup| format!(
+                            " (previous config backed up to {})",
+                            backup.display()
+                        ))
+                        .unwrap_or_default()
+                ));
+                let (reloaded, reload_warnings) = Settings::load(&config_path);
+                settings = reloaded;
+                warnings.extend(reload_warnings);
+            }
+            None => {
+                settings.provider.kind = ProviderKind::Demo;
+                warnings.push("No config installed; using demo data for this session.".into());
+            }
+        }
+    }
+
     let config_theme = settings.general.theme;
     let config_images_enabled = settings.images.enabled;
     let config_images_protocol = settings.images.protocol;

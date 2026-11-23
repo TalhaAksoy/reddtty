@@ -319,12 +319,31 @@ impl ConfirmModal {
 }
 
 #[derive(Clone, Debug)]
+pub struct SettingsModal {
+    pub selected: usize,
+    pub theme: crate::config::ThemeMode,
+}
+
+impl SettingsModal {
+    pub fn new(theme: crate::config::ThemeMode) -> Self {
+        Self { selected: 0, theme }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ConfigPickerModal {
+    pub selected: usize,
+}
+
+#[derive(Clone, Debug)]
 pub enum Modal {
     Help,
     Sort(SortModal),
     Range(RangeModal),
     Text(TextModal),
     Confirm(ConfirmModal),
+    Settings(SettingsModal),
+    ConfigPicker(ConfigPickerModal),
 }
 
 impl Modal {
@@ -338,6 +357,8 @@ impl Modal {
             Self::Range(_) => "Top time range",
             Self::Text(modal) => &modal.title,
             Self::Confirm(modal) => &modal.title,
+            Self::Settings(_) => "Settings",
+            Self::ConfigPicker(_) => "Choose config",
         }
     }
 }

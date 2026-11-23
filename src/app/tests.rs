@@ -263,6 +263,38 @@ fn removing_sidebar_favorite_requires_confirmation() {
 }
 
 #[test]
+fn settings_config_picker_installs_preset_and_backs_up() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-settings-picker-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("config.toml");
+    std::fs::write(&path, "favorites = [\"rust\"]\n").unwrap();
+    app.config_path = path.clone();
+    app.modal = Some(Modal::ConfigPicker(ConfigPickerModal { selected: 0 }));
+    app.activate_config_picker_item(0);
+    assert!(app.modal.is_none());
+    let (loaded, warnings) = Settings::load(&path);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert_eq!(loaded.provider.kind, crate::config::ProviderKind::Demo);
+    assert!(loaded.favorites.is_empty());
+    let backups = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name.contains(".bckp_"))
+        .count();
+    assert_eq!(backups, 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn stale_requests_are_ignored() {
     let mut app = App::test_with_posts(vec![post("p")]);
     let id = app.current_id().unwrap();

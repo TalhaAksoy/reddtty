@@ -1,5 +1,10 @@
 # Ready-to-use configs
 
+## `demo.toml` — offline
+
+No network and no Reddit account. Safe first-run default when you want to try
+the interface immediately.
+
 ## `redlib-zanity.toml` — recommended on 2026-11-23
 
 Uses the third-party Redlib instance `https://redlib.zanity.net`.
