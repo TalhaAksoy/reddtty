@@ -258,10 +258,23 @@ Adding a new favorite is still immediate.
 
 ## Help modal
 
+The help screen is a categorised reference rather than a flat list. Sections
+are: `GLOBAL`, `FEED`, `SIDEBAR`, `POST DETAIL`, `IMAGE VIEWER`, `SORT & RANGE`,
+`TEXT INPUT`, `BOOKMARKS`, `LOCAL FILTERS`, `SOURCE HEALTH`, `COMMAND PALETTE`
+and `MOUSE`.
+
 | Key | Action |
 |---|---|
+| `j` / `k`, `↓` / `↑` | Scroll one row |
+| `PageDown` / `PageUp` | Scroll one page |
+| `Home` / `End` | First / last row |
+| Mouse wheel | Scroll the reference |
 | `Esc` or `?` | Close |
 | Click outside | Close |
+
+At wide terminals entries are shown in two columns; the footer reports the
+visible range and how many rows remain. Narrow terminals use one column and a
+scrollable list.
 
 ## Mouse
 

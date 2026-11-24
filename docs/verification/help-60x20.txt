@@ -1,20 +1,20 @@
  REDDTTY   ›  Home                          ● DEMO   ? Help
- ╭ Keyboard Shortcuts ────────────────────────────────────╮
- │ j / k       Navigate       p           Parent comment  │
- │ ↑ / ↓       Same           n           Next unread     │
- │ Enter       Open / toggle  f           Favorite        │
- │ Esc         Back / close   b           Bookmark        │
- │ Tab         Switch focus   B           Bookmarks       │
- │ s           Sort           m           Read / unread   │
- │ t           Top range      y           Copy permalink  │
- │ g           Go to sub      h           Sidebar         │
- │ /           Search         T           Theme           │
- │ r           Refresh        PgUp / PgDn Page            │
- │ o           Browser        Home / End  Jump            │
- │ v           Image viewer   Mouse       Click / scroll  │
- │ x           Reveal NSFW    ?           Help            │
- │ c           Collapse       : / Ctrl+P  Commands        │
- │                                                        │
- │                                     5 more · Esc close │
- ╰────────────────────────────────────────────────────────╯
-Esc/? Close help
+
+  ╭ Keyboard Shortcuts ──────────────────────────────────╮
+  │ GLOBAL                                               │
+  │ ?           Open this help                           │
+  │ S           Settings                                 │
+  │ : / Ctrl+P  Command palette                          │
+  │ T           Cycle theme                              │
+  │ Esc         Back / close modal                       │
+  │ Ctrl+C      Quit immediately                         │
+  │ q           Quit (not in text input)                 │
+  │                                                      │
+  │ FEED                                                 │
+  │ j / k       Next / previous post                     │
+  │ ↑ / ↓       Same as j / k                            │
+  │ PgUp / PgDn Move by half a viewport                  │
+  │                                 121 more · Esc close │
+  ╰──────────────────────────────────────────────────────╯
+
+j/k Scroll · PgUp/PgDn Page · Esc/? Close

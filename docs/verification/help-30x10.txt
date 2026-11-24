@@ -1,10 +1,10 @@
  REDDTTY   ›  Home     ● DEMO
- ╭ Keyboard Shortcuts ──────╮
- │ j / k       Navigate     │
- │ ↑ / ↓       Same         │
- │ Enter       Open / togg… │
- │ Esc         Back / close │
- │                          │
- │      29 more · Esc close │
- ╰──────────────────────────╯
-Esc/? Close help
+  ╭ Keyboard Shortcuts ────╮
+  │ GLOBAL                 │
+  │ ?           Open thi…  │
+  │ S           Settings   │
+  │ : / Ctrl+P  Command …  │
+  │ T           Cycle th…  │
+  │   129 more · Esc close │
+  ╰────────────────────────╯
+j/k Scroll · Esc/? Close

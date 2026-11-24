@@ -1,6 +1,7 @@
 pub mod feed;
 pub mod gallery;
 pub mod health;
+pub mod help;
 pub mod hit;
 pub mod modal;
 pub mod post;
@@ -36,6 +37,7 @@ use crate::utils::text::{normalize_subreddit, sanitize};
 use feed::FeedView;
 use gallery::GalleryView;
 use health::SourceHealth;
+use help::HelpModal;
 use hit::{HitMap, HitTarget, Pane};
 pub use modal::Modal;
 use modal::{
@@ -1135,7 +1137,7 @@ impl App {
     }
 
     pub fn open_help(&mut self) {
-        self.modal = Some(Modal::Help);
+        self.modal = Some(Modal::Help(HelpModal::default()));
     }
 
     pub fn open_command_palette(&mut self) {
@@ -1585,10 +1587,38 @@ impl App {
             return;
         }
         match modal {
-            Modal::Help => match key.code {
-                KeyCode::Esc | KeyCode::Char('?') => self.modal = None,
-                _ => {}
-            },
+            Modal::Help(mut help) => {
+                let width = self.size.width;
+                let height = self.size.height;
+                match key.code {
+                    KeyCode::Esc | KeyCode::Char('?') => self.modal = None,
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        help.scroll_by(1, width, height);
+                        self.modal = Some(Modal::Help(help));
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        help.scroll_by(-1, width, height);
+                        self.modal = Some(Modal::Help(help));
+                    }
+                    KeyCode::PageDown => {
+                        help.page(true, width, height);
+                        self.modal = Some(Modal::Help(help));
+                    }
+                    KeyCode::PageUp => {
+                        help.page(false, width, height);
+                        self.modal = Some(Modal::Help(help));
+                    }
+                    KeyCode::Home => {
+                        help.home();
+                        self.modal = Some(Modal::Help(help));
+                    }
+                    KeyCode::End => {
+                        help.end(width, height);
+                        self.modal = Some(Modal::Help(help));
+                    }
+                    _ => {}
+                }
+            }
             Modal::Sort(mut sort_modal) => match key.code {
                 KeyCode::Esc => self.modal = None,
                 KeyCode::Char('j') | KeyCode::Down => {
@@ -2512,15 +2542,24 @@ impl App {
                 self.dirty = false;
             }
             MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
-                if self.modal.is_some() {
-                    self.dirty = false;
-                    return;
-                }
-                let direction = if matches!(mouse.kind, MouseEventKind::ScrollDown) {
+                let direction: i32 = if matches!(mouse.kind, MouseEventKind::ScrollDown) {
                     1
                 } else {
                     -1
                 };
+                if matches!(self.modal, Some(Modal::Help(_))) {
+                    let width = self.size.width;
+                    let height = self.size.height;
+                    if let Some(Modal::Help(help)) = &mut self.modal {
+                        help.scroll_by(direction as isize * 3, width, height);
+                    }
+                    self.dirty = true;
+                    return;
+                }
+                if self.modal.is_some() {
+                    self.dirty = false;
+                    return;
+                }
                 self.scroll_pane(mouse.column, mouse.row, direction);
                 self.dirty = true;
             }

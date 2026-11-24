@@ -4,42 +4,42 @@
 
 
 
+                    ╭ Keyboard Shortcuts ──────────────────────────────────────────────────────────────────────────────────────────────────╮
+                    │ GLOBAL                                                                                                               │
+                    │ ?           Open this help                                S           Settings                                       │
+                    │ : / Ctrl+P  Command palette                               T           Cycle theme                                    │
+                    │ Esc         Back / close modal                            Ctrl+C      Quit immediately                               │
+                    │ q           Quit (not in text input)                                                                                 │
+                    │                                                                                                                      │
+                    │ FEED                                                                                                                 │
+                    │ j / k       Next / previous post                          ↑ / ↓       Same as j / k                                  │
+                    │ PgUp / PgDn Move by half a viewport                       Home / End  First / last loaded post                       │
+                    │ Enter       Open selected post                            s           Feed sort menu                                 │
+                    │ t           Top time range                                g           Go to subreddit                                │
+                    │ /           Search posts                                  r           Refresh first page                             │
+                    │ o           Open post/link in browser                     v           Open image / gallery                           │
+                    │ x           Reveal NSFW or spoiler                        f           Favorite subreddit                             │
+                    │ b           Bookmark selected post                        B           Open bookmarks                                 │
+                    │ m           Toggle read / unread                          y           Copy post permalink                            │
+                    │ h           Show / hide sidebar                           Tab         Focus sidebar / feed                           │
+                    │                                                                                                                      │
+                    │ SIDEBAR                                                                                                              │
+                    │ j / k       Move between entries                          Enter       Open selected entry                            │
+                    │ Esc         Return focus to feed                          Tab         Return focus to feed                           │
+                    │ f           Add/remove favorite                           h           Hide sidebar                                   │
+                    │ s, t, g, /  Same feed actions                             r, o, v, x  Same feed actions                              │
+                    │                                                                                                                      │
+                    │ POST DETAIL                                                                                                          │
+                    │ Tab         Switch body / comments                        j / k       Scroll body or next comment                    │
+                    │ PgUp / PgDn Page focused pane                             Home / End  Start / end of pane                            │
+                    │ Enter       Open image or toggle comment                  c           Collapse selected comment                      │
+                    │ [ / ]       Previous / next root comment                  p           Jump to parent comment                         │
+                    │ j/k scroll · PgUp/PgDn page · Home/End                                                   29/81 · 52 more · Esc close │
+                    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 
 
 
 
-                                         ╭ Keyboard Shortcuts ────────────────────────────────────────────────────────╮
-                                         │ j / k       Navigate                 p           Parent comment            │
-                                         │ ↑ / ↓       Same                     n           Next unread               │
-                                         │ Enter       Open / toggle            f           Favorite                  │
-                                         │ Esc         Back / close             b           Bookmark                  │
-                                         │ Tab         Switch focus             B           Bookmarks                 │
-                                         │ s           Sort                     m           Read / unread             │
-                                         │ t           Top range                y           Copy permalink            │
-                                         │ g           Go to sub                h           Sidebar                   │
-                                         │ /           Search                   T           Theme                     │
-                                         │ r           Refresh                  PgUp / PgDn Page                      │
-                                         │ o           Browser                  Home / End  Jump                      │
-                                         │ v           Image viewer             Mouse       Click / scroll            │
-                                         │ x           Reveal NSFW              ?           Help                      │
-                                         │ c           Collapse                 : / Ctrl+P  Commands                  │
-                                         │ z           Collapse all             S           Settings                  │
-                                         │ O           Only OP comments         q           Quit                      │
-                                         │ [ / ]       Prev / next root                                               │
-                                         │                                                                            │
-                                         │                                                          Esc or ? to close │
-                                         ╰────────────────────────────────────────────────────────────────────────────╯
-
-
-
-
-
-
-
-
-
-
-
-Esc/? Close help
+j/k Scroll · PgUp/PgDn Page · Esc/? Close

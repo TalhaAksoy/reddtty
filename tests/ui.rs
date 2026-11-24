@@ -238,6 +238,37 @@ async fn gallery_renders_position_and_controls() {
 }
 
 #[tokio::test]
+async fn help_is_categorised_and_scrolls_to_later_sections() {
+    let (mut app, _provider, _posts) = app_with_posts(140, 40).await;
+    app.open_help();
+    let terminal = draw(&mut app, 140, 40);
+    let text = screen(&terminal);
+    for section in ["GLOBAL", "FEED", "SIDEBAR", "POST DETAIL"] {
+        assert!(text.contains(section), "missing {section}: {text}");
+    }
+    assert!(text.contains("Command palette"), "{text}");
+    assert!(text.contains("Feed sort menu"), "{text}");
+    assert!(
+        text.contains("more"),
+        "scrolling must be discoverable: {text}"
+    );
+
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::End,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 140, 40);
+    let text = screen(&terminal);
+    for section in ["LOCAL FILTERS", "SOURCE HEALTH", "COMMAND PALETTE", "MOUSE"] {
+        assert!(
+            text.contains(section),
+            "missing {section} after End: {text}"
+        );
+    }
+    assert!(text.contains("Esc close"), "{text}");
+}
+
+#[tokio::test]
 async fn help_and_search_modals_fit_small_screens() {
     for (w, h) in [(60, 20), (80, 24)] {
         let (mut app, _provider, _posts) = app_with_posts(w, h).await;
@@ -245,7 +276,7 @@ async fn help_and_search_modals_fit_small_screens() {
         let terminal = draw(&mut app, w, h);
         let text = screen(&terminal);
         assert!(text.contains("Keyboard Shortcuts"));
-        assert!(matches!(app.modal, Some(reddtty::app::Modal::Help)));
+        assert!(matches!(app.modal, Some(reddtty::app::Modal::Help(_))));
 
         app.modal = None;
         app.open_search_modal();

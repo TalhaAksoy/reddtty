@@ -7,6 +7,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Wrap};
 
 use crate::app::health::{SourceHealth, format_age, format_duration};
+use crate::app::help::{HELP_SECTIONS, HelpModal, columns_for_width, modal_height, total_rows};
 use crate::app::hit::{HitMap, HitTarget};
 use crate::app::modal::{
     BookmarksModal, CommandPaletteModal, ConfigPickerModal, ConfirmModal, FiltersModal, Modal,
@@ -34,7 +35,7 @@ pub fn render_modal(
 ) {
     hit_map.push(area, HitTarget::ModalClose);
     match modal {
-        Modal::Help => render_help(frame, area, theme, hit_map),
+        Modal::Help(help) => render_help(frame, area, help, theme, hit_map),
         Modal::Sort(sort) => render_sort(frame, area, sort, theme, hit_map),
         Modal::Range(range) => render_range(frame, area, range.selected, theme, hit_map),
         Modal::Text(text) => render_text(frame, area, text, theme, hit_map),
@@ -92,109 +93,91 @@ fn inner_of(rect: Rect) -> Rect {
     )
 }
 
-fn render_help(frame: &mut Frame, area: Rect, theme: &Theme, hit_map: &mut HitMap) {
-    let shortcuts: [(&str, &str); 33] = [
-        ("j / k", "Navigate"),
-        ("↑ / ↓", "Same"),
-        ("Enter", "Open / toggle"),
-        ("Esc", "Back / close"),
-        ("Tab", "Switch focus"),
-        ("s", "Sort"),
-        ("t", "Top range"),
-        ("g", "Go to sub"),
-        ("/", "Search"),
-        ("r", "Refresh"),
-        ("o", "Browser"),
-        ("v", "Image viewer"),
-        ("x", "Reveal NSFW"),
-        ("c", "Collapse"),
-        ("z", "Collapse all"),
-        ("O", "Only OP comments"),
-        ("[ / ]", "Prev / next root"),
-        ("p", "Parent comment"),
-        ("n", "Next unread"),
-        ("f", "Favorite"),
-        ("b", "Bookmark"),
-        ("B", "Bookmarks"),
-        ("m", "Read / unread"),
-        ("y", "Copy permalink"),
-        ("h", "Sidebar"),
-        ("T", "Theme"),
-        ("PgUp / PgDn", "Page"),
-        ("Home / End", "Jump"),
-        ("Mouse", "Click / scroll"),
-        ("?", "Help"),
-        (": / Ctrl+P", "Commands"),
-        ("S", "Settings"),
-        ("q", "Quit"),
-    ];
-    let two_columns = area.width >= 56;
-    let per_column = if two_columns {
-        shortcuts.len().div_ceil(2)
-    } else {
-        shortcuts.len()
-    };
-    let height = (per_column as u16 + 4)
-        .min(area.height.saturating_sub(2))
-        .max(6);
-    let width = if two_columns {
-        area.width.min(78)
-    } else {
-        area.width.min(52)
-    };
+fn render_help(
+    frame: &mut Frame,
+    area: Rect,
+    help: &HelpModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(120);
+    let height = modal_height(area.height);
     let rect = layout::centered(area, width, height);
     modal_frame(frame, rect, "Keyboard Shortcuts", theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
 
-    let rows = inner.height.saturating_sub(2) as usize;
-    if two_columns {
-        let col_width = inner.width / 2;
-        for (index, (key, desc)) in shortcuts.iter().enumerate().take(per_column * 2) {
-            let col = index / per_column;
-            let row = index % per_column;
-            if row >= rows {
-                continue;
+    let columns = columns_for_width(inner.width);
+    let total = total_rows(columns);
+    let visible = inner.height.saturating_sub(1) as usize;
+    let offset = help.clamped(area.width, area.height);
+    let end = (offset + visible).min(total);
+    let col_width = (inner.width / columns.max(1) as u16).max(1);
+
+    let mut row = 0usize;
+    for section in HELP_SECTIONS {
+        if row >= offset && row < end {
+            let y = inner.y + (row - offset) as u16;
+            frame.render_widget(
+                Paragraph::new(section.title).style(
+                    Style::default()
+                        .fg(theme.accent)
+                        .bg(theme.elevated)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Rect::new(inner.x, y, inner.width, 1),
+            );
+        }
+        row += 1;
+
+        for chunk in section.entries.chunks(columns.max(1)) {
+            if row >= offset && row < end {
+                let y = inner.y + (row - offset) as u16;
+                for (column, entry) in chunk.iter().enumerate() {
+                    let x = inner.x + column as u16 * col_width;
+                    let line = shortcut_line(
+                        entry.keys,
+                        entry.desc,
+                        theme,
+                        col_width.saturating_sub(1) as usize,
+                        theme.elevated,
+                    );
+                    frame.render_widget(
+                        Paragraph::new(line).style(Style::default().bg(theme.elevated)),
+                        Rect::new(x, y, col_width, 1),
+                    );
+                }
             }
-            let x = inner.x + col as u16 * col_width;
-            let line = shortcut_line(
-                key,
-                desc,
-                theme,
-                (col_width.saturating_sub(1)) as usize,
-                theme.elevated,
-            );
-            frame.render_widget(
-                Paragraph::new(line).style(Style::default().bg(theme.elevated)),
-                Rect::new(x, inner.y + row as u16, col_width, 1),
-            );
+            row += 1;
         }
-    } else {
-        for (row, (key, desc)) in shortcuts.iter().take(rows).enumerate() {
-            let line = shortcut_line(key, desc, theme, inner.width as usize, theme.elevated);
-            frame.render_widget(
-                Paragraph::new(line).style(Style::default().bg(theme.elevated)),
-                Rect::new(inner.x, inner.y + row as u16, inner.width, 1),
-            );
-        }
+        row += 1;
     }
-    let shown = if two_columns {
-        (rows * 2).min(shortcuts.len())
+
+    let hidden = total.saturating_sub(visible);
+    let footer_y = inner.bottom().saturating_sub(1);
+    if inner.width >= 54 {
+        frame.render_widget(
+            Paragraph::new("j/k scroll · PgUp/PgDn page · Home/End")
+                .style(Style::default().fg(theme.muted).bg(theme.elevated))
+                .alignment(Alignment::Left),
+            Rect::new(inner.x, footer_y, inner.width / 2, 1),
+        );
+        let right = format!("{end}/{total} · {hidden} more · Esc close");
+        frame.render_widget(
+            Paragraph::new(right)
+                .style(Style::default().fg(theme.muted).bg(theme.elevated))
+                .alignment(Alignment::Right),
+            Rect::new(inner.x + inner.width / 2, footer_y, inner.width / 2, 1),
+        );
     } else {
-        rows.min(shortcuts.len())
-    };
-    let hidden = shortcuts.len().saturating_sub(shown);
-    let footer = if hidden == 0 {
-        "Esc or ? to close".to_string()
-    } else {
-        format!("{hidden} more · Esc close")
-    };
-    frame.render_widget(
-        Paragraph::new(footer)
-            .style(Style::default().fg(theme.muted).bg(theme.elevated))
-            .alignment(Alignment::Right),
-        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
-    );
+        let right = format!("{hidden} more · Esc close");
+        frame.render_widget(
+            Paragraph::new(right)
+                .style(Style::default().fg(theme.muted).bg(theme.elevated))
+                .alignment(Alignment::Right),
+            Rect::new(inner.x, footer_y, inner.width, 1),
+        );
+    }
 }
 
 fn shortcut_line(

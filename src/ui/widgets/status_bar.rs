@@ -22,7 +22,9 @@ pub fn render(
     }
     let mut pairs: Vec<(&str, &str)> = if modal.is_some() {
         match modal {
-            Some(Modal::Help) => vec![("Esc/?", "Close help")],
+            Some(Modal::Help(_)) => {
+                vec![("j/k", "Scroll"), ("PgUp/PgDn", "Page"), ("Esc/?", "Close")]
+            }
             Some(Modal::Sort(_)) => vec![
                 ("j/k", "Move"),
                 ("Enter", "Apply"),
@@ -311,7 +313,7 @@ fn compact_pairs(
     modal: Option<&Modal>,
 ) -> Vec<(&'static str, &'static str)> {
     match modal {
-        Some(Modal::Help) => vec![("Esc/?", "Close")],
+        Some(Modal::Help(_)) => vec![("j/k", "Scroll"), ("Esc/?", "Close")],
         Some(Modal::Confirm(_)) => vec![("y", "Remove"), ("Esc", "Cancel")],
         Some(Modal::Text(modal)) if modal.kind == TextKind::GoToSubreddit => {
             vec![("Enter", "Open"), ("Esc", "Close")]

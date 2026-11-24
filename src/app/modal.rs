@@ -1,5 +1,7 @@
 use crate::models::{CommentSort, FeedSort, SearchScope, TopRange};
 
+use super::help::HelpModal;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SortContext {
     Feed,
@@ -583,7 +585,7 @@ impl SourceModal {
 
 #[derive(Clone, Debug)]
 pub enum Modal {
-    Help,
+    Help(HelpModal),
     Sort(SortModal),
     Range(RangeModal),
     Text(TextModal),
@@ -600,7 +602,7 @@ pub enum Modal {
 impl Modal {
     pub fn title(&self) -> &str {
         match self {
-            Self::Help => "Keyboard shortcuts",
+            Self::Help(_) => "Keyboard shortcuts",
             Self::Sort(modal) => match modal.context {
                 SortContext::Feed => "Sort feed",
                 SortContext::Comments => "Sort comments",
