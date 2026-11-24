@@ -8,6 +8,14 @@ use crate::config::{ImageProtocolSetting, ProviderKind};
 pub enum ThemeArg {
     Dark,
     Light,
+    #[value(alias = "catppuccin-latte")]
+    Latte,
+    #[value(alias = "catppuccin-frappe")]
+    Frappe,
+    #[value(alias = "catppuccin-macchiato")]
+    Macchiato,
+    #[value(alias = "catppuccin-mocha")]
+    Mocha,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -83,7 +91,7 @@ pub struct Cli {
     #[arg(short = 's', long, value_name = "SORT")]
     pub sort: Option<String>,
 
-    /// Start with the dark or light theme.
+    /// Start with dark, light, or a Catppuccin theme (latte, frappe, macchiato, mocha).
     #[arg(long, value_enum, value_name = "THEME")]
     pub theme: Option<ThemeArg>,
 
@@ -128,6 +136,12 @@ mod tests {
         assert_eq!(cli.theme, Some(ThemeArg::Light));
         assert!(cli.no_images);
         assert!(cli.provider.is_none());
+    }
+
+    #[test]
+    fn parses_catppuccin_theme() {
+        let cli = Cli::try_parse_from(["reddtty", "--theme", "mocha"]).unwrap();
+        assert_eq!(cli.theme, Some(ThemeArg::Mocha));
     }
 
     #[test]

@@ -32,6 +32,99 @@ pub struct Theme {
     pub scroll_thumb: Color,
 }
 
+struct CatppuccinPalette {
+    base: u32,
+    mantle: u32,
+    crust: u32,
+    surface0: u32,
+    surface1: u32,
+    surface2: u32,
+    text: u32,
+    subtext0: u32,
+    overlay1: u32,
+    peach: u32,
+    red: u32,
+    green: u32,
+    yellow: u32,
+    blue: u32,
+}
+
+const CATPPUCCIN_LATTE: CatppuccinPalette = CatppuccinPalette {
+    base: 0xeff1f5,
+    mantle: 0xe6e9ef,
+    crust: 0xdce0e8,
+    surface0: 0xccd0da,
+    surface1: 0xbcc0cc,
+    surface2: 0xacb0be,
+    text: 0x4c4f69,
+    subtext0: 0x6c6f85,
+    overlay1: 0x8c8fa1,
+    peach: 0xfe640b,
+    red: 0xd20f39,
+    green: 0x40a02b,
+    yellow: 0xdf8e1d,
+    blue: 0x1e66f5,
+};
+
+const CATPPUCCIN_FRAPPE: CatppuccinPalette = CatppuccinPalette {
+    base: 0x303446,
+    mantle: 0x292c3c,
+    crust: 0x232634,
+    surface0: 0x414559,
+    surface1: 0x51576d,
+    surface2: 0x626880,
+    text: 0xc6d0f5,
+    subtext0: 0xa5adce,
+    overlay1: 0x838ba7,
+    peach: 0xef9f76,
+    red: 0xe78284,
+    green: 0xa6d189,
+    yellow: 0xe5c890,
+    blue: 0x8caaee,
+};
+
+const CATPPUCCIN_MACCHIATO: CatppuccinPalette = CatppuccinPalette {
+    base: 0x24273a,
+    mantle: 0x1e2030,
+    crust: 0x181926,
+    surface0: 0x363a4f,
+    surface1: 0x494d64,
+    surface2: 0x5b6078,
+    text: 0xcad3f5,
+    subtext0: 0xa5adcb,
+    overlay1: 0x8087a2,
+    peach: 0xf5a97f,
+    red: 0xed8796,
+    green: 0xa6da95,
+    yellow: 0xeed49f,
+    blue: 0x8aadf4,
+};
+
+const CATPPUCCIN_MOCHA: CatppuccinPalette = CatppuccinPalette {
+    base: 0x1e1e2e,
+    mantle: 0x181825,
+    crust: 0x11111b,
+    surface0: 0x313244,
+    surface1: 0x45475a,
+    surface2: 0x585b70,
+    text: 0xcdd6f4,
+    subtext0: 0xa6adc8,
+    overlay1: 0x7f849c,
+    peach: 0xfab387,
+    red: 0xf38ba8,
+    green: 0xa6e3a1,
+    yellow: 0xf9e2af,
+    blue: 0x89b4fa,
+};
+
+fn rgb(hex: u32) -> Color {
+    Color::Rgb(
+        ((hex >> 16) & 0xff) as u8,
+        ((hex >> 8) & 0xff) as u8,
+        (hex & 0xff) as u8,
+    )
+}
+
 impl Theme {
     pub fn dark() -> Self {
         Self {
@@ -93,6 +186,51 @@ impl Theme {
         match mode {
             ThemeMode::Dark => Self::dark(),
             ThemeMode::Light => Self::light(),
+            ThemeMode::Latte => Self::catppuccin(CATPPUCCIN_LATTE, false),
+            ThemeMode::Frappe => Self::catppuccin(CATPPUCCIN_FRAPPE, true),
+            ThemeMode::Macchiato => Self::catppuccin(CATPPUCCIN_MACCHIATO, true),
+            ThemeMode::Mocha => Self::catppuccin(CATPPUCCIN_MOCHA, true),
+        }
+    }
+
+    pub fn background_rgba(mode: ThemeMode) -> [u8; 4] {
+        match Self::from_mode(mode).bg {
+            Color::Rgb(red, green, blue) => [red, green, blue, 255],
+            _ => [0, 0, 0, 255],
+        }
+    }
+
+    fn catppuccin(palette: CatppuccinPalette, dark: bool) -> Self {
+        let base = rgb(palette.base);
+        let crust = rgb(palette.crust);
+        let text = rgb(palette.text);
+        let peach = rgb(palette.peach);
+        let surface0 = rgb(palette.surface0);
+        let surface1 = rgb(palette.surface1);
+        Self {
+            bg: base,
+            surface: rgb(palette.mantle),
+            surface_alt: crust,
+            elevated: surface0,
+            text,
+            text_dim: rgb(palette.subtext0),
+            muted: rgb(palette.overlay1),
+            accent: peach,
+            accent_soft: surface1,
+            on_accent: if dark { crust } else { text },
+            success: rgb(palette.green),
+            warning: rgb(palette.yellow),
+            danger: rgb(palette.red),
+            info: rgb(palette.blue),
+            border: surface1,
+            border_active: peach,
+            selected_bg: surface1,
+            selected_fg: text,
+            badge_bg: surface1,
+            badge_fg: text,
+            code_bg: surface0,
+            scroll_track: surface0,
+            scroll_thumb: rgb(palette.surface2),
         }
     }
 
@@ -202,5 +340,37 @@ impl Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self::dark()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_theme_has_a_distinct_background() {
+        let mut seen = Vec::new();
+        for mode in ThemeMode::ALL {
+            let background = Theme::background_rgba(mode);
+            assert!(
+                !seen.contains(&background),
+                "{mode:?} duplicates a background"
+            );
+            seen.push(background);
+        }
+    }
+
+    #[test]
+    fn catppuccin_text_is_visible_against_its_base() {
+        for mode in [
+            ThemeMode::Latte,
+            ThemeMode::Frappe,
+            ThemeMode::Macchiato,
+            ThemeMode::Mocha,
+        ] {
+            let theme = Theme::from_mode(mode);
+            assert_ne!(theme.text, theme.bg, "{mode:?}");
+            assert_ne!(theme.accent, theme.bg, "{mode:?}");
+        }
     }
 }

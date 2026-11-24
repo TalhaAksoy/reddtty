@@ -108,6 +108,10 @@ async fn run() -> Result<()> {
         settings.general.theme = match theme {
             ThemeArg::Dark => ThemeMode::Dark,
             ThemeArg::Light => ThemeMode::Light,
+            ThemeArg::Latte => ThemeMode::Latte,
+            ThemeArg::Frappe => ThemeMode::Frappe,
+            ThemeArg::Macchiato => ThemeMode::Macchiato,
+            ThemeArg::Mocha => ThemeMode::Mocha,
         };
     }
     if cli.no_images {
@@ -194,11 +198,9 @@ async fn run() -> Result<()> {
     notices.extend(picker_notices);
 
     let mut picker = picker;
-    let bg = match settings.general.theme {
-        ThemeMode::Dark => [13, 15, 18, 255],
-        ThemeMode::Light => [249, 249, 247, 255],
-    };
-    picker.set_background_color(Some(image::Rgba(bg)));
+    picker.set_background_color(Some(image::Rgba(
+        reddtty::ui::theme::Theme::background_rgba(settings.general.theme),
+    )));
     let images = ImageManager::new(picker, &settings, tx.clone());
 
     let mut app = App::new(

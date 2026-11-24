@@ -15,7 +15,7 @@ detail it behaves as the reverse of `Tab` (both toggle the two panes).
 | `q` | Quit from any screen except a modal text field |
 | `?` | Open keyboard help |
 | `S` | Open Settings |
-| `T` | Toggle dark/light theme (persisted) |
+| `T` | Cycle dark, light and Catppuccin themes (persisted) |
 | Terminal resize | Layout recalculates automatically; no restart required |
 
 Mouse wheel, clicks and double-clicks are described at the end of this file.

@@ -12,21 +12,48 @@ pub enum ThemeMode {
     #[default]
     Dark,
     Light,
+    #[serde(alias = "catppuccin-latte", alias = "catppuccin_latte")]
+    Latte,
+    #[serde(alias = "catppuccin-frappe", alias = "catppuccin_frappe")]
+    Frappe,
+    #[serde(alias = "catppuccin-macchiato", alias = "catppuccin_macchiato")]
+    Macchiato,
+    #[serde(alias = "catppuccin-mocha", alias = "catppuccin_mocha")]
+    Mocha,
 }
 
 impl ThemeMode {
+    pub const ALL: [Self; 6] = [
+        Self::Dark,
+        Self::Light,
+        Self::Latte,
+        Self::Frappe,
+        Self::Macchiato,
+        Self::Mocha,
+    ];
+
     pub fn label(self) -> &'static str {
         match self {
             Self::Dark => "dark",
             Self::Light => "light",
+            Self::Latte => "Catppuccin Latte",
+            Self::Frappe => "Catppuccin Frappe",
+            Self::Macchiato => "Catppuccin Macchiato",
+            Self::Mocha => "Catppuccin Mocha",
         }
     }
 
+    /// Cycle themes with `T`: dark, light, Latte, Frappé, Macchiato, Mocha.
+    pub fn next(self) -> Self {
+        let index = Self::ALL
+            .iter()
+            .position(|mode| *mode == self)
+            .unwrap_or_default();
+        Self::ALL[(index + 1) % Self::ALL.len()]
+    }
+
     pub fn toggle(self) -> Self {
-        match self {
-            Self::Dark => Self::Light,
-            Self::Light => Self::Dark,
-        }
+        self.next()
     }
 }
 
@@ -1042,6 +1069,20 @@ theme = "light"
             .unwrap()
             .as_nanos();
         std::env::temp_dir().join(format!("reddtty-{label}-{}-{stamp}", std::process::id()))
+    }
+
+    #[test]
+    fn theme_cycles_through_light_and_catppuccin() {
+        assert_eq!(ThemeMode::Dark.toggle(), ThemeMode::Light);
+        assert_eq!(ThemeMode::Light.next(), ThemeMode::Latte);
+        assert_eq!(ThemeMode::Mocha.next(), ThemeMode::Dark);
+        assert_eq!(ThemeMode::Latte.label(), "Catppuccin Latte");
+        #[derive(serde::Deserialize)]
+        struct Holder {
+            theme: ThemeMode,
+        }
+        let holder: Holder = toml::from_str("theme = \"mocha\"").unwrap();
+        assert_eq!(holder.theme, ThemeMode::Mocha);
     }
 
     #[test]

@@ -20,7 +20,8 @@ galleries, inline images, search, sorting and multiple content sources.
 - Demo data offline; Reddit OAuth; opt-in Old Reddit and Redlib HTML providers
 - Cursor pagination, search, Top time ranges and sort menus
 - Kitty, iTerm2, Sixel and Unicode half-block image rendering
-- Configurable favorites, recents, theme, layout and rate limits
+- Dark, light and Catppuccin themes (Latte, Frappé, Macchiato, Mocha)
+- Configurable favorites, recents, layout and rate limits
 - No write actions, telemetry or credential logging
 
 ## Install
@@ -93,6 +94,7 @@ reddtty --diagnostics
 | `/` | Search |
 | `f` | Add favorite; confirm before removing |
 | `S` | Settings: change config / theme |
+| `T` | Cycle themes |
 | `v` | Image viewer / gallery |
 | `o` | Open in browser |
 | `?` | Help |
@@ -121,7 +123,7 @@ Example:
 favorites = []
 
 [general]
-theme = "dark"
+theme = "dark"              # dark | light | latte | frappe | macchiato | mocha
 default_sort = "hot"
 
 [provider]

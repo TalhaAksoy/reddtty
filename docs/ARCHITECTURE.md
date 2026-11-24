@@ -55,7 +55,8 @@ about Ratatui.
   selected one through `config::presets::install`. The normal startup path then
   reloads the file. Esc skips installation and uses demo data for that session.
 - `S` opens the Settings modal inside the running app. Theme changes apply
-  immediately; changing the config replaces only the provider section, preserves
+  immediately; `T` cycles dark, light, Catppuccin Latte/Frappé/Macchiato/Mocha;
+  changing the config replaces only the provider section, preserves
   favorites/recents/theme/images/UI, backs up the old file, and asks the user to
   restart so the provider and all in-memory state are rebuilt cleanly.
 - Presets are embedded with `include_str!`, so `cargo install` users do not need

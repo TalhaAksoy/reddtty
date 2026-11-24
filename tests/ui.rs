@@ -960,3 +960,14 @@ async fn bottom_of_feed_shows_loading_more_feedback() {
         "missing footer loading feedback: {text}"
     );
 }
+
+#[tokio::test]
+async fn all_themes_render_without_losing_the_brand() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    for theme in reddtty::config::ThemeMode::ALL {
+        app.settings.general.theme = theme;
+        let terminal = draw(&mut app, 100, 30);
+        let text = screen(&terminal);
+        assert!(text.contains("REDDTTY"), "{theme:?}: {text}");
+    }
+}
