@@ -77,6 +77,7 @@ pub fn render(
     }
 
     let compact = post_card::compact_for_viewport(lists.list.height);
+    let mut last_bottom = lists.list.y;
 
     for index in feed.visible_range(lists.list.height) {
         let Some(post) = feed.posts.get(index) else {
@@ -107,6 +108,23 @@ pub fn render(
             spinner_index,
         );
         hit_map.push(card_area, HitTarget::FeedPost(index));
+        last_bottom = y.saturating_add(card_height);
+    }
+
+    if feed.loading_more {
+        let y = if last_bottom.saturating_add(1) < lists.list.bottom() {
+            last_bottom.saturating_add(1)
+        } else {
+            lists.list.bottom().saturating_sub(1)
+        };
+        if y >= lists.list.y {
+            frame.render_widget(
+                Paragraph::new(format!("{spinner}  Loading more posts…"))
+                    .style(Style::default().fg(theme.accent).bg(theme.bg))
+                    .alignment(ratatui::layout::Alignment::Center),
+                Rect::new(cards_area.x, y, cards_area.width, 1),
+            );
+        }
     }
 
     if let Some(rect) = scrollbar {

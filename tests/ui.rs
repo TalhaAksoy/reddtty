@@ -941,3 +941,22 @@ async fn empty_favorites_section_is_visible_with_add_hint() {
     );
     assert!(text.contains("f to add"), "missing add hint: {text}");
 }
+
+#[tokio::test]
+async fn bottom_of_feed_shows_loading_more_feedback() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    if let Some(feed) = app.current_feed_mut() {
+        feed.posts.truncate(2);
+        feed.loading_initial = false;
+        feed.loading_more = true;
+        feed.has_more = true;
+        feed.heights_dirty = true;
+    }
+    app.prepare();
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(
+        text.contains("Loading more posts"),
+        "missing footer loading feedback: {text}"
+    );
+}
