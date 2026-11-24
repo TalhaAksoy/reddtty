@@ -11,7 +11,7 @@
                                  │ Mode     Demo · offline synthetic data                                 │
                                  │ Status   Available                                                     │
                                  │ Last ok  just now   Attempt  just now                                  │
-                                 │ Latency  0 ms last · 2 ms average                                      │
+                                 │ Latency  0 ms last · 1 ms average                                      │
                                  │ Reliability 100% of 6 requests                                         │
                                  │                                                                        │
                                  │ Library  1 bookmarks · 0 local filter rules                            │

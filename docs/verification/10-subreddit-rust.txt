@@ -33,6 +33,6 @@
                        │ │ r/rust  •  u/mod_ferris  •  55m ago                                      ● unread ││ │
                        │ │                                                                                   ││ │
                        │ │ 📌 Weekly help thread — ask anything                                              ││ │
-                       │ │                                                                                   ││ │
+                       │ │                        ℹ Demo images are local fixtures; there is no external imag…│ │
  h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · b Save · B Saved · y Copy · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

@@ -20,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 268 passed, 0 failed, 0 ignored
+cargo test                                 # 271 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 53 captures, 90 assertions, all pass
+python3 scripts/pty_verify.py              # 54 captures, 91 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 202 | 202 | 0 | 0 |
+| Library unit tests (`src/**`) | 205 | 205 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
 | UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 42 | 42 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **268** | **268** | **0** | **0** |
+| **Total** | **271** | **271** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -184,9 +184,12 @@ cargo build --release --example stress
   its Retry/Change-source actions are app- and render-tested.
 - The command palette filters by label and keywords, moves selection, runs
   actions, tolerates typing `q` without quitting, and toggles with `Ctrl+P`.
+- Link actions are covered for post comments URLs, validated subreddit URLs,
+  selected-post/gallery image URLs, invalid-subreddit rejection and the demo
+  image guard. Clipboard remains the shared cross-platform pbcopy/xclip path.
 - The help screen is categorised into Global/Feed/Sidebar/Post Detail/Image
-  Viewer/Sort & Range/Text Input/Bookmarks/Local Filters/Source Health/Command
-  Palette/Mouse. Layout math is unit-tested for one/two columns and clamped
+  Viewer/Clipboard & Links/Sort & Range/Text Input/Bookmarks/Local Filters/
+  Source Health/Command Palette/Mouse. Layout math is unit-tested for one/two columns and clamped
   scrolling; a UI test verifies early sections are visible and `End` reveals the
   later sections. Narrow terminals keep a `more · Esc close` footer.
 - Top bar shows `OLD REDDIT`/`REDLIB` instead of `DEMO`, includes
@@ -225,7 +228,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 53, "assertions": 90}
+{"ok": true, "captures": 54, "assertions": 91}
 ```
 
 Captures and the machine-readable summary are in
@@ -244,6 +247,7 @@ against the compiled terminal application and its alternate-screen output.
 | 6 | `Esc` returns to the feed with the prior context | **Pass** |
 | 7 | Gallery post opens; `1 / 2` and controls visible | **Pass** |
 | 8 | `→` advances to `2 / 2` | **Pass** |
+| 8b | Gallery `i` explains that demo images are local fixtures instead of copying a fake external URL | **Pass** |
 | 9 | Sort menu opens and shows the Top time-range row | **Pass** |
 | 10 | `g` → `rust` opens r/rust with the expected title/metadata | **Pass** |
 | 11 | `/` → `terminal` opens a search feed titled `Search: terminal` | **Pass** |

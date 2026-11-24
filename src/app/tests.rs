@@ -745,6 +745,83 @@ fn ctrl_p_toggles_the_command_palette() {
 }
 
 #[test]
+fn link_actions_target_post_subreddit_and_image() {
+    let mut image = post("p");
+    image.permalink = "/r/rust/comments/abc/a_title/".into();
+    image.content = PostContent::Image {
+        url: "https://images.example/a.png".into(),
+    };
+    let mut app = App::test_with_posts(vec![image.clone()]);
+    assert_eq!(
+        app.comments_url().unwrap(),
+        "https://www.reddit.com/r/rust/comments/abc/a_title/"
+    );
+    assert_eq!(
+        app.subreddit_url().unwrap(),
+        "https://www.reddit.com/r/rust"
+    );
+    assert_eq!(
+        app.current_image_url().unwrap(),
+        "https://images.example/a.png"
+    );
+
+    let id = app.alloc_view();
+    let gallery = crate::app::gallery::GalleryView::new(id, image).unwrap();
+    app.nav.push(View::Gallery(gallery));
+    assert_eq!(
+        app.current_image_url().unwrap(),
+        "https://images.example/a.png"
+    );
+    assert_eq!(
+        app.comments_url().unwrap(),
+        "https://www.reddit.com/r/rust/comments/abc/a_title/"
+    );
+
+    app.nav.pop();
+    app.focus = Focus::Sidebar;
+    let index = app
+        .sidebar_entries()
+        .iter()
+        .position(|entry| entry.label == "r/linux")
+        .expect("r/linux is suggested");
+    app.sidebar.selected = index;
+    assert_eq!(
+        app.subreddit_url().unwrap(),
+        "https://www.reddit.com/r/linux"
+    );
+}
+
+#[test]
+fn demo_image_urls_are_not_offered_as_external_links() {
+    let mut image = post("p");
+    image.content = PostContent::Image {
+        url: "demo://img/a.png".into(),
+    };
+    let mut app = App::test_with_posts(vec![image]);
+    assert_eq!(app.current_image_url().unwrap(), "demo://img/a.png");
+    app.handle_key(KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE));
+    assert!(
+        app.notifications
+            .iter()
+            .any(|notice| notice.text.contains("local fixtures")),
+        "{:?}",
+        app.notifications
+    );
+}
+
+#[test]
+fn invalid_subreddits_do_not_produce_browser_urls() {
+    let mut bad = post("p");
+    bad.subreddit = "bad name!".into();
+    let app = App::test_with_posts(vec![bad]);
+    assert!(app.subreddit_url().is_none());
+    assert!(
+        app.comments_url().is_some(),
+        "the post itself is still valid"
+    );
+}
+
+#[test]
 fn stale_requests_are_ignored() {
     let mut app = App::test_with_posts(vec![post("p")]);
     let id = app.current_id().unwrap();

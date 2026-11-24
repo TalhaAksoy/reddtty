@@ -21,20 +21,20 @@
                     │ x           Reveal NSFW or spoiler                        f           Favorite subreddit                             │
                     │ b           Bookmark selected post                        B           Open bookmarks                                 │
                     │ m           Toggle read / unread                          y           Copy post permalink                            │
-                    │ h           Show / hide sidebar                           Tab         Focus sidebar / feed                           │
+                    │ i           Copy image preview URL                        Y           Open comments in browser                       │
+                    │ G           Open subreddit in browser                     h           Show / hide sidebar                            │
+                    │ Tab         Focus sidebar / feed                                                                                     │
                     │                                                                                                                      │
                     │ SIDEBAR                                                                                                              │
                     │ j / k       Move between entries                          Enter       Open selected entry                            │
                     │ Esc         Return focus to feed                          Tab         Return focus to feed                           │
                     │ f           Add/remove favorite                           h           Hide sidebar                                   │
-                    │ s, t, g, /  Same feed actions                             r, o, v, x  Same feed actions                              │
+                    │ G           Open selected subreddit                       s, t, g, /  Same feed actions                              │
+                    │ r, o, v, x  Same feed actions                                                                                        │
                     │                                                                                                                      │
                     │ POST DETAIL                                                                                                          │
                     │ Tab         Switch body / comments                        j / k       Scroll body or next comment                    │
-                    │ PgUp / PgDn Page focused pane                             Home / End  Start / end of pane                            │
-                    │ Enter       Open image or toggle comment                  c           Collapse selected comment                      │
-                    │ [ / ]       Previous / next root comment                  p           Jump to parent comment                         │
-                    │ j/k scroll · PgUp/PgDn page · Home/End                                                   29/81 · 52 more · Esc close │
+                    │ j/k scroll · PgUp/PgDn page · Home/End                                                   29/93 · 64 more · Esc close │
                     ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 

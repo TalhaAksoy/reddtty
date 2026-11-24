@@ -42,4 +42,4 @@
                        │ │                                                                                                       ││ │
                        │ │                                                                                                       ││ │
  h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · b Save · B Saved · y Copy · ↓ More · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

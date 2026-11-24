@@ -161,6 +161,10 @@ def main() -> int:
         gallery2 = capture(session)
         save("08-gallery-next", gallery2)
         assert_seen("gallery next position", gallery2, "2 / 2")
+        send(session, "i")
+        image_copy = wait_for(session, "local fixtures")
+        save("08b-image-url-demo", image_copy)
+        assert_seen("gallery image URL guard", image_copy, "local fixtures")
         send(session, "Escape")
         wait_for(session, "Home")
 

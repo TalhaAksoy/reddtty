@@ -103,6 +103,8 @@ pub fn render(
                     ("b", "Save"),
                     ("B", "Saved"),
                     ("y", "Copy"),
+                    ("Y", "Comments"),
+                    ("G", "Sub"),
                 ];
                 if feed.has_more || feed.loading_more {
                     pairs.push(("↓", "More"));
@@ -126,6 +128,8 @@ pub fn render(
                 ("Tab", "Post"),
                 ("b", "Save"),
                 ("y", "Copy"),
+                ("Y", "Open"),
+                ("G", "Sub"),
                 ("Esc", "Back"),
                 ("?", "Help"),
                 ("q", "Quit"),
@@ -143,6 +147,9 @@ pub fn render(
             Some(View::Gallery(_)) => vec![
                 ("←/→", "Image"),
                 ("o", "Open"),
+                ("y", "URL"),
+                ("Y", "Comments"),
+                ("G", "Sub"),
                 ("Esc", "Close"),
                 ("?", "Help"),
                 ("q", "Quit"),

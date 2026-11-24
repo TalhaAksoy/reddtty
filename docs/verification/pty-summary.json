@@ -9,6 +9,7 @@
     "docs/verification/06b-gallery-post-selected.txt",
     "docs/verification/07-gallery.txt",
     "docs/verification/08-gallery-next.txt",
+    "docs/verification/08b-image-url-demo.txt",
     "docs/verification/09-sort-menu.txt",
     "docs/verification/10-subreddit-rust.txt",
     "docs/verification/11-search-results.txt",
@@ -153,6 +154,11 @@
     {
       "name": "gallery next position",
       "needle": "2 / 2",
+      "ok": true
+    },
+    {
+      "name": "gallery image URL guard",
+      "needle": "local fixtures",
       "ok": true
     },
     {

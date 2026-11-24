@@ -52,6 +52,9 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("B", "Open bookmarks"),
             entry("m", "Toggle read / unread"),
             entry("y", "Copy post permalink"),
+            entry("i", "Copy image preview URL"),
+            entry("Y", "Open comments in browser"),
+            entry("G", "Open subreddit in browser"),
             entry("h", "Show / hide sidebar"),
             entry("Tab", "Focus sidebar / feed"),
         ],
@@ -65,6 +68,7 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("Tab", "Return focus to feed"),
             entry("f", "Add/remove favorite"),
             entry("h", "Hide sidebar"),
+            entry("G", "Open selected subreddit"),
             entry("s, t, g, /", "Same feed actions"),
             entry("r, o, v, x", "Same feed actions"),
         ],
@@ -84,7 +88,9 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("O", "Only original poster's comments"),
             entry("n", "Next unread comment"),
             entry("y", "Copy comment permalink"),
+            entry("i", "Copy post image URL"),
             entry("Y", "Open permalink in browser"),
+            entry("G", "Open subreddit in browser"),
             entry("s", "Comment sort menu"),
             entry("v", "Open image / gallery"),
             entry("o", "Open post/link in browser"),
@@ -101,9 +107,24 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("← / h", "Previous image"),
             entry("→ / l", "Next image"),
             entry("o", "Open image externally"),
+            entry("y / i", "Copy image URL"),
+            entry("Y", "Open comments in browser"),
+            entry("G", "Open subreddit in browser"),
             entry("r", "Clear and redraw image"),
             entry("T", "Cycle theme"),
             entry("Esc", "Close viewer"),
+        ],
+    },
+    HelpSection {
+        title: "CLIPBOARD & LINKS",
+        entries: &[
+            entry("y", "Copy post/comment permalink"),
+            entry("i", "Copy image preview URL"),
+            entry("y / i (viewer)", "Copy current image URL"),
+            entry("Y", "Open comments/permalink"),
+            entry("G", "Open subreddit"),
+            entry("o", "Open post/image externally"),
+            entry("b / B", "Bookmarks stay local"),
         ],
     },
     HelpSection {
@@ -277,6 +298,9 @@ mod tests {
             }
         }
         assert!(HELP_SECTIONS.len() >= 8);
+        assert!(titles.contains(&"CLIPBOARD & LINKS"));
+        assert!(titles.contains(&"IMAGE VIEWER"));
+        assert!(titles.contains(&"COMMAND PALETTE"));
     }
 
     #[test]

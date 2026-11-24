@@ -639,17 +639,24 @@ impl App {
         self.notify(NoticeKind::Info, "Content revealed for this session.");
     }
 
+    /// The subreddit an action should target: the selected sidebar entry when
+    /// the sidebar is focused, otherwise the open post/feed, falling back to
+    /// the selected feed card for Home/Popular.
+    pub fn current_subreddit_name(&self) -> Option<String> {
+        if self.focus == Focus::Sidebar {
+            return self
+                .sidebar_selected_entry()
+                .and_then(|entry| entry.spec.subreddit_name().map(str::to_string));
+        }
+        self.active_subreddit().or_else(|| {
+            self.current_feed()
+                .and_then(|feed| feed.selected_post())
+                .map(|post| post.subreddit.clone())
+        })
+    }
+
     pub fn toggle_favorite(&mut self) {
-        let name = if self.focus == Focus::Sidebar {
-            self.sidebar_selected_entry()
-                .and_then(|e| e.spec.subreddit_name().map(str::to_string))
-        } else {
-            self.active_subreddit().or_else(|| {
-                self.current_feed()
-                    .and_then(|feed| feed.selected_post())
-                    .map(|post| post.subreddit.clone())
-            })
-        };
+        let name = self.current_subreddit_name();
         let Some(name) = name else {
             self.notify(
                 NoticeKind::Info,
@@ -1173,6 +1180,9 @@ impl App {
             CommandId::ThemeMacchiato => self.commit_theme(crate::config::ThemeMode::Macchiato),
             CommandId::ThemeMocha => self.commit_theme(crate::config::ThemeMode::Mocha),
             CommandId::CopyPermalink => self.copy_permalink(),
+            CommandId::CopyImageUrl => self.copy_image_url(),
+            CommandId::OpenComments => self.open_comments(),
+            CommandId::OpenSubreddit => self.open_subreddit(),
             CommandId::MarkRead => self.toggle_read_current(),
             CommandId::AddFilter => {
                 self.modal = Some(Modal::Text(TextModal::add_filter()));
@@ -2085,6 +2095,9 @@ impl App {
             KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('m') => self.toggle_read_current(),
             KeyCode::Char('y') => self.copy_permalink(),
+            KeyCode::Char('i') => self.copy_image_url(),
+            KeyCode::Char('Y') => self.open_comments(),
+            KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('T') => self.toggle_theme(),
             KeyCode::Char('s') => self.open_sort_modal(),
             KeyCode::Char('t') => self.open_range_modal(),
@@ -2170,7 +2183,9 @@ impl App {
             KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('m') => self.toggle_read_current(),
             KeyCode::Char('y') => self.copy_permalink(),
+            KeyCode::Char('i') => self.copy_image_url(),
             KeyCode::Char('Y') => self.open_permalink(),
+            KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('[') => self.comment_prev_root(),
             KeyCode::Char(']') => self.comment_next_root(),
             KeyCode::Char('p') => self.comment_parent(),
@@ -2440,6 +2455,83 @@ impl App {
         }
     }
 
+    /// Comments-thread URL for the current post. This is the post permalink on
+    /// Reddit (the page that contains the comments).
+    pub fn comments_url(&self) -> Option<String> {
+        self.action_post().and_then(Post::reddit_url)
+    }
+
+    /// Browser URL for the active/selected subreddit, validated before use.
+    pub fn subreddit_url(&self) -> Option<String> {
+        let name = self.current_subreddit_name()?;
+        let name = normalize_subreddit(&name)?;
+        Some(format!("https://www.reddit.com/r/{name}"))
+    }
+
+    /// External URL of the current gallery image, or the selected/open post's
+    /// preview image when not in the gallery viewer.
+    pub fn current_image_url(&self) -> Option<String> {
+        match self.nav.last() {
+            Some(View::Gallery(gallery)) => gallery.current().map(|item| item.url.clone()),
+            Some(View::Post(post)) => post.post.preview_image().map(str::to_string),
+            Some(View::Feed(feed)) => feed
+                .selected_post()
+                .and_then(Post::preview_image)
+                .map(str::to_string),
+            None => None,
+        }
+    }
+
+    fn copy_image_url(&mut self) {
+        let Some(url) = self.current_image_url() else {
+            self.notify(NoticeKind::Info, "This item has no image URL.");
+            return;
+        };
+        if url.starts_with("demo://") {
+            self.notify(
+                NoticeKind::Info,
+                "Demo images are local fixtures; there is no external image URL.",
+            );
+            return;
+        }
+        match crate::utils::clipboard::copy(&url) {
+            Ok(()) => self.notify(NoticeKind::Success, "Image URL copied to clipboard."),
+            Err(error) => self.notify(NoticeKind::Error, error),
+        }
+    }
+
+    fn open_comments(&mut self) {
+        let Some(url) = self.comments_url() else {
+            self.notify(NoticeKind::Info, "This item has no comments page.");
+            return;
+        };
+        match browser::open_url(&url) {
+            Ok(()) => self.notify(NoticeKind::Success, "Opened comments in your browser."),
+            Err(error) => self.notify(NoticeKind::Error, error),
+        }
+    }
+
+    fn open_subreddit(&mut self) {
+        let Some(url) = self.subreddit_url() else {
+            self.notify(
+                NoticeKind::Info,
+                "Open a subreddit or select a sidebar entry first.",
+            );
+            return;
+        };
+        let label = self
+            .current_subreddit_name()
+            .map(|name| format!("r/{name}"))
+            .unwrap_or_else(|| "subreddit".into());
+        match browser::open_url(&url) {
+            Ok(()) => self.notify(
+                NoticeKind::Success,
+                format!("Opened {label} in your browser."),
+            ),
+            Err(error) => self.notify(NoticeKind::Error, error),
+        }
+    }
+
     fn gallery_step(&mut self, forward: bool) {
         if let Some(gallery) = self.current_gallery_mut() {
             if forward {
@@ -2466,6 +2558,9 @@ impl App {
             KeyCode::Left | KeyCode::Char('h') => self.gallery_step(false),
             KeyCode::Right | KeyCode::Char('l') => self.gallery_step(true),
             KeyCode::Char('o') => self.open_url(),
+            KeyCode::Char('y') | KeyCode::Char('i') => self.copy_image_url(),
+            KeyCode::Char('Y') => self.open_comments(),
+            KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('b') => self.toggle_bookmark_current(),
             KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('r') => self.refresh_current(),

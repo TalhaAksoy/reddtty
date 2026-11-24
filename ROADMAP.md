@@ -16,7 +16,7 @@ ReddTTY'nin okuyucu tarafı artık olgun:
 - Favorites, recents, config preset'leri, first-run setup, Settings
 - Dark/light + 4 Catppuccin tema
 - Demo, Reddit OAuth, Old Reddit HTML, Redlib HTML
-- 229 test, PTY doğrulaması, stress harness
+- 271 test, PTY doğrulaması, stress harness
 
 **Asıl darboğaz artık özellik eksikliği değil, canlı kaynak güvenilirliği.** Reddit'in
 public API'si kapanıyor; Redlib instance'ları sık sık 403/429/CAPTCHA/502 veriyor.
@@ -193,7 +193,7 @@ veya `Ctrl+P` ile aranabilir aksiyon listesi.
 - Efor: **Düşük**
 - Platform bağımlılığı: pbcopy / wl-copy / Windows clipboard.
 
-- [ ] Clipboard ve link aksiyonları
+- [x] Clipboard ve link aksiyonları — tamamlandı (2026-11-24): `y` permalink, `i` görsel/preview URL, `Y` yorumları tarayıcıda açma, `G` subreddit'i tarayıcıda açma.
 
 ### 10. Görsel görüntüleyiciyi geliştir
 

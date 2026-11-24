@@ -19,6 +19,7 @@ galleries, inline images, search, sorting and multiple content sources.
 - Vim-style navigation, mouse support, responsive three-pane layout
 - Demo data offline; Reddit OAuth; opt-in Old Reddit and Redlib HTML providers
 - Local bookmarks with offline snapshots and read/unread state
+- Clipboard for permalinks and image URLs; open comments/subreddits in browser
 - Local filters: hide read posts, keywords, subreddits, authors and domains
 - Comment navigation: root/parent jumps, collapse all, OP-only, next unread
 - Source health screen with latency, errors, retry and manual source switching
@@ -102,7 +103,9 @@ reddtty --diagnostics
 | `f` | Add favorite; confirm before removing |
 | `b` / `B` | Bookmark post / open bookmarks |
 | `m` | Toggle read state |
-| `y` / `Y` | Copy permalink (comment when comments are focused) |
+| `y` / `Y` | Copy permalink / open comments |
+| `i` | Copy a post or image-preview URL |
+| `G` | Open the current subreddit in the browser |
 | `[` / `]` | Previous / next top-level comment |
 | `p` | Jump to parent comment |
 | `z` | Collapse or expand all threads |

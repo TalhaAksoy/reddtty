@@ -46,6 +46,9 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 | `B` | Open the local bookmarks list |
 | `m` | Mark the selected post read/unread |
 | `y` | Copy the selected post's permalink |
+| `i` | Copy the selected post's image-preview URL |
+| `Y` | Open the comments page in the browser |
+| `G` | Open the selected/current subreddit in the browser |
 | `h` | Show/hide the sidebar (persisted) |
 | `Tab` / `Shift+Tab` | Switch focus between sidebar and feed |
 | `q` | Quit |
@@ -60,6 +63,7 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 | `Tab` / `Shift+Tab` | Return focus to the feed |
 | `f` | Add favorite, or ask before removing an existing favorite |
 | `h` | Hide the sidebar |
+| `G` | Open the selected subreddit in the browser |
 | `s`, `t`, `g`, `/`, `r`, `o`, `v`, `x` | Same as feed actions |
 
 ## Post detail
@@ -82,7 +86,9 @@ between them. Comments are focused by default after opening a post.
 | `O` | Show only comments written by the original poster |
 | `n` | Mark the current comment read and jump to the next unread one |
 | `y` | Copy the selected comment permalink (post permalink from the body pane) |
+| `i` | Copy the post's image-preview URL |
 | `Y` | Open that permalink in the browser |
+| `G` | Open this post's subreddit in the browser |
 | `b` / `B` | Bookmark this post / open bookmarks |
 | `m` | Toggle this post's read state |
 | `Enter` (body) | Open the image/gallery viewer |
@@ -109,6 +115,9 @@ Removed posts hide their comments with an explanatory placeholder.
 | `→` / `l` | Next image |
 | `Esc` | Close viewer (returns to feed or detail) |
 | `o` | Open the current image externally |
+| `y` / `i` | Copy the current image URL |
+| `Y` | Open the post's comments page in the browser |
+| `G` | Open the post's subreddit in the browser |
 | `r` | Request a cleared redraw of the image |
 | `T` | Toggle theme |
 | `?` | Help |
@@ -189,6 +198,20 @@ restart is required. Theme changes apply immediately and are persisted.
 `m` toggles read/unread. Unread cards show `● unread`; saved cards show
 `★ saved`. Bookmarking does not perform a Reddit write.
 
+## Clipboard and browser links
+
+| Action | Feed | Post detail | Image viewer |
+|---|---|---|---|
+| Copy post/comment permalink | `y` | `y` | — |
+| Copy current image URL | `i` | `i` (post image preview) | `y` / `i` |
+| Open comments/permalink | `Y` | `Y` | `Y` |
+| Open current subreddit | `G` | `G` | `G` |
+| Open post/image externally | `o` | `o` | `o` |
+
+Clipboard support uses `pbcopy` on macOS, `clip` on Windows, and
+`wl-copy`/`xclip`/`xsel` on Linux. Demo image URLs are local fixtures, so
+ReddTTY explains that there is no external URL to copy instead of claiming one.
+
 ## Local filters
 
 Open **Settings → Filters**. Filters are local and provider-independent.
@@ -259,9 +282,9 @@ Adding a new favorite is still immediate.
 ## Help modal
 
 The help screen is a categorised reference rather than a flat list. Sections
-are: `GLOBAL`, `FEED`, `SIDEBAR`, `POST DETAIL`, `IMAGE VIEWER`, `SORT & RANGE`,
-`TEXT INPUT`, `BOOKMARKS`, `LOCAL FILTERS`, `SOURCE HEALTH`, `COMMAND PALETTE`
-and `MOUSE`.
+are: `GLOBAL`, `FEED`, `SIDEBAR`, `POST DETAIL`, `IMAGE VIEWER`,
+`CLIPBOARD & LINKS`, `SORT & RANGE`, `TEXT INPUT`, `BOOKMARKS`, `LOCAL FILTERS`,
+`SOURCE HEALTH`, `COMMAND PALETTE` and `MOUSE`.
 
 | Key | Action |
 |---|---|

@@ -35,4 +35,4 @@
                                                 ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 
  ←/→ change image   ·   o open externally   ·   Esc close        1 / 2
-←/→ Image · o Open · Esc Close · ? Help · q Quit
+←/→ Image · o Open · y URL · Y Comments · G Sub · Esc Close · ? Help · q Quit

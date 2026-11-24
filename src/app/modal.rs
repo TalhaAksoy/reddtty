@@ -411,12 +411,15 @@ pub enum CommandId {
     ThemeMacchiato,
     ThemeMocha,
     CopyPermalink,
+    CopyImageUrl,
+    OpenComments,
+    OpenSubreddit,
     MarkRead,
     AddFilter,
 }
 
 impl CommandId {
-    pub const ALL: [Self; 25] = [
+    pub const ALL: [Self; 28] = [
         Self::Search,
         Self::GoToSubreddit,
         Self::SortBest,
@@ -434,6 +437,9 @@ impl CommandId {
         Self::Bookmarks,
         Self::MarkRead,
         Self::CopyPermalink,
+        Self::CopyImageUrl,
+        Self::OpenComments,
+        Self::OpenSubreddit,
         Self::Filters,
         Self::AddFilter,
         Self::SourceHealth,
@@ -469,6 +475,9 @@ impl CommandId {
             Self::ThemeMacchiato => "Theme: Catppuccin Macchiato",
             Self::ThemeMocha => "Theme: Catppuccin Mocha",
             Self::CopyPermalink => "Copy permalink",
+            Self::CopyImageUrl => "Copy image URL",
+            Self::OpenComments => "Open comments in browser",
+            Self::OpenSubreddit => "Open subreddit in browser",
             Self::MarkRead => "Toggle read state",
             Self::AddFilter => "Add local filter",
         }
@@ -499,6 +508,9 @@ impl CommandId {
             Self::ThemeMacchiato => "colors catppuccin macchiato",
             Self::ThemeMocha => "colors catppuccin mocha",
             Self::CopyPermalink => "clipboard link y",
+            Self::CopyImageUrl => "clipboard image url picture",
+            Self::OpenComments => "browser thread comments Y",
+            Self::OpenSubreddit => "browser community subreddit G",
             Self::MarkRead => "unread read m",
             Self::AddFilter => "filter keyword mute",
         }
@@ -672,6 +684,9 @@ mod tests {
     fn command_palette_filters_by_label_and_keywords() {
         let mut modal = CommandPaletteModal::default();
         assert_eq!(modal.filtered().len(), CommandId::ALL.len());
+        assert!(CommandId::ALL.contains(&CommandId::CopyImageUrl));
+        assert!(CommandId::ALL.contains(&CommandId::OpenComments));
+        assert!(CommandId::ALL.contains(&CommandId::OpenSubreddit));
         for c in "mocha".chars() {
             modal.push_char(c);
         }

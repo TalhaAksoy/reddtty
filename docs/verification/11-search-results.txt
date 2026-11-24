@@ -33,6 +33,6 @@
                        │ │ r/technology  •  u/packet_garden  •  23h ago                             ● unread ││ │
                        │ │                                                                                   ││ │
                        │ │ A new open standard for portable terminal graphics                                ││ │
-                       │ │                                                                                   ││ │
+                       │ │                        ℹ Demo images are local fixtures; there is no external imag…│ │
  h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · b Save · B Saved · y Copy · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

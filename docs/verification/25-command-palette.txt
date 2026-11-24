@@ -25,8 +25,8 @@
                                     │    Open bookmarks                                                │
                                     │    Toggle read state                                             │
                                     │    Copy permalink                                                │
-                                    │    Open local filters                                            │
-                                    │    Add local filter                                              │
+                                    │    Copy image URL                                                │
+                                    │    Open comments in browser                                      │
                                     │                type to filter · ↑/↓ move · Enter run · Esc close │
                                     ╰──────────────────────────────────────────────────────────────────╯
 
