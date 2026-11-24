@@ -32,6 +32,7 @@ pub fn render(
     spinner: &str,
     spinner_index: usize,
     revealed: &HashSet<String>,
+    library: &crate::library::Library,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
@@ -106,6 +107,8 @@ pub fn render(
             compact,
             revealed.contains(&post.id),
             spinner_index,
+            !library.is_post_read(&post.id),
+            library.is_bookmarked(&post.id),
         );
         hit_map.push(card_area, HitTarget::FeedPost(index));
         last_bottom = y.saturating_add(card_height);
@@ -346,9 +349,14 @@ fn render_feed_state(
         );
         return;
     }
-    if feed.loading_initial {
+    if feed.loading_initial || (feed.posts.is_empty() && feed.loading_more) {
+        let label = if feed.loading_initial {
+            "Loading posts…"
+        } else {
+            "Loading more posts…"
+        };
         frame.render_widget(
-            Paragraph::new(format!("{spinner}  Loading posts…"))
+            Paragraph::new(format!("{spinner}  {label}"))
                 .style(Style::default().fg(theme.muted).bg(theme.bg))
                 .alignment(ratatui::layout::Alignment::Center),
             Rect::new(area.x, area.y + area.height / 2, area.width, 1),

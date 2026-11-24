@@ -14,7 +14,7 @@
   r/machinelearning    │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯│ │▸ r/unixporn
   r/askscience         │                                                                                                          │ │
   r/gaming             │ ╭───────────────────────────────────────────────────────────────────────────────────────────────────────╮│ │SHORTCUTS
-                       │ │ r/linux  •  u/quiet_daemon  •  8h ago                                                                 ││ │j/k   navigate
+                       │ │ r/linux  •  u/quiet_daemon  •  8h ago                                                        ● unread ││ │j/k   navigate
  FAVORITES             │ │                                                                                                       ││ │Enter open post
   f to add             │ │ I switched my entire workflow to Linux                                                                ││ │s     sort
                        │ │                                                                                                       ││ │g     subreddit
@@ -34,7 +34,7 @@
                        │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                                                          │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────────────────────────╮│ │
-                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                                              ││ │
+                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                                     ● unread ││ │
                        │ │                                                                                                       ││ │
                        │ │ A new image of a planet-forming disk                                                                  ││ │
                        │ │                                                                                                       ││ │
@@ -42,4 +42,4 @@
                        │ │                                                                                                       ││ │
                        │ │                                                                                                       ││ │
  h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · ↓ More · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · b Save · B Saved · y Copy · ↓ More · o Open · v Image · ? Help · q Quit

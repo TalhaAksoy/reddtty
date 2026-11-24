@@ -298,10 +298,17 @@ impl FeedView {
         if !self.has_more
             || self.loading_more
             || self.more_request.is_some()
-            || self.posts.is_empty()
+            || self.after.is_none()
             || self.heights.len() != self.posts.len()
-            || self.total_height() == 0
         {
+            return false;
+        }
+        // A filter can hide every post on a page. Keep paginating so the feed
+        // can fill instead of getting stuck on a legitimately empty result.
+        if self.posts.is_empty() {
+            return true;
+        }
+        if self.total_height() == 0 {
             return false;
         }
         if self.selected + 3 >= self.posts.len() {

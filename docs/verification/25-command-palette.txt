@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+                                    ╭ Commands ────────────────────────────────────────────────────────╮
+                                    │ > ▏                                                              │
+                                    │                                                                  │
+                                    │  ▸ Search posts                                                  │
+                                    │    Go to subreddit                                               │
+                                    │    Sort feed: Best                                               │
+                                    │    Sort feed: Hot                                                │
+                                    │    Sort feed: New                                                │
+                                    │    Sort feed: Top                                                │
+                                    │    Top range: All time                                           │
+                                    │    Theme: next                                                   │
+                                    │    Theme: dark                                                   │
+                                    │    Theme: light                                                  │
+                                    │    Theme: Catppuccin Latte                                       │
+                                    │    Theme: Catppuccin Frappé                                      │
+                                    │    Theme: Catppuccin Macchiato                                   │
+                                    │    Theme: Catppuccin Mocha                                       │
+                                    │    Open bookmarks                                                │
+                                    │    Toggle read state                                             │
+                                    │    Copy permalink                                                │
+                                    │    Open local filters                                            │
+                                    │    Add local filter                                              │
+                                    │                type to filter · ↑/↓ move · Enter run · Esc close │
+                                    ╰──────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+type Filter · ↑/↓ Move · Enter Run · Esc Close

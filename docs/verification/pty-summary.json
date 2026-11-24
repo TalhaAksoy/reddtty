@@ -13,6 +13,23 @@
     "docs/verification/10-subreddit-rust.txt",
     "docs/verification/11-search-results.txt",
     "docs/verification/12-after-quit.txt",
+    "docs/verification/13-bookmark-marker.txt",
+    "docs/verification/14-read-state.txt",
+    "docs/verification/15-bookmarks-list.txt",
+    "docs/verification/16-collapse-all.txt",
+    "docs/verification/17-next-unread-comment.txt",
+    "docs/verification/18-op-only.txt",
+    "docs/verification/19-copy-permalink.txt",
+    "docs/verification/20-source-health.txt",
+    "docs/verification/21-source-retry.txt",
+    "docs/verification/22-local-filters.txt",
+    "docs/verification/23-filter-added.txt",
+    "docs/verification/24-filtered-feed.txt",
+    "docs/verification/25-command-palette.txt",
+    "docs/verification/26-command-theme.txt",
+    "docs/verification/27-config-picker.txt",
+    "docs/verification/28-provider-switch.txt",
+    "docs/verification/29-features-after-quit.txt",
     "docs/verification/size-60x20.txt",
     "docs/verification/detail-60x20.txt",
     "docs/verification/help-60x20.txt",
@@ -165,6 +182,126 @@
     },
     {
       "name": "shell resumed after quit",
+      "needle": "EXIT:0",
+      "ok": true
+    },
+    {
+      "name": "bookmark marker",
+      "needle": "\u2605 saved",
+      "ok": true
+    },
+    {
+      "name": "read notification",
+      "needle": "Marked as read.",
+      "ok": true
+    },
+    {
+      "name": "bookmarks modal",
+      "needle": "Enter open",
+      "ok": true
+    },
+    {
+      "name": "collapse all",
+      "needle": "Collapsed all comment threads.",
+      "ok": true
+    },
+    {
+      "name": "next unread",
+      "needle": "next unread comment",
+      "ok": true
+    },
+    {
+      "name": "op only",
+      "needle": "Showing only comments by",
+      "ok": true
+    },
+    {
+      "name": "copy permalink",
+      "needle": "copied to clipboard",
+      "ok": true
+    },
+    {
+      "name": "source health title",
+      "needle": "Source health",
+      "ok": true
+    },
+    {
+      "name": "source health provider",
+      "needle": "DEMO",
+      "ok": true
+    },
+    {
+      "name": "source health retry",
+      "needle": "Test now",
+      "ok": true
+    },
+    {
+      "name": "source health change",
+      "needle": "Change source",
+      "ok": true
+    },
+    {
+      "name": "source retry stays on screen",
+      "needle": "Source health",
+      "ok": true
+    },
+    {
+      "name": "source retry action",
+      "needle": "Test now",
+      "ok": true
+    },
+    {
+      "name": "filters title",
+      "needle": "Local filters",
+      "ok": true
+    },
+    {
+      "name": "filters hide read",
+      "needle": "Hide read posts",
+      "ok": true
+    },
+    {
+      "name": "filter rule",
+      "needle": "keyword  black hole",
+      "ok": true
+    },
+    {
+      "name": "filter hides matching post",
+      "needle": "NOT black hole merger",
+      "ok": true
+    },
+    {
+      "name": "command palette",
+      "needle": "Search posts",
+      "ok": true
+    },
+    {
+      "name": "command palette themes",
+      "needle": "Theme: Catppuccin Mocha",
+      "ok": true
+    },
+    {
+      "name": "command theme applied",
+      "needle": "Theme: Catppuccin Mocha",
+      "ok": true
+    },
+    {
+      "name": "config picker",
+      "needle": "Demo (offline)",
+      "ok": true
+    },
+    {
+      "name": "provider switch",
+      "needle": "Provider applied immediately",
+      "ok": true
+    },
+    {
+      "name": "provider still demo",
+      "needle": "DEMO",
+      "ok": true
+    },
+    {
+      "name": "features shell resumed",
       "needle": "EXIT:0",
       "ok": true
     },

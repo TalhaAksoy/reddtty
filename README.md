@@ -18,7 +18,13 @@ galleries, inline images, search, sorting and multiple content sources.
 - Feed, post detail, recursive comments, gallery and image viewer
 - Vim-style navigation, mouse support, responsive three-pane layout
 - Demo data offline; Reddit OAuth; opt-in Old Reddit and Redlib HTML providers
+- Local bookmarks with offline snapshots and read/unread state
+- Local filters: hide read posts, keywords, subreddits, authors and domains
+- Comment navigation: root/parent jumps, collapse all, OP-only, next unread
+- Source health screen with latency, errors, retry and manual source switching
+- Command palette (`:` or `Ctrl+P`)
 - Cursor pagination, search, Top time ranges and sort menus
+- Instant, restart-free provider/config switching
 - Kitty, iTerm2, Sixel and Unicode half-block image rendering
 - Dark, light and Catppuccin themes (Latte, Frappé, Macchiato, Mocha)
 - Configurable favorites, recents, layout and rate limits
@@ -51,7 +57,8 @@ make install        # /usr/local/bin/reddtty
 
 On first launch with no config, ReddTTY asks you to choose a starter config.
 The same picker is available later from **Settings** (`S`). Changing provider
-keeps favorites, recents, theme and UI settings; restart to apply it.
+applies immediately: the new provider is built in-process, navigation is reset
+safely, and favorites, recents, theme, bookmarks and filters are preserved.
 
 The [`configs/`](configs/) directory contains tested provider configs, including
 a fully offline demo and Redlib instances. Install one with an interactive picker:
@@ -93,7 +100,16 @@ reddtty --diagnostics
 | `g` | Go to subreddit |
 | `/` | Search |
 | `f` | Add favorite; confirm before removing |
-| `S` | Settings: change config / theme |
+| `b` / `B` | Bookmark post / open bookmarks |
+| `m` | Toggle read state |
+| `y` / `Y` | Copy permalink (comment when comments are focused) |
+| `[` / `]` | Previous / next top-level comment |
+| `p` | Jump to parent comment |
+| `z` | Collapse or expand all threads |
+| `O` | Show only the original poster's comments |
+| `n` | Next unread comment |
+| `:` / `Ctrl+P` | Command palette |
+| `S` | Settings: config, theme, source health, filters |
 | `T` | Cycle themes |
 | `v` | Image viewer / gallery |
 | `o` | Open in browser |
@@ -111,6 +127,9 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/reddtty/config.toml
 ```
 
 Windows: `%APPDATA%\reddtty\config.toml`.
+
+Local bookmarks, read state and filters live next to it in `library.toml`. They
+are provider-independent, never written to Reddit, and survive source changes.
 
 Settings from older `threadline` installs are migrated on first run without
 overwriting an existing ReddTTY config. If no config exists at all, the first-run
@@ -156,10 +175,11 @@ cargo test
 cargo build --release
 ```
 
-Real-terminal verification: [`scripts/pty_verify.py`](scripts/pty_verify.py)  
-Architecture and internals: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)  
-API access and limitations: [`docs/API_ACCESS.md`](docs/API_ACCESS.md)  
-Test evidence: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)
+- Real-terminal verification: [`scripts/pty_verify.py`](scripts/pty_verify.py)
+- Architecture and internals: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- API access and limitations: [`docs/API_ACCESS.md`](docs/API_ACCESS.md)
+- Test evidence: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)
+- Feature roadmap: [`ROADMAP.md`](ROADMAP.md)
 
 ## License
 

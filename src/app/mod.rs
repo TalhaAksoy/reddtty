@@ -1,11 +1,13 @@
 pub mod feed;
 pub mod gallery;
+pub mod health;
 pub mod hit;
 pub mod modal;
 pub mod post;
 pub mod sidebar;
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -19,6 +21,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::config::Settings;
 use crate::error::ProviderError;
 use crate::event::{AppEvent, ViewId};
+use crate::library::Library;
 use crate::media::renderer::ImageManager;
 use crate::models::{
     Comment, CommentSort, FeedPage, FeedRequest, FeedSort, FeedSpec, Post, Subreddit, TopRange,
@@ -32,11 +35,13 @@ use crate::utils::text::{normalize_subreddit, sanitize};
 
 use feed::FeedView;
 use gallery::GalleryView;
+use health::SourceHealth;
 use hit::{HitMap, HitTarget, Pane};
 pub use modal::Modal;
 use modal::{
-    ConfigPickerModal, ConfirmAction, RangeModal, SettingsModal, SortChoice, SortContext,
-    SortModal, TextKind, TextModal, ThemePickerModal,
+    BookmarksModal, CommandId, CommandPaletteModal, ConfigPickerModal, ConfirmAction, FiltersModal,
+    RangeModal, SettingsModal, SortChoice, SortContext, SortModal, SourceModal, TextKind,
+    TextModal, ThemePickerModal,
 };
 use post::{PostView, ToggleOutcome};
 use sidebar::{SidebarEntry, SidebarState};
@@ -137,6 +142,13 @@ pub struct App {
     pub persist_theme: crate::config::ThemeMode,
     pub persist_images_enabled: bool,
     pub persist_images_protocol: crate::config::ImageProtocolSetting,
+    /// Local bookmarks, read state and filters. Never sent to a provider.
+    pub library: Library,
+    pub library_path: PathBuf,
+    /// In-memory source health shown on the Source screen.
+    pub health: SourceHealth,
+    /// Start time for each in-flight request, used for latency reporting.
+    pub request_starts: HashMap<u64, Instant>,
 }
 
 impl App {
@@ -149,7 +161,7 @@ impl App {
         tx: UnboundedSender<AppEvent>,
         initial_spec: Option<FeedSpec>,
         initial_sort: Option<FeedSort>,
-        notices: Vec<String>,
+        mut notices: Vec<String>,
     ) -> Self {
         let demo = provider.is_demo();
         let provider_label = provider.display_name();
@@ -168,6 +180,9 @@ impl App {
         let persist_theme = settings.general.theme;
         let persist_images_enabled = settings.images.enabled;
         let persist_images_protocol = settings.images.protocol;
+        let library_path = Library::path_for(&config_path);
+        let (library, library_warnings) = Library::load(&library_path);
+        notices.extend(library_warnings);
 
         let mut app = Self {
             provider,
@@ -197,6 +212,10 @@ impl App {
             persist_theme,
             persist_images_enabled,
             persist_images_protocol,
+            library,
+            library_path,
+            health: SourceHealth::default(),
+            request_starts: HashMap::new(),
         };
         for notice in notices {
             let kind = if notice.to_ascii_lowercase().contains("demo") {
@@ -329,6 +348,84 @@ impl App {
         id
     }
 
+    fn begin_request(&mut self) -> u64 {
+        let id = self.alloc_request();
+        self.request_starts.insert(id, Instant::now());
+        id
+    }
+
+    /// Record a completed request for the Source screen and the top-bar status.
+    fn finish_request(
+        &mut self,
+        request: u64,
+        status: crate::providers::ProviderStatus,
+        error: Option<String>,
+    ) {
+        let latency = self.request_starts.remove(&request).map(|at| at.elapsed());
+        self.health.record(status, error, latency);
+        self.provider_status = Some(status);
+    }
+
+    // ------------------------------------------------------------------
+    // Local library
+    // ------------------------------------------------------------------
+
+    pub fn save_library(&mut self) {
+        if let Err(error) = self.library.save(&self.library_path) {
+            self.notify(NoticeKind::Error, error);
+        }
+    }
+
+    /// Rebuild the provider from the current settings and restart navigation
+    /// without leaving the app. Favorites, recents, themes and the local
+    /// library are never touched. Old in-flight requests are ignored because
+    /// the navigation stack is replaced with new view ids.
+    pub fn reload_provider(&mut self) {
+        let setup = crate::providers::build_provider(&self.settings, false);
+        self.provider = setup.provider;
+        self.demo = setup.demo;
+        self.provider_label = self.provider.display_name();
+        self.provider_status = None;
+        self.health.reset();
+        self.request_starts.clear();
+        self.images.clear_failures();
+
+        let context = self.nav.iter().rev().find_map(|view| match view {
+            View::Feed(feed) => Some((feed.spec.clone(), feed.sort, feed.top_range)),
+            _ => None,
+        });
+        let (spec, requested_sort, top_range) = context.unwrap_or_else(|| {
+            let sort = FeedSort::from_str_loose(&self.settings.general.default_sort)
+                .unwrap_or(FeedSort::Hot);
+            (default_spec(&self.settings), sort, TopRange::Week)
+        });
+        let mut sort = requested_sort;
+        let options = self.provider.supported_sorts(&spec);
+        if !options.contains(&sort) {
+            sort = options.first().copied().unwrap_or(spec.default_sort());
+        }
+
+        let id = self.alloc_view();
+        let mut feed = FeedView::new(id, spec.clone(), sort, top_range);
+        feed.loading_initial = true;
+        self.nav.clear();
+        self.nav.push(View::Feed(feed));
+        self.focus = Focus::Feed;
+        self.modal = None;
+        self.force_clear = true;
+        self.dirty = true;
+        self.request_feed_initial(id);
+        self.request_subreddit_if_needed(id);
+
+        for notice in setup.notices {
+            self.notify(NoticeKind::Warning, notice);
+        }
+        self.notify(
+            NoticeKind::Success,
+            format!("Switched source to {}.", self.provider_label),
+        );
+    }
+
     // ------------------------------------------------------------------
     // Notifications
     // ------------------------------------------------------------------
@@ -413,6 +510,9 @@ impl App {
             Some(View::Post(_)) => Focus::Comments,
             _ => Focus::Feed,
         };
+        if self.library.filters.hide_read {
+            self.prune_current_feed();
+        }
         self.dirty = true;
     }
 
@@ -421,11 +521,20 @@ impl App {
             Some(post) => post.clone(),
             None => return,
         };
+        self.open_post_object(post);
+    }
+
+    /// Open a post from any source, including a locally saved bookmark
+    /// snapshot. Opening marks the post read and persists that state.
+    fn open_post_object(&mut self, post: Post) {
         let id = self.alloc_view();
         let post_removed = post.is_deleted();
-        let mut view = PostView::new(id, post, CommentSort::Best);
+        let mut view = PostView::new(id, post.clone(), CommentSort::Best);
         if post_removed {
             view.comments_loading = false;
+        }
+        if self.library.mark_post_read(&post.id) {
+            self.save_library();
         }
         self.nav.push(View::Post(view));
         self.focus = Focus::Comments;
@@ -574,6 +683,97 @@ impl App {
         self.dirty = true;
     }
 
+    // ------------------------------------------------------------------
+    // Local bookmarks and read state
+    // ------------------------------------------------------------------
+
+    pub fn toggle_bookmark_current(&mut self) {
+        let Some(post) = self.action_post().cloned() else {
+            self.notify(NoticeKind::Info, "Select a post first.");
+            return;
+        };
+        let saved = self.library.toggle_bookmark(&post);
+        self.save_library();
+        if saved {
+            self.notify(
+                NoticeKind::Success,
+                format!("Saved “{}” with an offline snapshot.", post.title),
+            );
+        } else {
+            self.notify(NoticeKind::Info, "Removed from bookmarks.");
+        }
+        self.dirty = true;
+    }
+
+    pub fn toggle_read_current(&mut self) {
+        let Some(post) = self.action_post().cloned() else {
+            self.notify(NoticeKind::Info, "Select a post first.");
+            return;
+        };
+        let read = self.library.toggle_post_read(&post.id);
+        self.save_library();
+        if self.library.filters.hide_read && read {
+            self.prune_current_feed();
+        }
+        self.notify(
+            NoticeKind::Info,
+            if read {
+                "Marked as read."
+            } else {
+                "Marked as unread."
+            },
+        );
+        self.dirty = true;
+    }
+
+    pub fn open_bookmarks(&mut self) {
+        self.modal = Some(Modal::Bookmarks(BookmarksModal::default()));
+        self.dirty = true;
+    }
+
+    fn remove_bookmark_item(&mut self, index: usize) {
+        let Some(saved) = self.library.bookmarks.get(index) else {
+            return;
+        };
+        let title = saved.post.title.clone();
+        let id = saved.post.id.clone();
+        self.library.remove_bookmark(&id);
+        self.save_library();
+        if let Some(Modal::Bookmarks(modal)) = &mut self.modal {
+            modal.clamp(self.library.bookmarks.len());
+        }
+        self.notify(
+            NoticeKind::Info,
+            format!("Removed “{title}” from bookmarks."),
+        );
+        self.dirty = true;
+    }
+
+    fn open_bookmark_item(&mut self, index: usize) {
+        let Some(post) = self.library.saved_post(index).cloned() else {
+            return;
+        };
+        self.open_post_object(post);
+    }
+
+    /// Remove posts hidden by the current local filters from the visible feed.
+    /// Reduces selection safely; a refresh restores posts when filters change.
+    fn prune_current_feed(&mut self) {
+        let App { library, nav, .. } = self;
+        if let Some(View::Feed(feed)) = nav.last_mut() {
+            let before = feed.posts.len();
+            feed.posts
+                .retain(|post| !library.filters.hides(post, library.is_post_read(&post.id)));
+            if feed.posts.len() != before {
+                feed.heights_dirty = true;
+                feed.clamp_offset();
+                feed.selected = feed.selected.min(feed.posts.len().saturating_sub(1));
+            }
+        }
+        self.request_more_if_needed();
+        self.dirty = true;
+    }
+
     pub fn toggle_theme(&mut self) {
         let next = self.settings.general.theme.toggle();
         self.apply_theme_preview(next);
@@ -639,7 +839,7 @@ impl App {
     // ------------------------------------------------------------------
 
     fn request_feed_initial(&mut self, view_id: ViewId) {
-        let request_id = self.alloc_request();
+        let request_id = self.begin_request();
         let limit = self.settings.content.default_post_limit;
         let request = {
             let Some(view) = self.feed_mut(view_id) else {
@@ -667,7 +867,7 @@ impl App {
         let provider = self.provider.clone();
         let tx = self.tx.clone();
         self.dirty = true;
-        tokio::spawn(async move {
+        spawn_guarded(async move {
             tracing::debug!(request = request_id, "spawned initial feed request");
             let result = provider.get_feed(request).await;
             tracing::debug!(
@@ -685,7 +885,7 @@ impl App {
     }
 
     fn request_more(&mut self) {
-        let request_id = self.alloc_request();
+        let request_id = self.begin_request();
         let limit = self.settings.content.default_post_limit;
         let Some(view) = self.current_feed() else {
             return;
@@ -712,7 +912,7 @@ impl App {
         let provider = self.provider.clone();
         let tx = self.tx.clone();
         self.dirty = true;
-        tokio::spawn(async move {
+        spawn_guarded(async move {
             let result = provider.get_feed(request).await;
             let _ = tx.send(AppEvent::FeedLoaded {
                 view: view_id,
@@ -733,7 +933,7 @@ impl App {
     }
 
     fn request_subreddit_if_needed(&mut self, view_id: ViewId) {
-        let request_id = self.alloc_request();
+        let request_id = self.begin_request();
         let name = {
             let Some(view) = self.feed_mut(view_id) else {
                 return;
@@ -756,7 +956,7 @@ impl App {
         };
         let provider = self.provider.clone();
         let tx = self.tx.clone();
-        tokio::spawn(async move {
+        spawn_guarded(async move {
             let result = provider.get_subreddit(&name).await;
             let _ = tx.send(AppEvent::SubredditLoaded {
                 view: view_id,
@@ -768,7 +968,7 @@ impl App {
     }
 
     fn request_post(&mut self, view_id: ViewId) {
-        let request_id = self.alloc_request();
+        let request_id = self.begin_request();
         let provider = self.provider.clone();
         let tx = self.tx.clone();
         let post_id = {
@@ -780,7 +980,7 @@ impl App {
             view.post_error = None;
             view.post.id.clone()
         };
-        tokio::spawn(async move {
+        spawn_guarded(async move {
             let result = provider.get_post(&post_id).await;
             let _ = tx.send(AppEvent::PostLoaded {
                 view: view_id,
@@ -791,7 +991,7 @@ impl App {
     }
 
     fn request_comments(&mut self, view_id: ViewId) {
-        let request_id = self.alloc_request();
+        let request_id = self.begin_request();
         let provider = self.provider.clone();
         let tx = self.tx.clone();
         let (post_id, sort) = {
@@ -803,7 +1003,7 @@ impl App {
             (view.post.id.clone(), view.comments_sort)
         };
         self.dirty = true;
-        tokio::spawn(async move {
+        spawn_guarded(async move {
             let result = provider.get_comments(&post_id, sort).await;
             let _ = tx.send(AppEvent::CommentsLoaded {
                 view: view_id,
@@ -814,7 +1014,7 @@ impl App {
     }
 
     fn request_more_comments(&mut self, view_id: ViewId, more_id: String, children: Vec<String>) {
-        let request_id = self.alloc_request();
+        let request_id = self.begin_request();
         let provider = self.provider.clone();
         let tx = self.tx.clone();
         let (post_id, sort) = {
@@ -827,7 +1027,7 @@ impl App {
             (view.post.id.clone(), view.comments_sort)
         };
         self.dirty = true;
-        tokio::spawn(async move {
+        spawn_guarded(async move {
             let result = provider.get_more_comments(&post_id, &children, sort).await;
             let _ = tx.send(AppEvent::MoreCommentsLoaded {
                 view: view_id,
@@ -938,6 +1138,46 @@ impl App {
         self.modal = Some(Modal::Help);
     }
 
+    pub fn open_command_palette(&mut self) {
+        self.modal = Some(Modal::CommandPalette(CommandPaletteModal::default()));
+        self.dirty = true;
+    }
+
+    fn execute_command(&mut self, command: CommandId) {
+        self.modal = None;
+        match command {
+            CommandId::Help => self.open_help(),
+            CommandId::Settings => self.open_settings(),
+            CommandId::Filters => self.open_filters(),
+            CommandId::SourceHealth => self.open_source_health(),
+            CommandId::Bookmarks => self.open_bookmarks(),
+            CommandId::Search => self.open_search_modal(),
+            CommandId::GoToSubreddit => self.open_goto_modal(),
+            CommandId::ChangeSource => {
+                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+            }
+            CommandId::Refresh => self.refresh_current(),
+            CommandId::ToggleSidebar => self.toggle_sidebar(),
+            CommandId::SortBest => self.apply_feed_sort(FeedSort::Best),
+            CommandId::SortHot => self.apply_feed_sort(FeedSort::Hot),
+            CommandId::SortNew => self.apply_feed_sort(FeedSort::New),
+            CommandId::SortTop => self.apply_feed_sort(FeedSort::Top),
+            CommandId::RangeAll => self.apply_top_range(TopRange::All),
+            CommandId::ThemeNext => self.toggle_theme(),
+            CommandId::ThemeDark => self.commit_theme(crate::config::ThemeMode::Dark),
+            CommandId::ThemeLight => self.commit_theme(crate::config::ThemeMode::Light),
+            CommandId::ThemeLatte => self.commit_theme(crate::config::ThemeMode::Latte),
+            CommandId::ThemeFrappe => self.commit_theme(crate::config::ThemeMode::Frappe),
+            CommandId::ThemeMacchiato => self.commit_theme(crate::config::ThemeMode::Macchiato),
+            CommandId::ThemeMocha => self.commit_theme(crate::config::ThemeMode::Mocha),
+            CommandId::CopyPermalink => self.copy_permalink(),
+            CommandId::MarkRead => self.toggle_read_current(),
+            CommandId::AddFilter => {
+                self.modal = Some(Modal::Text(TextModal::add_filter()));
+            }
+        }
+    }
+
     pub fn open_settings(&mut self) {
         self.modal = Some(Modal::Settings(SettingsModal::new(
             self.settings.general.theme,
@@ -953,6 +1193,96 @@ impl App {
                 self.modal = Some(Modal::ThemePicker(ThemePickerModal::new(
                     self.settings.general.theme,
                 )));
+            }
+            2 => self.open_source_health(),
+            3 => self.open_filters(),
+            _ => {}
+        }
+    }
+
+    pub fn open_filters(&mut self) {
+        self.modal = Some(Modal::Filters(FiltersModal::default()));
+        self.dirty = true;
+    }
+
+    fn filter_row_count(&self) -> usize {
+        1 + self.library.filters.entries().len()
+    }
+
+    fn toggle_hide_read(&mut self) {
+        self.library.filters.hide_read = !self.library.filters.hide_read;
+        let enabled = self.library.filters.hide_read;
+        self.apply_filter_change(if enabled {
+            "Hiding read posts."
+        } else {
+            "Showing read posts again."
+        });
+    }
+
+    fn remove_filter_row(&mut self, index: usize) {
+        if index == 0 {
+            self.notify(NoticeKind::Info, "Press Enter to toggle hide-read.");
+            return;
+        }
+        let Some(entry) = self.library.filters.entries().get(index - 1).cloned() else {
+            return;
+        };
+        self.library.filters.remove_entry(entry.kind, &entry.value);
+        let rows = self.filter_row_count().saturating_sub(1);
+        if let Some(Modal::Filters(modal)) = &mut self.modal {
+            modal.selected = modal.selected.min(rows);
+        }
+        self.apply_filter_change(format!(
+            "Removed {} filter “{}”.",
+            entry.kind.label(),
+            entry.value
+        ));
+    }
+
+    fn clear_all_filters(&mut self) {
+        if !self.library.filters.is_active() {
+            self.notify(NoticeKind::Info, "No local filters are active.");
+            return;
+        }
+        self.library.clear_filters();
+        if let Some(Modal::Filters(modal)) = &mut self.modal {
+            modal.selected = 0;
+        }
+        self.apply_filter_change("Cleared all local filters.");
+    }
+
+    /// Persist filter changes, prune the visible feed immediately and refetch
+    /// the current feed so the active rule set is applied consistently.
+    fn apply_filter_change(&mut self, message: impl Into<String>) {
+        self.save_library();
+        self.prune_current_feed();
+        if let Some(View::Feed(feed)) = self.nav.last() {
+            let id = feed.id;
+            self.request_feed_initial(id);
+        }
+        self.notify(NoticeKind::Info, message);
+        self.dirty = true;
+    }
+
+    pub fn open_source_health(&mut self) {
+        self.modal = Some(Modal::Source(SourceModal::default()));
+        self.dirty = true;
+    }
+
+    fn execute_source_action(&mut self, index: usize) {
+        match index {
+            0 => {
+                self.notify(
+                    NoticeKind::Info,
+                    format!("Testing {}…", self.provider_label),
+                );
+                self.refresh_current();
+                if let Some(Modal::Source(modal)) = &mut self.modal {
+                    modal.selected = 0;
+                }
+            }
+            1 => {
+                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
             }
             _ => {}
         }
@@ -991,14 +1321,15 @@ impl App {
             return;
         }
         self.settings.provider = to_save.provider;
-        self.modal = None;
         let backup = backup
             .map(|path| format!(" Previous config: {}.", path.display()))
             .unwrap_or_default();
+        // Apply the new provider immediately; a restart is no longer needed.
+        self.reload_provider();
         self.notify(
             NoticeKind::Success,
             format!(
-                "Changed to {}. Restart ReddTTY to apply provider changes.{}",
+                "Changed to {}. Provider applied immediately.{}",
                 preset.name, backup
             ),
         );
@@ -1116,6 +1447,17 @@ impl App {
                     true,
                 );
             }
+            TextKind::AddFilter => match self.library.filters.add_expression(&modal.value) {
+                Ok(message) => {
+                    self.modal = Some(Modal::Filters(FiltersModal { selected: 1 }));
+                    self.apply_filter_change(message);
+                }
+                Err(error) => {
+                    if let Some(Modal::Text(m)) = &mut self.modal {
+                        m.error = Some(error);
+                    }
+                }
+            },
         }
     }
 
@@ -1126,7 +1468,11 @@ impl App {
         if modal_is_text(&modal) {
             match key.code {
                 KeyCode::Esc => {
-                    self.modal = None;
+                    if matches!(&modal, Modal::Text(m) if m.kind == TextKind::AddFilter) {
+                        self.modal = Some(Modal::Filters(FiltersModal::default()));
+                    } else {
+                        self.modal = None;
+                    }
                     return;
                 }
                 KeyCode::Enter => {
@@ -1195,6 +1541,43 @@ impl App {
                 }
                 _ => return,
             }
+        }
+
+        if let Modal::CommandPalette(mut palette) = modal.clone() {
+            match key.code {
+                KeyCode::Esc => self.modal = None,
+                KeyCode::Up => {
+                    palette.move_selection(-1);
+                    self.modal = Some(Modal::CommandPalette(palette));
+                }
+                KeyCode::Down | KeyCode::Tab => {
+                    palette.move_selection(1);
+                    self.modal = Some(Modal::CommandPalette(palette));
+                }
+                KeyCode::Backspace => {
+                    palette.backspace();
+                    self.modal = Some(Modal::CommandPalette(palette));
+                }
+                KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    palette.clear();
+                    self.modal = Some(Modal::CommandPalette(palette));
+                }
+                KeyCode::Enter => {
+                    if let Some(command) = palette.selected_command() {
+                        self.execute_command(command);
+                    }
+                }
+                KeyCode::Char(c)
+                    if !key
+                        .modifiers
+                        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+                {
+                    palette.push_char(c);
+                    self.modal = Some(Modal::CommandPalette(palette));
+                }
+                _ => {}
+            }
+            return;
         }
 
         if key.code == KeyCode::Char('q') {
@@ -1266,7 +1649,7 @@ impl App {
             Modal::Settings(settings) => match key.code {
                 KeyCode::Esc => self.modal = None,
                 KeyCode::Char('j') | KeyCode::Down => {
-                    let next = (settings.selected + 1).min(1);
+                    let next = (settings.selected + 1).min(3);
                     self.modal = Some(Modal::Settings(SettingsModal {
                         selected: next,
                         theme: settings.theme,
@@ -1314,6 +1697,76 @@ impl App {
                 }
                 _ => {}
             },
+            Modal::Bookmarks(mut bookmarks) => match key.code {
+                KeyCode::Esc => self.modal = None,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let total = self.library.bookmarks.len();
+                    bookmarks.selected = (bookmarks.selected + 1).min(total.saturating_sub(1));
+                    self.modal = Some(Modal::Bookmarks(bookmarks));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    bookmarks.selected = bookmarks.selected.saturating_sub(1);
+                    self.modal = Some(Modal::Bookmarks(bookmarks));
+                }
+                KeyCode::Char('d') | KeyCode::Delete => {
+                    self.remove_bookmark_item(bookmarks.selected);
+                }
+                KeyCode::Enter => self.open_bookmark_item(bookmarks.selected),
+                _ => {}
+            },
+            Modal::Filters(mut filters) => match key.code {
+                KeyCode::Esc => {
+                    self.modal = Some(Modal::Settings(SettingsModal::new(
+                        self.settings.general.theme,
+                    )));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let max = self.filter_row_count().saturating_sub(1);
+                    filters.selected = (filters.selected + 1).min(max);
+                    self.modal = Some(Modal::Filters(filters));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    filters.selected = filters.selected.saturating_sub(1);
+                    self.modal = Some(Modal::Filters(filters));
+                }
+                KeyCode::Enter => {
+                    if filters.selected == 0 {
+                        self.toggle_hide_read();
+                    } else {
+                        self.notify(
+                            NoticeKind::Info,
+                            "Press d to remove this filter, or a to add another.",
+                        );
+                    }
+                }
+                KeyCode::Char('a') => {
+                    self.modal = Some(Modal::Text(TextModal::add_filter()));
+                }
+                KeyCode::Char('d') | KeyCode::Delete => {
+                    self.remove_filter_row(filters.selected);
+                }
+                KeyCode::Char('C') => self.clear_all_filters(),
+                _ => {}
+            },
+            Modal::Source(mut source) => match key.code {
+                KeyCode::Esc => {
+                    self.modal = Some(Modal::Settings(SettingsModal::new(
+                        self.settings.general.theme,
+                    )));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    source.move_selection(1);
+                    self.modal = Some(Modal::Source(source));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    source.move_selection(-1);
+                    self.modal = Some(Modal::Source(source));
+                }
+                KeyCode::Enter => self.execute_source_action(source.selected),
+                KeyCode::Char('r') => self.execute_source_action(0),
+                KeyCode::Char('c') => self.execute_source_action(1),
+                _ => {}
+            },
             Modal::ConfigPicker(picker) => match key.code {
                 KeyCode::Esc => {
                     self.modal = Some(Modal::Settings(SettingsModal::new(
@@ -1343,6 +1796,7 @@ impl App {
                 }
                 _ => {}
             },
+            Modal::CommandPalette(_) => {}
         }
     }
 
@@ -1545,6 +1999,14 @@ impl App {
             self.should_quit = true;
             return;
         }
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('p') {
+            if matches!(self.modal, Some(Modal::CommandPalette(_))) {
+                self.modal = None;
+            } else if self.modal.is_none() {
+                self.open_command_palette();
+            }
+            return;
+        }
         if self.modal.is_some() {
             self.handle_modal_key(key);
             return;
@@ -1576,6 +2038,7 @@ impl App {
         }
         match key.code {
             KeyCode::Char('?') => self.open_help(),
+            KeyCode::Char(':') => self.open_command_palette(),
             KeyCode::Char('j') | KeyCode::Down if self.focus == Focus::Sidebar => {
                 self.move_sidebar(1)
             }
@@ -1588,6 +2051,10 @@ impl App {
             KeyCode::Tab => self.cycle_focus(true),
             KeyCode::BackTab => self.cycle_focus(false),
             KeyCode::Char('f') => self.toggle_favorite(),
+            KeyCode::Char('b') => self.toggle_bookmark_current(),
+            KeyCode::Char('B') => self.open_bookmarks(),
+            KeyCode::Char('m') => self.toggle_read_current(),
+            KeyCode::Char('y') => self.copy_permalink(),
             KeyCode::Char('T') => self.toggle_theme(),
             KeyCode::Char('s') => self.open_sort_modal(),
             KeyCode::Char('t') => self.open_range_modal(),
@@ -1652,6 +2119,7 @@ impl App {
         }
         match key.code {
             KeyCode::Char('?') => self.open_help(),
+            KeyCode::Char(':') => self.open_command_palette(),
             KeyCode::Esc => self.back(),
             KeyCode::Tab | KeyCode::BackTab => self.cycle_focus(true),
             KeyCode::Char('s') => self.open_sort_modal(),
@@ -1668,6 +2136,17 @@ impl App {
             KeyCode::Char('g') => self.open_goto_modal(),
             KeyCode::Char('/') => self.open_search_modal(),
             KeyCode::Char('f') => self.toggle_favorite(),
+            KeyCode::Char('b') => self.toggle_bookmark_current(),
+            KeyCode::Char('B') => self.open_bookmarks(),
+            KeyCode::Char('m') => self.toggle_read_current(),
+            KeyCode::Char('y') => self.copy_permalink(),
+            KeyCode::Char('Y') => self.open_permalink(),
+            KeyCode::Char('[') => self.comment_prev_root(),
+            KeyCode::Char(']') => self.comment_next_root(),
+            KeyCode::Char('p') => self.comment_parent(),
+            KeyCode::Char('z') => self.comment_collapse_all(),
+            KeyCode::Char('O') => self.comment_toggle_op_only(),
+            KeyCode::Char('n') => self.comment_next_unread(),
             KeyCode::Char('h') => self.toggle_sidebar(),
             KeyCode::Char('T') => self.toggle_theme(),
             KeyCode::Char('j') | KeyCode::Down => {
@@ -1767,6 +2246,170 @@ impl App {
         }
     }
 
+    fn comment_viewport(&self) -> u16 {
+        self.current_post()
+            .map(|post| post.last_comments_viewport.max(1))
+            .unwrap_or(1)
+    }
+
+    fn focus_comments(&mut self) {
+        if self.focus == Focus::PostBody {
+            self.focus = Focus::Comments;
+        }
+    }
+
+    fn comment_next_root(&mut self) {
+        self.focus_comments();
+        let viewport = self.comment_viewport();
+        let moved = self
+            .current_post_mut()
+            .is_some_and(|post| post.next_root(viewport));
+        if !moved {
+            self.notify(NoticeKind::Info, "No next top-level comment.");
+        }
+    }
+
+    fn comment_prev_root(&mut self) {
+        self.focus_comments();
+        let viewport = self.comment_viewport();
+        let moved = self
+            .current_post_mut()
+            .is_some_and(|post| post.prev_root(viewport));
+        if !moved {
+            self.notify(NoticeKind::Info, "No previous top-level comment.");
+        }
+    }
+
+    fn comment_parent(&mut self) {
+        self.focus_comments();
+        let viewport = self.comment_viewport();
+        let moved = self
+            .current_post_mut()
+            .is_some_and(|post| post.jump_to_parent(viewport));
+        if !moved {
+            self.notify(NoticeKind::Info, "This comment has no parent.");
+        }
+    }
+
+    fn comment_collapse_all(&mut self) {
+        self.focus_comments();
+        let Some(post) = self.current_post() else {
+            return;
+        };
+        let post_id = post.id;
+        let width = post.last_comment_width.max(40);
+        let collapsed = self
+            .post_mut(post_id)
+            .is_some_and(|post| post.toggle_collapse_all(width));
+        if collapsed {
+            self.notify(NoticeKind::Info, "Collapsed all comment threads.");
+        } else {
+            self.notify(NoticeKind::Info, "Expanded all comment threads.");
+        }
+    }
+
+    fn comment_toggle_op_only(&mut self) {
+        self.focus_comments();
+        let Some(post) = self.current_post() else {
+            return;
+        };
+        let post_id = post.id;
+        let width = post.last_comment_width.max(40);
+        let author = post.post.author.clone();
+        let op_only = self
+            .post_mut(post_id)
+            .is_some_and(|post| post.toggle_op_only(width));
+        if op_only {
+            self.notify(
+                NoticeKind::Info,
+                format!("Showing only comments by u/{author}."),
+            );
+        } else {
+            self.notify(NoticeKind::Info, "Showing all comments.");
+        }
+    }
+
+    fn comment_next_unread(&mut self) {
+        self.focus_comments();
+        let Some(post) = self.current_post() else {
+            return;
+        };
+        let viewport = post.last_comments_viewport.max(1);
+        let current_id = post.selected_comment_id().map(str::to_string);
+        let next = {
+            let App { library, nav, .. } = self;
+            if let Some(View::Post(post)) = nav.last_mut() {
+                post.next_unread_comment(&library.read_comments, viewport)
+            } else {
+                None
+            }
+        };
+        let mut changed = false;
+        if let Some(id) = current_id {
+            changed |= self.library.mark_comment_read(&id);
+        }
+        match next {
+            Some(id) => {
+                changed |= self.library.mark_comment_read(&id);
+                if changed {
+                    self.save_library();
+                }
+                self.notify(NoticeKind::Info, "Jumped to the next unread comment.");
+            }
+            None => {
+                if changed {
+                    self.save_library();
+                }
+                self.notify(NoticeKind::Info, "No unread comments below this one.");
+            }
+        }
+    }
+
+    /// Absolute permalink for the selected comment, or the post when the body
+    /// or the feed is focused.
+    fn current_permalink(&self) -> Option<(String, &'static str)> {
+        if let Some(View::Post(post)) = self.nav.last() {
+            if self.focus == Focus::Comments
+                && let Some(comment_id) = post.selected_comment_id()
+                && let Some(url) = post.post.comment_url(comment_id)
+            {
+                return Some((url, "Comment permalink"));
+            }
+            return post.post.reddit_url().map(|url| (url, "Post permalink"));
+        }
+        let post = match self.nav.last() {
+            Some(View::Feed(feed)) => feed.selected_post(),
+            Some(View::Gallery(gallery)) => Some(&gallery.post),
+            _ => None,
+        }?;
+        post.reddit_url().map(|url| (url, "Post permalink"))
+    }
+
+    fn copy_permalink(&mut self) {
+        let Some((url, label)) = self.current_permalink() else {
+            self.notify(NoticeKind::Info, "This item has no permalink.");
+            return;
+        };
+        match crate::utils::clipboard::copy(&url) {
+            Ok(()) => self.notify(NoticeKind::Success, format!("{label} copied to clipboard.")),
+            Err(error) => self.notify(NoticeKind::Error, error),
+        }
+    }
+
+    fn open_permalink(&mut self) {
+        let Some((url, label)) = self.current_permalink() else {
+            self.notify(NoticeKind::Info, "This item has no permalink.");
+            return;
+        };
+        match browser::open_url(&url) {
+            Ok(()) => self.notify(
+                NoticeKind::Success,
+                format!("Opened {label} in your browser."),
+            ),
+            Err(error) => self.notify(NoticeKind::Error, error),
+        }
+    }
+
     fn gallery_step(&mut self, forward: bool) {
         if let Some(gallery) = self.current_gallery_mut() {
             if forward {
@@ -1789,9 +2432,12 @@ impl App {
         match key.code {
             KeyCode::Esc => self.back(),
             KeyCode::Char('?') => self.open_help(),
+            KeyCode::Char(':') => self.open_command_palette(),
             KeyCode::Left | KeyCode::Char('h') => self.gallery_step(false),
             KeyCode::Right | KeyCode::Char('l') => self.gallery_step(true),
             KeyCode::Char('o') => self.open_url(),
+            KeyCode::Char('b') => self.toggle_bookmark_current(),
+            KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('r') => self.refresh_current(),
             KeyCode::Char('T') => self.toggle_theme(),
             _ => {}
@@ -1953,6 +2599,20 @@ impl App {
                 {
                     self.commit_theme(theme);
                     self.modal = Some(Modal::Settings(SettingsModal { selected: 1, theme }));
+                } else if matches!(self.modal, Some(Modal::Bookmarks(_))) {
+                    self.open_bookmark_item(index);
+                } else if matches!(self.modal, Some(Modal::Source(_))) {
+                    self.execute_source_action(index);
+                } else if matches!(self.modal, Some(Modal::Filters(_))) {
+                    if index == 0 {
+                        self.toggle_hide_read();
+                    } else if let Some(Modal::Filters(modal)) = &mut self.modal {
+                        modal.selected = index;
+                    }
+                } else if let Some(Modal::CommandPalette(palette)) = &self.modal
+                    && let Some(command) = palette.filtered().get(index).copied()
+                {
+                    self.execute_command(command);
                 }
             }
             Some(HitTarget::ModalRangeItem(_)) => {
@@ -2109,13 +2769,24 @@ impl App {
     ) {
         tracing::debug!(?view_id, request, append, "handling FeedLoaded");
         let provider_label = self.provider.display_name();
-        let status = Some(
-            result
-                .as_ref()
-                .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
-                    crate::providers::ProviderStatus::Available
-                }),
-        );
+        let status = result
+            .as_ref()
+            .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
+                crate::providers::ProviderStatus::Available
+            });
+        let error_message = result.as_ref().err().map(ToString::to_string);
+        let mut filtered_count = 0usize;
+        let result = result.map(|mut page| {
+            let before = page.posts.len();
+            page.posts.retain(|post| {
+                !self
+                    .library
+                    .filters
+                    .hides(post, self.library.is_post_read(&post.id))
+            });
+            filtered_count = before.saturating_sub(page.posts.len());
+            page
+        });
         let mut error_toast = None;
         let mut need_subreddit = None;
         {
@@ -2126,6 +2797,7 @@ impl App {
             if append {
                 if view.more_request != Some(request) {
                     tracing::debug!("stale append request");
+                    self.request_starts.remove(&request);
                     return;
                 }
                 view.more_request = None;
@@ -2140,6 +2812,7 @@ impl App {
             } else {
                 if view.request != Some(request) {
                     tracing::debug!(current = ?view.request, "stale initial request");
+                    self.request_starts.remove(&request);
                     return;
                 }
                 view.request = None;
@@ -2166,7 +2839,13 @@ impl App {
         if let Some(error) = error_toast {
             self.notify_error(&error);
         }
-        self.provider_status = status;
+        if !append && filtered_count > 0 {
+            self.notify(
+                NoticeKind::Info,
+                format!("{filtered_count} post(s) hidden by local filters."),
+            );
+        }
+        self.finish_request(request, status, error_message);
         if let Some(name) = need_subreddit {
             if let Some(view) = self.feed_mut(view_id)
                 && view
@@ -2191,17 +2870,17 @@ impl App {
             return;
         };
         if view.post_request != Some(request) {
+            self.request_starts.remove(&request);
             return;
         }
         view.post_request = None;
         view.post_loading = false;
-        let status = Some(
-            result
-                .as_ref()
-                .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
-                    crate::providers::ProviderStatus::Available
-                }),
-        );
+        let status = result
+            .as_ref()
+            .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
+                crate::providers::ProviderStatus::Available
+            });
+        let error_message = result.as_ref().err().map(ToString::to_string);
         match result {
             Ok(post) => {
                 view.post = post;
@@ -2215,7 +2894,7 @@ impl App {
                 );
             }
         }
-        self.provider_status = status;
+        self.finish_request(request, status, error_message);
     }
 
     fn handle_comments_loaded(
@@ -2228,17 +2907,17 @@ impl App {
             return;
         };
         if view.comments_request != Some(request) {
+            self.request_starts.remove(&request);
             return;
         }
         view.comments_request = None;
         let width = view.last_comment_width.max(40);
-        let status = Some(
-            result
-                .as_ref()
-                .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
-                    crate::providers::ProviderStatus::Available
-                }),
-        );
+        let status = result
+            .as_ref()
+            .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
+                crate::providers::ProviderStatus::Available
+            });
+        let error_message = result.as_ref().err().map(ToString::to_string);
         let error = match result {
             Ok(comments) => {
                 view.replace_comments(comments, width);
@@ -2252,7 +2931,7 @@ impl App {
         if let Some(error) = error {
             self.notify_error(&error);
         }
-        self.provider_status = status;
+        self.finish_request(request, status, error_message);
     }
 
     fn handle_more_loaded(
@@ -2266,9 +2945,16 @@ impl App {
             return;
         };
         if view.pending_more.get(&more_id) != Some(&request) {
+            self.request_starts.remove(&request);
             return;
         }
         let width = view.last_comment_width.max(40);
+        let status = result
+            .as_ref()
+            .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
+                crate::providers::ProviderStatus::Available
+            });
+        let error_message = result.as_ref().err().map(ToString::to_string);
         let notice = match result {
             Ok(loaded) => {
                 let empty = loaded.is_empty();
@@ -2289,6 +2975,7 @@ impl App {
         if let Some((kind, text)) = notice {
             self.notify(kind, text);
         }
+        self.finish_request(request, status, error_message);
     }
 
     fn handle_subreddit_loaded(
@@ -2302,9 +2989,16 @@ impl App {
             return;
         };
         if view.subreddit_request != Some(request) {
+            self.request_starts.remove(&request);
             return;
         }
         view.subreddit_request = None;
+        let status = result
+            .as_ref()
+            .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
+                crate::providers::ProviderStatus::Available
+            });
+        let error_message = result.as_ref().err().map(ToString::to_string);
         match result {
             Ok(subreddit) => {
                 if subreddit.name.eq_ignore_ascii_case(&name) {
@@ -2316,6 +3010,7 @@ impl App {
                 view.subreddit_error = Some(error.to_string());
             }
         }
+        self.finish_request(request, status, error_message);
     }
 }
 
@@ -2381,6 +3076,18 @@ fn default_spec(settings: &Settings) -> FeedSpec {
 
 fn modal_is_text(modal: &Modal) -> bool {
     matches!(modal, Modal::Text(_))
+}
+
+/// Spawn a provider request when a Tokio runtime is available. Unit tests can
+/// exercise state transitions without constructing a runtime; in the real app
+/// the runtime always exists.
+fn spawn_guarded<F>(future: F)
+where
+    F: Future<Output = ()> + Send + 'static,
+{
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        handle.spawn(future);
+    }
 }
 
 #[cfg(test)]

@@ -13,7 +13,7 @@
   r/webdev             │ ╰───────────────────────────────────────────────────────────────────────────────────╯┃ │▸ r/rust
   r/machinelearning    │                                                                                      ┃ │▸ r/linux
   r/askscience         │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │▸ r/programming
-  r/gaming             │ │ r/rust  •  u/oxide_orchard  •  25m ago                                            │┃ │▸ r/technology
+  r/gaming             │ │ r/rust  •  u/oxide_orchard  •  25m ago                                   ● unread │┃ │▸ r/technology
                        │ │                                                                                   ││ │▸ r/opensource
  FAVORITES             │ │ Rust 2026: my terminal setup after three years                                    ││ │▸ r/unixporn
   f to add             │ │                                                                                   ││ │
@@ -30,9 +30,9 @@
                        │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                                      │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
-                       │ │ r/rust  •  u/mod_ferris  •  55m ago                                               ││ │
+                       │ │ r/rust  •  u/mod_ferris  •  55m ago                                      ● unread ││ │
                        │ │                                                                                   ││ │
                        │ │ 📌 Weekly help thread — ask anything                                              ││ │
                        │ │                                                                                   ││ │
  h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · b Save · B Saved · y Copy · o Open · v Image · ? Help · q Quit

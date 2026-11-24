@@ -62,6 +62,8 @@ pub struct PostView {
     pub last_comments_viewport: u16,
     pub last_body_viewport: u16,
     pub comments_dirty: bool,
+    /// Show only comments written by the post author.
+    pub op_only: bool,
 }
 
 impl PostView {
@@ -91,6 +93,7 @@ impl PostView {
             last_comments_viewport: 0,
             last_body_viewport: 0,
             comments_dirty: true,
+            op_only: false,
         }
     }
 
@@ -174,6 +177,7 @@ impl PostView {
             return;
         }
         let keep_id = self.rows.get(self.selected).map(|r| r.id.clone());
+        let op_author = self.op_only.then(|| self.post.author.clone());
         let mut rows = Vec::new();
         for root in &self.comments {
             push_rows(
@@ -183,6 +187,7 @@ impl PostView {
                 &self.collapsed,
                 &self.more_loading,
                 self.comments_loading,
+                op_author.as_deref(),
                 &mut rows,
             );
         }
@@ -394,6 +399,114 @@ impl PostView {
         }
     }
 
+    pub fn selected_comment_id(&self) -> Option<&str> {
+        self.rows
+            .get(self.selected)
+            .filter(|row| !row.is_more)
+            .map(|row| row.id.as_str())
+    }
+
+    /// Move to the next top-level comment. Returns false at the last root.
+    pub fn next_root(&mut self, viewport: u16) -> bool {
+        if let Some(index) = self
+            .rows
+            .iter()
+            .enumerate()
+            .skip(self.selected + 1)
+            .find_map(|(index, row)| (row.depth == 0).then_some(index))
+        {
+            self.selected = index;
+            self.ensure_comment_visible(viewport);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Move to the previous top-level comment. Returns false at the first root.
+    pub fn prev_root(&mut self, viewport: u16) -> bool {
+        if let Some(index) = self.rows[..self.selected]
+            .iter()
+            .rposition(|row| row.depth == 0)
+        {
+            self.selected = index;
+            self.ensure_comment_visible(viewport);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Move to the nearest visible parent comment. Returns false on a root.
+    pub fn jump_to_parent(&mut self, viewport: u16) -> bool {
+        let Some(current) = self.rows.get(self.selected) else {
+            return false;
+        };
+        if current.depth == 0 {
+            return false;
+        }
+        let depth = current.depth;
+        if let Some(index) = self.rows[..self.selected]
+            .iter()
+            .rposition(|row| row.depth < depth)
+        {
+            self.selected = index;
+            self.ensure_comment_visible(viewport);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Collapse every root that has replies, or expand all when they are all
+    /// collapsed. Returns true when the tree is now collapsed.
+    pub fn toggle_collapse_all(&mut self, width: u16) -> bool {
+        let roots: Vec<String> = self
+            .comments
+            .iter()
+            .filter(|comment| !comment.replies.is_empty())
+            .map(|comment| comment.id.clone())
+            .collect();
+        if roots.is_empty() {
+            return false;
+        }
+        let all_collapsed = roots.iter().all(|id| self.collapsed.contains(id));
+        if all_collapsed {
+            self.collapsed.clear();
+        } else {
+            self.collapsed.extend(roots);
+        }
+        self.comments_dirty = true;
+        self.rebuild_comments(width);
+        !all_collapsed
+    }
+
+    /// Toggle the OP-only filter. Returns true when it is enabled.
+    pub fn toggle_op_only(&mut self, width: u16) -> bool {
+        self.op_only = !self.op_only;
+        self.comments_dirty = true;
+        self.rebuild_comments(width);
+        self.op_only
+    }
+
+    /// Jump to the next comment that is not in the local read set. Returns the
+    /// comment id that should be marked read by the caller.
+    pub fn next_unread_comment(
+        &mut self,
+        read: &std::collections::BTreeSet<String>,
+        viewport: u16,
+    ) -> Option<String> {
+        let index = self
+            .rows
+            .iter()
+            .enumerate()
+            .skip(self.selected + 1)
+            .find_map(|(index, row)| (!row.is_more && !read.contains(&row.id)).then_some(index))?;
+        self.selected = index;
+        self.ensure_comment_visible(viewport);
+        self.rows.get(index).map(|row| row.id.clone())
+    }
+
     #[cfg(test)]
     pub fn with_comments(
         id: ViewId,
@@ -409,6 +522,7 @@ impl PostView {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn push_rows(
     comment: &Comment,
     depth: usize,
@@ -416,6 +530,7 @@ fn push_rows(
     collapsed_set: &HashSet<String>,
     more_loading: &HashSet<String>,
     comments_loading: bool,
+    op_author: Option<&str>,
     out: &mut Vec<CommentRow>,
 ) {
     let display_depth = depth.min(8);
@@ -431,6 +546,9 @@ fn push_rows(
     let body_width = width.saturating_sub(prefix_width + 1).max(8);
 
     if comment.is_more {
+        if op_author.is_some() {
+            return;
+        }
         let loading = more_loading.contains(&comment.id);
         let label = if loading {
             "loading more replies…".to_string()
@@ -491,32 +609,39 @@ fn push_rows(
         0
     };
     let height = 1 + body_lines.len() as u16;
-    let row = CommentRow {
-        id: comment.id.clone(),
-        depth: display_depth,
-        prefix,
-        body_prefix,
-        author: sanitize(&comment.author),
-        score: comment.score,
-        created_utc: comment.created_utc,
-        distinguished: comment
-            .distinguished
-            .as_deref()
-            .is_some_and(|d| !d.is_empty() && d != "null"),
-        deleted: comment.deleted,
-        removed: comment.removed,
-        is_more: false,
-        more_count: 0,
-        more_children: Vec::new(),
-        has_children: !comment.replies.is_empty(),
-        collapsed,
-        hidden_replies,
-        body_lines,
-        height,
-    };
-    out.push(row);
+    let is_op = op_author
+        .map(|author| comment.author.eq_ignore_ascii_case(author))
+        .unwrap_or(true);
+    if is_op {
+        let row = CommentRow {
+            id: comment.id.clone(),
+            depth: display_depth,
+            prefix,
+            body_prefix,
+            author: sanitize(&comment.author),
+            score: comment.score,
+            created_utc: comment.created_utc,
+            distinguished: comment
+                .distinguished
+                .as_deref()
+                .is_some_and(|d| !d.is_empty() && d != "null"),
+            deleted: comment.deleted,
+            removed: comment.removed,
+            is_more: false,
+            more_count: 0,
+            more_children: Vec::new(),
+            has_children: !comment.replies.is_empty(),
+            collapsed,
+            hidden_replies,
+            body_lines,
+            height,
+        };
+        out.push(row);
+    }
 
-    if !collapsed {
+    // In OP-only mode, non-OP parents are skipped but their OP descendants must
+    // still be reachable, so recurse even when the hidden parent is collapsed.
+    if !collapsed || (op_author.is_some() && !is_op) {
         for reply in &comment.replies {
             push_rows(
                 reply,
@@ -525,6 +650,7 @@ fn push_rows(
                 collapsed_set,
                 more_loading,
                 comments_loading,
+                op_author,
                 out,
             );
         }
@@ -633,6 +759,70 @@ mod tests {
         view.apply_more("m", vec![Comment::new("x", "xavier", "Loaded reply")], 70);
         assert!(view.rows.iter().all(|r| r.id != "m"));
         assert!(view.rows.iter().any(|r| r.id == "x"));
+    }
+
+    #[test]
+    fn root_and_parent_navigation_follow_the_tree() {
+        let mut view = PostView::with_comments(ViewId(1), post(), tree(), CommentSort::Best);
+        view.rebuild_comments(70);
+        assert_eq!(view.rows[view.selected].id, "a");
+        assert!(view.next_root(10));
+        assert_eq!(view.rows[view.selected].id, "d");
+        assert!(!view.next_root(10), "last root has no successor");
+        assert!(view.prev_root(10));
+        assert_eq!(view.rows[view.selected].id, "a");
+        assert!(!view.prev_root(10));
+
+        view.selected = 2;
+        assert_eq!(view.rows[view.selected].id, "c");
+        assert!(view.jump_to_parent(10));
+        assert_eq!(view.rows[view.selected].id, "b");
+        assert!(view.jump_to_parent(10));
+        assert_eq!(view.rows[view.selected].id, "a");
+        assert!(!view.jump_to_parent(10));
+    }
+
+    #[test]
+    fn collapse_all_toggles_every_root() {
+        let mut view = PostView::with_comments(ViewId(1), post(), tree(), CommentSort::Best);
+        view.rebuild_comments(70);
+        assert!(view.toggle_collapse_all(70));
+        assert_eq!(
+            view.rows.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+            vec!["a", "d"]
+        );
+        assert!(!view.toggle_collapse_all(70));
+        assert_eq!(view.rows.len(), 5);
+    }
+
+    #[test]
+    fn op_only_keeps_the_author_and_their_visible_descendants() {
+        let mut post = post();
+        post.author = "alice".into();
+        let mut view = PostView::with_comments(ViewId(1), post, tree(), CommentSort::Best);
+        view.rebuild_comments(70);
+        assert!(view.toggle_op_only(70));
+        assert_eq!(
+            view.rows.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+            vec!["a"],
+            "only alice's comment should remain"
+        );
+        assert!(!view.toggle_op_only(70));
+        assert!(view.rows.len() > 2);
+    }
+
+    #[test]
+    fn next_unread_comment_skips_read_rows() {
+        let mut view = PostView::with_comments(ViewId(1), post(), tree(), CommentSort::Best);
+        view.rebuild_comments(70);
+        let mut read = std::collections::BTreeSet::new();
+        read.insert("b".to_string());
+        assert_eq!(view.next_unread_comment(&read, 10).as_deref(), Some("c"));
+        assert_eq!(view.rows[view.selected].id, "c");
+        read.insert("c".to_string());
+        assert_eq!(view.next_unread_comment(&read, 10).as_deref(), Some("d"));
+        read.insert("d".to_string());
+        assert!(view.next_unread_comment(&read, 10).is_none());
     }
 
     #[test]

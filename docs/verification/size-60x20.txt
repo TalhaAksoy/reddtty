@@ -10,7 +10,7 @@ Home                                         25 posts · more
 ╰─────────────────────────────────────────────────────────╯│
                                                            │
 ╭─────────────────────────────────────────────────────────╮│
-│ r/linux  •  u/quiet_daemon  •  8h ago                   ││
+│ r/linux  •  u/quiet_daemon  •  8h ago          ● unread ││
 │                                                         ││
 │ I switched my entire workflow to Linux                  ││
 │ After using another OS for years, I moved my whole…     ││

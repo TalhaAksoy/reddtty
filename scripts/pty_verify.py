@@ -20,9 +20,11 @@ ROOT = Path(__file__).resolve().parent.parent
 BIN = ROOT / "target" / "release" / "reddtty"
 OUT = ROOT / "docs" / "verification"
 OUT.mkdir(parents=True, exist_ok=True)
-CONFIG = Path(tempfile.gettempdir()) / "reddtty-pty-verification.toml"
-if CONFIG.exists():
-    CONFIG.unlink()
+CONFIG_DIR = Path(tempfile.mkdtemp(prefix="reddtty-pty-config-"))
+CONFIG = CONFIG_DIR / "config.toml"
+FEATURES_DIR = CONFIG_DIR / "features"
+FEATURES_DIR.mkdir()
+FEATURES_CONFIG = FEATURES_DIR / "config.toml"
 
 SUMMARY: dict[str, object] = {"captures": [], "assertions": []}
 
@@ -76,10 +78,10 @@ def send(session: str, key: str, literal: bool = False) -> None:
     time.sleep(0.18)
 
 
-def start(width: int, height: int, name: str) -> str:
+def start(width: int, height: int, name: str, config: Path = CONFIG) -> str:
     tmux("kill-session", "-t", name)
     cmd = (
-        f"cd {ROOT} && {BIN} --demo --config {CONFIG}; "
+        f"cd {ROOT} && {BIN} --demo --config {config}; "
         "echo EXIT:$?; sleep 20"
     )
     result = tmux("new-session", "-d", "-s", name, "-x", str(width), "-y", str(height), cmd)
@@ -199,6 +201,124 @@ def main() -> int:
         assert_seen("shell resumed after quit", after_quit, "EXIT:0")
         tmux("kill-session", "-t", session)
 
+        # Local-first features: bookmarks, read state, comment navigation,
+        # source health, filters, command palette and restart-free config swap.
+        session = start(140, 38, "tl-features", FEATURES_CONFIG)
+        send(session, "b")
+        bookmarked = wait_for(session, "★ saved")
+        save("13-bookmark-marker", bookmarked)
+        assert_seen("bookmark marker", bookmarked, "★ saved")
+        send(session, "m")
+        marked = wait_for(session, "Marked as read.")
+        save("14-read-state", marked)
+        assert_seen("read notification", marked, "Marked as read.")
+
+        send(session, "B")
+        bookmarks = wait_for(session, "Bookmarks")
+        save("15-bookmarks-list", bookmarks)
+        assert_seen("bookmarks modal", bookmarks, "Enter open")
+        send(session, "Enter")
+        wait_for(session, "COMMENTS")
+        send(session, "Escape")
+        wait_for(session, "Home")
+
+        send(session, "Enter")
+        wait_for(session, "COMMENTS")
+        send(session, "z")
+        collapsed = wait_for(session, "Collapsed all comment threads.")
+        save("16-collapse-all", collapsed)
+        assert_seen("collapse all", collapsed, "Collapsed all comment threads.")
+        send(session, "z")
+        wait_for(session, "Expanded all comment threads.")
+        send(session, "n")
+        unread = wait_for(session, "next unread comment")
+        save("17-next-unread-comment", unread)
+        assert_seen("next unread", unread, "next unread comment")
+        send(session, "O")
+        op_only = wait_for(session, "Showing only comments by")
+        save("18-op-only", op_only)
+        assert_seen("op only", op_only, "Showing only comments by")
+        send(session, "O")
+        wait_for(session, "Showing all comments.")
+        send(session, "y")
+        copied = wait_for(session, "copied to clipboard")
+        save("19-copy-permalink", copied)
+        assert_seen("copy permalink", copied, "copied to clipboard")
+        send(session, "Escape")
+        wait_for(session, "Home")
+
+        send(session, "S")
+        wait_for(session, "Settings")
+        send(session, "j")
+        send(session, "j")
+        send(session, "Enter")
+        health = wait_for(session, "Source health")
+        save("20-source-health", health)
+        assert_seen("source health title", health, "Source health")
+        assert_seen("source health provider", health, "DEMO")
+        assert_seen("source health retry", health, "Test now")
+        assert_seen("source health change", health, "Change source")
+        send(session, "r")
+        time.sleep(0.8)
+        testing = capture(session)
+        save("21-source-retry", testing)
+        assert_seen("source retry stays on screen", testing, "Source health")
+        assert_seen("source retry action", testing, "Test now")
+
+        send(session, "Escape")
+        wait_for(session, "Settings")
+        send(session, "j")
+        send(session, "j")
+        send(session, "j")
+        send(session, "Enter")
+        filters = wait_for(session, "Local filters")
+        save("22-local-filters", filters)
+        assert_seen("filters title", filters, "Local filters")
+        assert_seen("filters hide read", filters, "Hide read posts")
+        send(session, "a")
+        wait_for(session, "Add local filter")
+        send(session, "keyword:black hole", literal=True)
+        send(session, "Enter")
+        filtered = wait_for(session, "keyword  black hole")
+        save("23-filter-added", filtered)
+        assert_seen("filter rule", filtered, "keyword  black hole")
+        send(session, "Escape")
+        wait_for(session, "Settings")
+        send(session, "Escape")
+        hidden_feed = wait_for(session, "hidden by local filters")
+        save("24-filtered-feed", hidden_feed)
+        assert_not_seen("filter hides matching post", hidden_feed, "black hole merger")
+
+        send(session, ":", literal=True)
+        palette = wait_for(session, "Commands")
+        save("25-command-palette", palette)
+        assert_seen("command palette", palette, "Search posts")
+        assert_seen("command palette themes", palette, "Theme: Catppuccin Mocha")
+        send(session, "mocha", literal=True)
+        send(session, "Enter")
+        themed = wait_for(session, "Theme: Catppuccin Mocha")
+        save("26-command-theme", themed)
+        assert_seen("command theme applied", themed, "Theme: Catppuccin Mocha")
+
+        send(session, "S")
+        wait_for(session, "Settings")
+        send(session, "Enter")
+        picker = wait_for(session, "Choose config")
+        save("27-config-picker", picker)
+        assert_seen("config picker", picker, "Demo (offline)")
+        send(session, "Enter")
+        switched = wait_for(session, "Provider applied immediately")
+        save("28-provider-switch", switched)
+        assert_seen("provider switch", switched, "Provider applied immediately")
+        assert_seen("provider still demo", switched, "DEMO")
+
+        send(session, "q")
+        time.sleep(0.8)
+        after_features = capture(session)
+        save("29-features-after-quit", after_features)
+        assert_seen("features shell resumed", after_features, "EXIT:0")
+        tmux("kill-session", "-t", session)
+
         # Responsive snapshots.
         for width, height in [(60, 20), (80, 24), (100, 30), (130, 36), (160, 45)]:
             name = f"tl-{width}x{height}"
@@ -261,13 +381,19 @@ def main() -> int:
         print(json.dumps({"ok": SUMMARY["ok"], "captures": len(SUMMARY["captures"]), "assertions": len(SUMMARY["assertions"])}, indent=2))
         return 0 if SUMMARY["ok"] else 1
     finally:
-        for session in ("tl-flow", "tl-60x20", "tl-80x24", "tl-100x30", "tl-130x36", "tl-160x45", "tl-tiny"):
+        for session in (
+            "tl-flow",
+            "tl-features",
+            "tl-60x20",
+            "tl-80x24",
+            "tl-100x30",
+            "tl-130x36",
+            "tl-160x45",
+            "tl-tiny",
+        ):
             tmux("kill-session", "-t", session)
         shutil.rmtree(tempdir, ignore_errors=True)
-        try:
-            CONFIG.unlink()
-        except FileNotFoundError:
-            pass
+        shutil.rmtree(CONFIG_DIR, ignore_errors=True)
 
 
 if __name__ == "__main__":

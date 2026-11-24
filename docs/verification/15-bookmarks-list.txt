@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+                               ╭ Bookmarks ─────────────────────────────────────────────────────────────────╮
+                               │  ▸ Why I love building CLI applications with Rust                          │
+                               │     r/rust  ·  u/ferris_fan  ·  saved just now  ·  248 comments            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                               j/k move · Enter open · d remove · Esc close │
+                               ╰────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+j/k Move · Enter Open · d Remove · Esc Close

@@ -10,27 +10,27 @@
 
 
 
-
-
                                          ╭ Keyboard Shortcuts ────────────────────────────────────────────────────────╮
-                                         │ j / k       Navigate                 x           Reveal NSFW               │
-                                         │ ↑ / ↓       Same                     c           Collapse                  │
+                                         │ j / k       Navigate                 p           Parent comment            │
+                                         │ ↑ / ↓       Same                     n           Next unread               │
                                          │ Enter       Open / toggle            f           Favorite                  │
-                                         │ Esc         Back / close             h           Sidebar                   │
-                                         │ Tab         Switch focus             T           Theme                     │
-                                         │ s           Sort                     PgUp / PgDn Page                      │
-                                         │ t           Top range                Home / End  Jump                      │
-                                         │ g           Go to sub                Mouse       Click / scroll            │
-                                         │ /           Search                   ?           Help                      │
-                                         │ r           Refresh                  S           Settings                  │
-                                         │ o           Browser                  q           Quit                      │
-                                         │ v           Image viewer                                                   │
+                                         │ Esc         Back / close             b           Bookmark                  │
+                                         │ Tab         Switch focus             B           Bookmarks                 │
+                                         │ s           Sort                     m           Read / unread             │
+                                         │ t           Top range                y           Copy permalink            │
+                                         │ g           Go to sub                h           Sidebar                   │
+                                         │ /           Search                   T           Theme                     │
+                                         │ r           Refresh                  PgUp / PgDn Page                      │
+                                         │ o           Browser                  Home / End  Jump                      │
+                                         │ v           Image viewer             Mouse       Click / scroll            │
+                                         │ x           Reveal NSFW              ?           Help                      │
+                                         │ c           Collapse                 : / Ctrl+P  Commands                  │
+                                         │ z           Collapse all             S           Settings                  │
+                                         │ O           Only OP comments         q           Quit                      │
+                                         │ [ / ]       Prev / next root                                               │
                                          │                                                                            │
                                          │                                                          Esc or ? to close │
                                          ╰────────────────────────────────────────────────────────────────────────────╯
-
-
-
 
 
 

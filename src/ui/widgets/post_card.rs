@@ -178,6 +178,8 @@ pub fn render(
     compact: bool,
     revealed: bool,
     spinner: usize,
+    unread: bool,
+    bookmarked: bool,
 ) {
     if area.height == 0 || area.width == 0 {
         return;
@@ -225,6 +227,34 @@ pub fn render(
             })),
             Rect::new(inner.x, area.y + layout.meta_y, inner.width, 1),
         );
+        let mut flags = Vec::new();
+        if unread {
+            flags.push("● unread");
+        }
+        if bookmarked {
+            flags.push("★ saved");
+        }
+        if !flags.is_empty() {
+            let text = flags.join(" · ");
+            let marker_width = width(&text) as u16;
+            if marker_width < inner.width {
+                frame.render_widget(
+                    Paragraph::new(text)
+                        .alignment(ratatui::layout::Alignment::Right)
+                        .style(Style::default().fg(if bookmarked {
+                            theme.warning
+                        } else {
+                            theme.accent
+                        })),
+                    Rect::new(
+                        inner.right().saturating_sub(marker_width),
+                        area.y + layout.meta_y,
+                        marker_width,
+                        1,
+                    ),
+                );
+            }
+        }
     }
 
     // Title

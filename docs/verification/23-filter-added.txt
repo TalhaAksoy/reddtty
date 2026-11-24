@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+
+
+                                     ╭ Local filters ─────────────────────────────────────────────────╮
+                                     │    [ ] Hide read posts  ·  posts you marked read are skipped … │
+                                     │  ▸ keyword  black hole                                         │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │                                                                │
+                                     │           a add · d remove · C clear · Enter toggle · Esc back │
+                                     ╰────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+j/k Move · a Add · d Remove · Esc Back

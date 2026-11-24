@@ -14,6 +14,7 @@ detail it behaves as the reverse of `Tab` (both toggle the two panes).
 | `Ctrl+C` | Quit immediately |
 | `q` | Quit from any screen except a modal text field |
 | `?` | Open keyboard help |
+| `:` or `Ctrl+P` | Open the command palette |
 | `S` | Open Settings |
 | `T` | Cycle dark, light and Catppuccin themes (persisted) |
 | Terminal resize | Layout recalculates automatically; no restart required |
@@ -41,6 +42,10 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 | `v` | Open the gallery/image viewer |
 | `x` | Reveal an NSFW or spoiler post for this session |
 | `f` | Favorite the current/selected subreddit |
+| `b` | Bookmark the selected post with a local offline snapshot |
+| `B` | Open the local bookmarks list |
+| `m` | Mark the selected post read/unread |
+| `y` | Copy the selected post's permalink |
 | `h` | Show/hide the sidebar (persisted) |
 | `Tab` / `Shift+Tab` | Switch focus between sidebar and feed |
 | `q` | Quit |
@@ -71,6 +76,15 @@ between them. Comments are focused by default after opening a post.
 | `Home` / `End` | Start/end of the focused pane; reaching the end loads more posts |
 | `Enter` (comments) | Collapse/expand a comment, or load a “more replies” node |
 | `c` (comments) | Collapse/expand the selected comment |
+| `[` / `]` | Previous / next top-level comment |
+| `p` | Jump to the parent comment |
+| `z` | Collapse all threads, or expand all when collapsed |
+| `O` | Show only comments written by the original poster |
+| `n` | Mark the current comment read and jump to the next unread one |
+| `y` | Copy the selected comment permalink (post permalink from the body pane) |
+| `Y` | Open that permalink in the browser |
+| `b` / `B` | Bookmark this post / open bookmarks |
+| `m` | Toggle this post's read state |
 | `Enter` (body) | Open the image/gallery viewer |
 | `s` | Comment sort menu |
 | `v` | Open the image/gallery viewer |
@@ -146,7 +160,7 @@ names show an inline error and do not trigger a request.
 | Key | Action |
 |---|---|
 | `j` / `k` | Move between Settings rows |
-| `Enter` | Open Change config / choose Theme |
+| `Enter` | Open Change config / Theme / Source health / Filters |
 | `Esc` | Close Settings |
 | `j` / `k` in Change config | Choose a bundled config preset |
 | `Enter` in Change config | Install the selected config (existing config is backed up) |
@@ -156,8 +170,78 @@ names show an inline error and do not trigger a request.
 | `Esc` in Theme | Revert to the theme that was active when the list opened |
 
 Changing the config replaces only the provider settings; favorites, recents,
-theme, image and UI preferences are preserved. Provider changes take effect after
-restarting ReddTTY. Theme changes apply immediately and are persisted.
+theme, image, bookmarks, filters and UI preferences are preserved. The new
+provider is built immediately and the navigation stack is reset safely; no
+restart is required. Theme changes apply immediately and are persisted.
+
+## Bookmarks and read state
+
+`b` saves the selected post together with an offline snapshot in
+`library.toml` next to the config. `B` opens the saved list.
+
+| Key | Action |
+|---|---|
+| `j` / `k` | Move through saved posts |
+| `Enter` | Open the selected saved post (works from the local snapshot if the source is down) |
+| `d` / `Delete` | Remove the selected bookmark |
+| `Esc` | Close the list |
+
+`m` toggles read/unread. Unread cards show `● unread`; saved cards show
+`★ saved`. Bookmarking does not perform a Reddit write.
+
+## Local filters
+
+Open **Settings → Filters**. Filters are local and provider-independent.
+
+| Key | Action |
+|---|---|
+| `j` / `k` | Move between rules |
+| `Enter` | Toggle “Hide read posts” on the first row |
+| `a` | Add a filter expression |
+| `d` / `Delete` | Remove the selected rule |
+| `C` | Clear all filters |
+| `Esc` | Back to Settings |
+
+Accepted expressions:
+
+```text
+keyword:ai          block posts whose title/body contains “ai”
+sub:politics        mute r/politics locally
+author:someone      mute a username
+domain:example.com  mute links to a domain
+bare-text           keyword filter
+```
+
+Filter changes persist immediately, prune the visible feed, and refetch it.
+When a page is fully hidden, ReddTTY keeps paginating instead of getting stuck.
+
+## Source health
+
+Open **Settings → Source health**.
+
+| Key | Action |
+|---|---|
+| `j` / `k` | Move between actions |
+| `Enter` or `r` | Test now: refresh the current view and update health |
+| `Enter` or `c` on Change source | Open the config picker |
+| `Esc` | Back to Settings |
+
+The screen shows the active provider/host, demo vs live mode, last status,
+last success/attempt, last and average latency, request/success rate, last error,
+bookmark/filter counts and the session cache policy.
+
+## Command palette
+
+Open with `:` or `Ctrl+P`.
+
+| Key | Action |
+|---|---|
+| Character keys | Filter commands by label or keyword |
+| `↑` / `↓`, `Tab` | Move selection |
+| `Backspace` | Delete the last query character |
+| `Ctrl+U` | Clear the query |
+| `Enter` | Run the selected command |
+| `Esc` | Close |
 
 ## Favorite removal confirmation
 
@@ -198,5 +282,8 @@ Mouse support is enabled by default (`ui.mouse_enabled = true`).
 | Click gallery arrows | Previous/next image |
 | Click outside a modal | Close it |
 | Click a sort/range item | Select and apply it |
+| Click a bookmark | Open that saved post |
+| Click a filter row | Select/toggle that local rule |
+| Click a command | Run that command |
 
 Mouse support supplements the keyboard; it never replaces it.

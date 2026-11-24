@@ -33,6 +33,9 @@ pub fn render(
             Some(Modal::Text(modal)) if modal.kind == TextKind::GoToSubreddit => {
                 vec![("Enter", "Open"), ("Esc", "Cancel"), ("Ctrl+U", "Clear")]
             }
+            Some(Modal::Text(modal)) if modal.kind == TextKind::AddFilter => {
+                vec![("Enter", "Add"), ("Esc", "Back"), ("Ctrl+U", "Clear")]
+            }
             Some(Modal::Text(_)) => vec![
                 ("Enter", "Submit"),
                 ("Tab", "Scope"),
@@ -49,6 +52,30 @@ pub fn render(
             Some(Modal::ThemePicker(_)) => {
                 vec![("j/k", "Preview"), ("Enter", "Apply"), ("Esc", "Cancel")]
             }
+            Some(Modal::Bookmarks(_)) => vec![
+                ("j/k", "Move"),
+                ("Enter", "Open"),
+                ("d", "Remove"),
+                ("Esc", "Close"),
+            ],
+            Some(Modal::Source(_)) => vec![
+                ("j/k", "Move"),
+                ("Enter", "Run"),
+                ("r", "Test"),
+                ("Esc", "Back"),
+            ],
+            Some(Modal::Filters(_)) => vec![
+                ("j/k", "Move"),
+                ("a", "Add"),
+                ("d", "Remove"),
+                ("Esc", "Back"),
+            ],
+            Some(Modal::CommandPalette(_)) => vec![
+                ("type", "Filter"),
+                ("↑/↓", "Move"),
+                ("Enter", "Run"),
+                ("Esc", "Close"),
+            ],
             None => Vec::new(),
         }
     } else {
@@ -71,6 +98,9 @@ pub fn render(
                     ("g", "Go"),
                     ("/", "Search"),
                     ("r", "Refresh"),
+                    ("b", "Save"),
+                    ("B", "Saved"),
+                    ("y", "Copy"),
                 ];
                 if feed.has_more || feed.loading_more {
                     pairs.push(("↓", "More"));
@@ -85,10 +115,15 @@ pub fn render(
                 ("j/k", "Comments"),
                 ("Enter", "Toggle"),
                 ("c", "Collapse"),
+                ("z", "All"),
+                ("n", "Unread"),
+                ("[ ]", "Root"),
+                ("p", "Parent"),
+                ("O", "OP"),
                 ("s", "Sort"),
                 ("Tab", "Post"),
-                ("v", "Image"),
-                ("o", "Browser"),
+                ("b", "Save"),
+                ("y", "Copy"),
                 ("Esc", "Back"),
                 ("?", "Help"),
                 ("q", "Quit"),
@@ -232,6 +267,18 @@ fn micro_pairs(
     }
     if let Some(Modal::ThemePicker(_)) = modal {
         return vec![("j/k", "Preview"), ("Esc", "Cancel")];
+    }
+    if let Some(Modal::Bookmarks(_)) = modal {
+        return vec![("↵", "Open"), ("Esc", "Close")];
+    }
+    if let Some(Modal::Source(_)) = modal {
+        return vec![("r", "Test"), ("Esc", "Back")];
+    }
+    if let Some(Modal::Filters(_)) = modal {
+        return vec![("a", "Add"), ("Esc", "Back")];
+    }
+    if let Some(Modal::CommandPalette(_)) = modal {
+        return vec![("↵", "Run"), ("Esc", "Close")];
     }
     if let Some(Modal::Text(modal)) = modal
         && modal.kind == TextKind::GoToSubreddit

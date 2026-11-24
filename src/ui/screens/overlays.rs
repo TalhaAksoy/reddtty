@@ -6,10 +6,12 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Wrap};
 
+use crate::app::health::{SourceHealth, format_age, format_duration};
 use crate::app::hit::{HitMap, HitTarget};
 use crate::app::modal::{
-    ConfigPickerModal, ConfirmModal, Modal, SearchScopeChoice, SettingsModal, SortChoice,
-    SortContext, TextKind, TextModal, ThemePickerModal,
+    BookmarksModal, CommandPaletteModal, ConfigPickerModal, ConfirmModal, FiltersModal, Modal,
+    SearchScopeChoice, SettingsModal, SortChoice, SortContext, SourceModal, TextKind, TextModal,
+    ThemePickerModal,
 };
 use crate::app::{NoticeKind, Notification};
 use crate::config::presets;
@@ -18,10 +20,15 @@ use crate::ui::layout;
 use crate::ui::theme::Theme;
 use crate::utils::text::{ellipsize, width, wrap_text};
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_modal(
     frame: &mut Frame,
     area: Rect,
     modal: &Modal,
+    library: &crate::library::Library,
+    health: &SourceHealth,
+    provider_label: &str,
+    demo: bool,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
@@ -35,6 +42,20 @@ pub fn render_modal(
         Modal::Settings(settings) => render_settings(frame, area, settings, theme, hit_map),
         Modal::ConfigPicker(picker) => render_config_picker(frame, area, picker, theme, hit_map),
         Modal::ThemePicker(picker) => render_theme_picker(frame, area, picker, theme, hit_map),
+        Modal::Bookmarks(modal) => render_bookmarks(frame, area, modal, library, theme, hit_map),
+        Modal::Source(modal) => render_source(
+            frame,
+            area,
+            modal,
+            library,
+            health,
+            provider_label,
+            demo,
+            theme,
+            hit_map,
+        ),
+        Modal::Filters(modal) => render_filters(frame, area, modal, library, theme, hit_map),
+        Modal::CommandPalette(modal) => render_command_palette(frame, area, modal, theme, hit_map),
     }
 }
 
@@ -72,7 +93,7 @@ fn inner_of(rect: Rect) -> Rect {
 }
 
 fn render_help(frame: &mut Frame, area: Rect, theme: &Theme, hit_map: &mut HitMap) {
-    let shortcuts: [(&str, &str); 23] = [
+    let shortcuts: [(&str, &str); 33] = [
         ("j / k", "Navigate"),
         ("↑ / ↓", "Same"),
         ("Enter", "Open / toggle"),
@@ -87,13 +108,23 @@ fn render_help(frame: &mut Frame, area: Rect, theme: &Theme, hit_map: &mut HitMa
         ("v", "Image viewer"),
         ("x", "Reveal NSFW"),
         ("c", "Collapse"),
+        ("z", "Collapse all"),
+        ("O", "Only OP comments"),
+        ("[ / ]", "Prev / next root"),
+        ("p", "Parent comment"),
+        ("n", "Next unread"),
         ("f", "Favorite"),
+        ("b", "Bookmark"),
+        ("B", "Bookmarks"),
+        ("m", "Read / unread"),
+        ("y", "Copy permalink"),
         ("h", "Sidebar"),
         ("T", "Theme"),
         ("PgUp / PgDn", "Page"),
         ("Home / End", "Jump"),
         ("Mouse", "Click / scroll"),
         ("?", "Help"),
+        (": / Ctrl+P", "Commands"),
         ("S", "Settings"),
         ("q", "Quit"),
     ];
@@ -194,18 +225,26 @@ fn render_settings(
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
-    let rect = layout::centered(area, area.width.min(48), 9);
+    let rect = layout::centered(area, area.width.min(52), 13);
     modal_frame(frame, rect, "Settings", theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
     let rows = [
         (
             "Change config".to_string(),
-            "replace the active config file".to_string(),
+            "switch source now (no restart)".to_string(),
         ),
         (
             format!("Theme: {}", settings.theme.label()),
             "preview light, dark and Catppuccin".to_string(),
+        ),
+        (
+            "Source health".to_string(),
+            "host, latency, errors, retry".to_string(),
+        ),
+        (
+            "Filters".to_string(),
+            "hide read, keywords, subs, authors, domains".to_string(),
         ),
     ];
     for (index, (title, description)) in rows.iter().enumerate() {
@@ -371,6 +410,454 @@ fn render_theme_picker(
     }
     frame.render_widget(
         Paragraph::new("j/k preview · Enter apply · Esc cancel")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_bookmarks(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &BookmarksModal,
+    library: &crate::library::Library,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(78);
+    let height = area.height.saturating_sub(2).clamp(8, 26);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Bookmarks", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+
+    if library.bookmarks.is_empty() {
+        frame.render_widget(
+            Paragraph::new(vec![
+                Line::from(Span::styled(
+                    "No bookmarks yet.",
+                    Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    "Press b on a post to save an offline snapshot.",
+                    Style::default().fg(theme.text_dim),
+                )),
+            ])
+            .style(Style::default().bg(theme.elevated)),
+            inner,
+        );
+        frame.render_widget(
+            Paragraph::new("Esc close")
+                .style(Style::default().fg(theme.muted).bg(theme.elevated))
+                .alignment(Alignment::Right),
+            Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+        );
+        return;
+    }
+
+    let rows = inner.height.saturating_sub(1) as usize / 2;
+    let offset = if modal.selected >= rows {
+        modal.selected + 1 - rows
+    } else {
+        0
+    };
+    for (slot, index) in (offset..library.bookmarks.len()).take(rows).enumerate() {
+        let saved = &library.bookmarks[index];
+        let selected = index == modal.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        let mut flags = String::new();
+        if !library.is_post_read(&saved.post.id) {
+            flags.push_str("  ● unread");
+        }
+        let title = ellipsize(
+            &crate::utils::text::sanitize(&saved.post.title),
+            inner.width.saturating_sub(4) as usize,
+        );
+        let y = inner.y + (slot as u16) * 2;
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{title}")).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        let meta = format!(
+            "    r/{}  ·  u/{}  ·  saved {}  ·  {} comments{flags}",
+            crate::utils::text::sanitize(&saved.post.subreddit),
+            crate::utils::text::sanitize(&saved.post.author),
+            crate::utils::time::relative_now(saved.saved_at),
+            saved.post.num_comments,
+        );
+        frame.render_widget(
+            Paragraph::new(ellipsize(&meta, inner.width as usize))
+                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 2),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k move · Enter open · d remove · Esc close")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_command_palette(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &CommandPaletteModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(68);
+    let height = area.height.saturating_sub(2).clamp(10, 24);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Commands", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+
+    let query = format!("> {}▏", modal.query);
+    frame.render_widget(
+        Paragraph::new(ellipsize(&query, inner.width as usize))
+            .style(Style::default().fg(theme.accent).bg(theme.elevated)),
+        Rect::new(inner.x, inner.y, inner.width, 1),
+    );
+
+    let commands = modal.filtered();
+    let rows = inner.height.saturating_sub(3) as usize;
+    let offset = if modal.selected >= rows {
+        modal.selected + 1 - rows
+    } else {
+        0
+    };
+    if commands.is_empty() {
+        frame.render_widget(
+            Paragraph::new("No matching command.")
+                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, inner.y + 2, inner.width, 1),
+        );
+    }
+    for (slot, index) in (offset..commands.len()).take(rows).enumerate() {
+        let selected = index == modal.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text_dim
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        let y = inner.y + 2 + slot as u16;
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{}", commands[index].label())).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 1),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("type to filter · ↑/↓ move · Enter run · Esc close")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_filters(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &FiltersModal,
+    library: &crate::library::Library,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(66);
+    let height = area.height.saturating_sub(2).clamp(10, 20);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Local filters", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+
+    let mut rows: Vec<(String, String)> = vec![(
+        format!(
+            "[{}] Hide read posts",
+            if library.filters.hide_read { "x" } else { " " }
+        ),
+        "posts you marked read are skipped locally".into(),
+    )];
+    for entry in library.filters.entries() {
+        rows.push((
+            format!("{}  {}", entry.kind.label(), entry.value),
+            String::new(),
+        ));
+    }
+    if rows.len() == 1 {
+        rows.push((
+            "No filter rules yet.".into(),
+            "press a to add keyword, sub, author or domain".into(),
+        ));
+    }
+
+    let visible = inner.height.saturating_sub(1) as usize;
+    let offset = if modal.selected >= visible {
+        modal.selected + 1 - visible
+    } else {
+        0
+    };
+    for (slot, index) in (offset..rows.len()).take(visible).enumerate() {
+        let (label, hint) = &rows[index];
+        let selected = index == modal.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        let y = inner.y + slot as u16;
+        let text = if hint.is_empty() {
+            format!("{marker}{label}")
+        } else {
+            format!("{marker}{label}  ·  {hint}")
+        };
+        frame.render_widget(
+            Paragraph::new(ellipsize(&text, inner.width as usize)).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 1),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("a add · d remove · C clear · Enter toggle · Esc back")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_source(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &SourceModal,
+    library: &crate::library::Library,
+    health: &SourceHealth,
+    provider_label: &str,
+    demo: bool,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(74);
+    let height = area.height.saturating_sub(2).clamp(14, 22);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Source health", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+
+    let status = health
+        .last_status
+        .map(|status| status.label().to_string())
+        .unwrap_or_else(|| "No request yet this session".into());
+    let latency = match (health.last_latency, health.average_latency()) {
+        (Some(last), Some(avg)) => {
+            format!(
+                "{} last · {} average",
+                format_duration(last),
+                format_duration(avg)
+            )
+        }
+        _ => "no samples yet".into(),
+    };
+    let rate = health
+        .success_rate()
+        .map(|rate| format!("{rate}% of {} requests", health.requests))
+        .unwrap_or_else(|| "no requests yet".into());
+    let mut lines = vec![
+        Line::from(vec![
+            Span::styled("Source   ", Style::default().fg(theme.muted)),
+            Span::styled(
+                crate::utils::text::sanitize(provider_label),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Mode     ", Style::default().fg(theme.muted)),
+            Span::styled(
+                if demo {
+                    "Demo · offline synthetic data"
+                } else {
+                    "Live · read-only provider"
+                },
+                Style::default().fg(theme.text),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Status   ", Style::default().fg(theme.muted)),
+            Span::styled(
+                status,
+                Style::default()
+                    .fg(if health.is_degraded() {
+                        theme.danger
+                    } else {
+                        theme.success
+                    })
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Last ok  ", Style::default().fg(theme.muted)),
+            Span::styled(
+                format_age(health.last_success_age()),
+                Style::default().fg(theme.text_dim),
+            ),
+            Span::styled("   Attempt  ", Style::default().fg(theme.muted)),
+            Span::styled(
+                format_age(health.last_attempt_age()),
+                Style::default().fg(theme.text_dim),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Latency  ", Style::default().fg(theme.muted)),
+            Span::styled(latency, Style::default().fg(theme.text_dim)),
+        ]),
+        Line::from(vec![
+            Span::styled("Reliability ", Style::default().fg(theme.muted)),
+            Span::styled(rate, Style::default().fg(theme.text_dim)),
+        ]),
+    ];
+    if let Some(error) = &health.last_error {
+        lines.push(Line::from(Span::styled("", Style::default())));
+        lines.push(Line::from(Span::styled(
+            "Last error",
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        )));
+        for line in wrap_text(
+            &crate::utils::text::sanitize(error),
+            inner.width.saturating_sub(1) as usize,
+        )
+        .into_iter()
+        .take(4)
+        {
+            lines.push(Line::from(Span::styled(
+                line,
+                Style::default().fg(theme.danger),
+            )));
+        }
+    }
+    lines.push(Line::from(Span::styled("", Style::default())));
+    lines.push(Line::from(vec![
+        Span::styled("Library  ", Style::default().fg(theme.muted)),
+        Span::styled(
+            format!(
+                "{} bookmarks · {} local filter rules",
+                library.bookmarks.len(),
+                library.filters.rule_count()
+            ),
+            Style::default().fg(theme.text_dim),
+        ),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Cache    ", Style::default().fg(theme.muted)),
+        Span::styled(
+            "provider responses are in-memory for this session",
+            Style::default().fg(theme.text_dim),
+        ),
+    ]));
+
+    let action_space = SourceModal::ACTIONS.len() as u16 + 2;
+    let available = inner.height.saturating_sub(action_space) as usize;
+    lines.truncate(available);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .style(Style::default().bg(theme.elevated))
+            .wrap(Wrap { trim: false }),
+        Rect::new(
+            inner.x,
+            inner.y,
+            inner.width,
+            inner.height.saturating_sub(action_space),
+        ),
+    );
+
+    let action_y = inner
+        .bottom()
+        .saturating_sub(SourceModal::ACTIONS.len() as u16 + 1);
+    for (index, action) in SourceModal::ACTIONS.iter().enumerate() {
+        let selected = index == modal.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        let y = action_y + index as u16;
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{action}")).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width / 2, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 1),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k move · Enter run · r test · c change · Esc back")
             .style(Style::default().fg(theme.muted).bg(theme.elevated))
             .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
@@ -563,15 +1050,27 @@ fn render_text(
     hit_map: &mut HitMap,
 ) {
     let is_search = text.kind == TextKind::Search;
-    let height = if is_search { 11 } else { 9 };
+    let is_filter = text.kind == TextKind::AddFilter;
+    let height = if is_search {
+        11
+    } else if is_filter {
+        10
+    } else {
+        9
+    };
     let rect = layout::centered(area, area.width.min(64), height);
     modal_frame(frame, rect, &text.title, theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
 
-    let label = if is_search { "Search: " } else { "Subreddit: " };
+    let label = match text.kind {
+        TextKind::Search => "Search: ",
+        TextKind::GoToSubreddit => "Subreddit: ",
+        TextKind::AddFilter => "Filter: ",
+    };
     let value = &text.value;
     let show_prefix = !is_search
+        && !is_filter
         && !value.starts_with("r/")
         && !value.starts_with("/r/")
         && !value.starts_with("http");
@@ -631,6 +1130,9 @@ fn render_text(
                 TextKind::Search => {
                     "Searches the current provider. Empty queries are ignored.".to_string()
                 }
+                TextKind::AddFilter => {
+                    "keyword:ai · sub:politics · author:name · domain:example.com".to_string()
+                }
             };
             frame.render_widget(
                 Paragraph::new(ellipsize(&help, inner.width as usize))
@@ -640,7 +1142,13 @@ fn render_text(
         }
     }
 
-    let submit_label = if is_search { " Search " } else { " Open " };
+    let submit_label = if is_search {
+        " Search "
+    } else if is_filter {
+        " Add "
+    } else {
+        " Open "
+    };
     let submit_width = width(submit_label) as u16 + 2;
     let submit_rect = Rect::new(
         inner.right().saturating_sub(submit_width),
@@ -662,6 +1170,8 @@ fn render_text(
     hit_map.push(submit_rect, HitTarget::ModalSubmit);
     let hint = if is_search {
         "Enter search · Esc cancel"
+    } else if is_filter {
+        "Enter add · Esc back"
     } else {
         "Enter open · Esc cancel"
     };

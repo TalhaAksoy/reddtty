@@ -63,6 +63,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             provider,
             demo,
             revealed,
+            library,
             hit_map,
             ..
         } = app;
@@ -81,6 +82,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     spinner,
                     spinner_index,
                     revealed,
+                    library,
                     &theme,
                     hit_map,
                 );
@@ -141,6 +143,16 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             ratatui::widgets::Block::default().style(theme.base()),
             root.body,
         );
-        screens::overlays::render_modal(frame, frame.area(), modal, &theme, &mut app.hit_map);
+        screens::overlays::render_modal(
+            frame,
+            frame.area(),
+            modal,
+            &app.library,
+            &app.health,
+            &app.provider_label,
+            app.demo,
+            &theme,
+            &mut app.hit_map,
+        );
     }
 }

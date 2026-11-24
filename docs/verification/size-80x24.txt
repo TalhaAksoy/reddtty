@@ -10,7 +10,7 @@
   r/technology     │ ╰────────────────────────────────────────────────────────╯│
   r/opensource     │                                                           │
   r/unixporn       │ ╭────────────────────────────────────────────────────────╮│
-  r/webdev         │ │ r/linux  •  u/quiet_daemon  •  8h ago                  ││
+  r/webdev         │ │ r/linux  •  u/quiet_daemon  •  8h ago         ● unread ││
   r/machinelearni… │ │                                                        ││
   r/askscience     │ │ I switched my entire workflow to Linux                 ││
   r/gaming         │ │ After using another OS for years, I moved my whole…    ││

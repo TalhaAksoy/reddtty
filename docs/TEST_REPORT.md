@@ -1,6 +1,7 @@
 # Test report
 
-Date: **2026-11-23**  
+Date: **2026-11-24**
+
 Build: debug + release, Rust 1.100.0 (2026-11-09, Homebrew), macOS 27.0.1
 (aarch64, Apple M1). Terminal used for PTY work: tmux 3.x with `tmux-256color`;
 outer terminals on the machine: Ghostty 1.4.0 and iTerm2 3.7.7.
@@ -19,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 229 passed, 0 failed, 0 ignored
+cargo test                                 # 263 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 36 captures, 66 assertions, all pass
+python3 scripts/pty_verify.py              # 53 captures, 90 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -31,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 168 | 168 | 0 | 0 |
+| Library unit tests (`src/**`) | 198 | 198 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 37 | 37 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 41 | 41 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **229** | **229** | **0** | **0** |
+| **Total** | **263** | **263** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -163,6 +164,26 @@ cargo build --release --example stress
 - The Theme picker previews with `j/k`, commits with `Enter`, and restores the
   original theme on `Esc`/outside click. Preview and persistence are app-tested;
   the six-row picker is rendered in `TestBackend`.
+- Selecting a config rebuilds the provider in-process: the new top-bar label,
+  reset navigation stack, preserved favorites/theme, persisted provider choice
+  and rejection of old view/request results are all asserted.
+- `library.toml` round-trips bookmark post snapshots, read posts/comments and
+  filter rules; malformed files warn and start empty. Bookmark toggling,
+  bookmark-list opening, read/unread toggling, hide-read pruning and offline
+  snapshots are app-tested.
+- Local filters match keywords, subreddits, authors, domains and read state;
+  invalid expressions are rejected. Filtered pages are dropped before reaching
+  the feed, hide-read prunes immediately, and an all-filtered page keeps
+  paginating instead of stalling. The Filters modal adds/removes/clears rules
+  and persists them.
+- Comment navigation is covered for next/previous root, parent jump, collapse
+  all/expand all, OP-only filtering (including hidden non-OP parents), next
+  unread and comment-vs-post permalink targets.
+- Source health records successes/failures, latency samples, last error,
+  success rate and reset-on-provider-switch. The Settings → Source screen and
+  its Retry/Change-source actions are app- and render-tested.
+- The command palette filters by label and keywords, moves selection, runs
+  actions, tolerates typing `q` without quitting, and toggles with `Ctrl+P`.
 - Top bar shows `OLD REDDIT`/`REDLIB` instead of `DEMO`, includes
   `Access denied`/`HTML changed`/`Login required` statuses, and keeps the
   provider badge at 60 columns when space is tight.
@@ -199,7 +220,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 36, "assertions": 66}
+{"ok": true, "captures": 53, "assertions": 90}
 ```
 
 Captures and the machine-readable summary are in
@@ -223,7 +244,13 @@ against the compiled terminal application and its alternate-screen output.
 | 11 | `/` → `terminal` opens a search feed titled `Search: terminal` | **Pass** |
 | 12 | `q` restores the terminal; shell resumes and prints `EXIT:0` | **Pass** |
 | 13 | Responsive sweep 60×20, 80×24, 100×30, 130×36, 160×45: feed renders, detail opens, help opens, status bar keeps `Quit`, quit is clean | **Pass** |
-| 14 | 30×10: feed renders with the `DEMO` badge; help opens and reports `18 more · Esc close`; quit is clean | **Pass** |
+| 14 | 30×10: feed renders with the `DEMO` badge; help opens and reports hidden shortcuts; quit is clean | **Pass** |
+| 15 | `b` shows `★ saved`, `m` shows `Marked as read.`, `B` opens the bookmarks list and `Enter` reopens the saved post | **Pass** |
+| 16 | Comment `z` collapse-all/expand-all, `n` next unread, `O` OP-only and `y` copy-permalink toasts are visible | **Pass** |
+| 17 | Settings → Source health shows `DEMO`, `Test now`, `Change source`, and `r` keeps the screen healthy | **Pass** |
+| 18 | Settings → Filters adds `keyword  black hole`; the feed reports `1 post(s) hidden by local filters` and the matching card disappears | **Pass** |
+| 19 | `:` opens Commands; typing `mocha` and Enter applies and persists `Theme: Catppuccin Mocha` | **Pass** |
+| 20 | Settings → Change config installs Demo in-process and shows `Provider applied immediately` without restarting | **Pass** |
 
 Visual inspection of the captures (not only assertions) found and drove the
 fixes listed in [`UX_REVIEW.md`](UX_REVIEW.md).
@@ -406,6 +433,13 @@ feed/sort/comment check.
 15. HTML providers do not support `Best` listings; it is offered only for
     search (`relevance`). Redlib's actual support depends on the instance and is
     not live-verified.
+16. Bookmarks store a post snapshot and its metadata, not the full comment
+    thread. Comments still require the source, while the post body remains
+    readable offline.
+17. Source-health metrics are session-only and are reset when the provider is
+    switched; they are not persisted across launches.
+18. Local filters apply to feed pages. Changing a filter refetches the current
+    feed; unchanged pages already loaded from a provider are not archived.
 
 ## Next steps
 

@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+                                ╭ Choose config ───────────────────────────────────────────────────────────╮
+                                │  ▸ Demo (offline)                                                        │
+                                │     Synthetic posts and comments. No network or Reddit account.          │
+                                │                                                                          │
+                                │    Redlib · hbubli.cc                                                    │
+                                │     Third-party Redlib instance; manually smoke-tested.                  │
+                                │                                                                          │
+                                │    Redlib · artemislena.eu                                               │
+                                │     Third-party Redlib instance; manually smoke-tested.                  │
+                                │                                                                          │
+                                │    Redlib · utilibre.org                                                 │
+                                │     Third-party Redlib instance; manually smoke-tested.                  │
+                                │                                                                          │
+                                │    Redlib · zanity.net                                                   │
+                                │     Third-party Redlib instance; manually smoke-tested.                  │
+                                │                                                                          │
+                                │    Redlib · safereddit.com                                               │
+                                │     Third-party Redlib instance; some listings may be blocked.           │
+                                │                                                                          │
+                                │                                                                          │
+                                │                                                                          │
+                                │                                      j/k move · Enter install · Esc back │
+                                ╰──────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+j/k Move · Enter Install · Esc Back

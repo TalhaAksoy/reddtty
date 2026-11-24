@@ -1,0 +1,38 @@
+ REDDTTY   ›  r/rust · Post                                                                                                 ● DEMO   ? Help
+ r/rust   •   u/ferris_fan   •   2h ago   Discussion
+ Why I love building CLI applications with Rust
+
+ ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com
+ I have been writing command-line tools for a decade, and Rust is the first language where shipping feels this good.
+
+ What changed for me
+
+ • A single static binary is easy to hand to someone else
+ • Result makes failure paths visible instead of optional
+ • Cargo's defaults are boring in the best possible way
+ • The ecosystem has excellent crates for terminals, parsing and HTTP
+
+ ▌ The compiler is not fighting you. It is reviewing your work before your users do.
+
+ Here is the smallest argument parser I actually enjoy using:
+
+   code                                                                                                                             ↕ 14/23
+ COMMENTS  248                                                                                                                 Sort: Best ▾
+ ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  u/byte_wanderer   ▲ 1.3k   2h ago                                                                                                       ┃
+  The part about documentation is underrated. Half of my bookmarks are just good READMEs.                                                 ┃
+                                                                                                                                          ┃
+ ▌u/firefox_fox   ▲ 1.3k   2h ago                                                                                                         ┃
+ ▌The examples are great, but I would add a warning about running this as root.                                                           ┃
+ ▌                                                                                                                                        ┃
+  ├─ u/null_pointer   ▲ 738   2h ago                                                                                                      ┃
+  │    I have been using this approach in production for a year. One caveat: watch the memory usage.                                      ┃
+                                                                                                                                          │
+  u/quiet_signal   ▲ 1k   2h ago                                                                                                          │
+  Does this work with older terminals? I spend a lot of time on servers over SSH.                                                         │
+                                                                                                                                          │
+  ├─ u/[deleted]   2h ago                                                      ℹ Jumped to the next unread comment.                       │
+  │    [deleted]                                                               ℹ Expanded all comment threads.                            │
+                                                                               ℹ Collapsed all comment threads.                           │
+  u/firefox_fox   ▲ 972   2h ago                                                                                                          │
+j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

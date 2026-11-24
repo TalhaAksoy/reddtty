@@ -12,15 +12,16 @@ main.rs ── clap CLI, logging, terminal init/restore, input thread, ticker, e
   ├── cli.rs
   ├── app/          application state and policy
   │     feed.rs     feed view: posts, heights, scroll, cursor pagination
-  │     post.rs     detail view: body cache, comment tree flattening
+  │     post.rs     detail view: body cache, comment tree flattening/navigation
   │     gallery.rs  gallery index
-  │     modal.rs    sort/range/text modal state and input editing
+  │     modal.rs    sort/range/text/bookmark/filter/source/palette state
   │     sidebar.rs  navigation sections and favorites/recents
+  │     health.rs   in-memory request latency/status/success metrics
   │     hit.rs      hit-map/pane rectangles produced by rendering
   │
   ├── ui/           immediate-mode rendering only
   │     layout.rs   responsive rectangles (no widgets)
-  │     theme.rs    one central palette for dark/light
+  │     theme.rs    one central palette for dark/light/Catppuccin
   │     screens/    feed, post, gallery, overlays
   │     widgets/    post cards, comments, sidebar, top/status bars, sort tabs
   │
@@ -36,7 +37,8 @@ main.rs ── clap CLI, logging, terminal init/restore, input thread, ticker, e
   ├── media/        downloader, decoder/encoder, bounded LRU cache, manager
   ├── models/       provider-independent Post, Comment, Feed, Subreddit types
   ├── config/       TOML settings, validation, platform paths
-  └── utils/        sanitisation, wrapping, Markdown, time, browser opener
+  ├── library.rs    local bookmarks (post snapshots), read state, filters
+  └── utils/        sanitisation, wrapping, Markdown, time, browser, clipboard
 ```
 
 Dependency direction is deliberately one-way:
@@ -57,11 +59,32 @@ about Ratatui.
 - `S` opens the Settings modal inside the running app. Theme changes apply
   immediately through the Settings theme picker: `j/k` previews live, `Enter`
   persists, `Esc`/outside click restores the previous theme. `T` cycles all six
-  themes directly. Changing the config replaces only the provider section, preserves
-  favorites/recents/theme/images/UI, backs up the old file, and asks the user to
-  restart so the provider and all in-memory state are rebuilt cleanly.
+  themes directly. Changing the config replaces only the provider section,
+  preserves favorites/recents/theme/images/UI/bookmarks/filters, backs up the old
+  file, and rebuilds the provider in-process. The navigation stack is replaced
+  with a fresh feed, so stale view/request ids are ignored without a restart.
 - Presets are embedded with `include_str!`, so `cargo install` users do not need
   a repository checkout.
+
+## Local library, filters and source health
+
+`library.toml` sits next to `config.toml`. It stores:
+
+- bookmark snapshots (`SavedPost` includes the full `Post`), so opening a saved
+  post still shows its body when the provider is unavailable;
+- read state for posts and comments (prefixed internally by separate sets);
+- local filter rules: keywords, subreddits, authors, domains and hide-read.
+
+`app::App` loads the file at construction and writes it atomically after every
+mutation (mode `0600` on Unix). Filters are applied when a provider page arrives
+and are also pruned from the visible feed immediately; if a page is fully
+filtered, pagination continues until a visible post or the end of the listing is
+reached. None of this data is sent to a provider.
+
+`app::health::SourceHealth` records each completed request's status, error and
+latency (last 12 samples). It is memory-only and rendered by the Source screen.
+“Test now” simply refreshes the current view through the normal request path, so
+the same metrics are updated without a separate probe.
 
 ## Runtime and event flow
 
@@ -106,7 +129,8 @@ about Ratatui.
 
 ### Provider selection and HTML parsing
 
-Provider construction is a one-time decision in `providers::build_provider`:
+Provider construction happens at startup and again on every in-app config
+change through `providers::build_provider`:
 
 ```text
 provider.type = auto      → Reddit OAuth if credentials exist, else demo
@@ -120,9 +144,9 @@ provider.type = redlib    → RedlibProvider for the configured instance, or a
 An explicitly selected provider never falls back to a different source. Missing
 credentials, a missing/unsafe Redlib instance, or `provider.html.allow_network =
 false` produces a `FailingProvider` that returns a typed `ProviderError`; the UI
-shows that error and the top bar names the selected source. This also means a
-stale async result cannot be attributed to a different provider: the provider is
-fixed for the session and every result still carries a view/request id.
+shows that error and the top bar names the selected source. A provider switch
+clears the in-flight request start map and resets navigation to a new view id, so
+a stale async result cannot be attributed to the new source.
 
 HTML request flow (off Old Reddit or a user-selected Redlib instance):
 

@@ -6,6 +6,8 @@ use crate::models::PostContent;
 impl App {
     // ------------------------------------------------------------------
     pub fn test_with_posts(posts: Vec<Post>) -> Self {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let settings = Settings::default();
         let provider: Arc<dyn ContentProvider> = Arc::new(TestProvider);
@@ -15,7 +17,11 @@ impl App {
         let mut app = Self {
             provider,
             settings,
-            config_path: std::env::temp_dir().join("reddtty-test-config.toml"),
+            config_path: std::env::temp_dir().join(format!(
+                "reddtty-test-config-{}-{}.toml",
+                std::process::id(),
+                COUNTER.fetch_add(1, Ordering::Relaxed)
+            )),
             tx,
             nav: vec![View::Feed(feed)],
             focus: Focus::Feed,
@@ -40,6 +46,14 @@ impl App {
             persist_theme: Settings::default().general.theme,
             persist_images_enabled: false,
             persist_images_protocol: crate::config::ImageProtocolSetting::Disabled,
+            library: crate::library::Library::default(),
+            library_path: std::env::temp_dir().join(format!(
+                "reddtty-test-library-{}-{}.toml",
+                std::process::id(),
+                COUNTER.fetch_add(1, Ordering::Relaxed)
+            )),
+            health: SourceHealth::default(),
+            request_starts: std::collections::HashMap::new(),
         };
         app.set_size(100, 30);
         app
@@ -340,6 +354,397 @@ fn theme_picker_enter_commits_and_persists() {
 }
 
 #[test]
+fn config_change_switches_provider_without_restart() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-provider-switch-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    app.config_path = dir.join("config.toml");
+    app.library_path = dir.join("library.toml");
+    app.settings.favorites = vec!["rust".into()];
+    app.settings.general.theme = crate::config::ThemeMode::Mocha;
+    app.persist_theme = crate::config::ThemeMode::Mocha;
+    let old_view = app.current_id().unwrap();
+
+    app.modal = Some(Modal::ConfigPicker(ConfigPickerModal { selected: 1 }));
+    app.activate_config_picker_item(1);
+
+    assert!(app.modal.is_none());
+    assert_eq!(app.provider.short_name(), "REDLIB");
+    assert!(
+        app.provider_label.starts_with("REDLIB"),
+        "{}",
+        app.provider_label
+    );
+    assert!(!app.demo);
+    assert_eq!(app.nav.len(), 1, "navigation stack must be reset safely");
+    assert!(matches!(app.current(), Some(View::Feed(_))));
+    assert_eq!(app.settings.favorites, vec!["rust"]);
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Mocha);
+
+    let (loaded, warnings) = Settings::load(&app.config_path);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert_eq!(loaded.provider.kind, crate::config::ProviderKind::Redlib);
+    assert_eq!(loaded.favorites, vec!["rust"]);
+    assert_eq!(loaded.general.theme, crate::config::ThemeMode::Mocha);
+
+    // A response from the old provider/view must not leak into the new feed.
+    app.handle_event(AppEvent::FeedLoaded {
+        view: old_view,
+        request: 1,
+        append: false,
+        result: Ok(FeedPage {
+            posts: vec![post("stale")],
+            after: None,
+            has_more: false,
+        }),
+    });
+    assert!(app.current_feed().unwrap().posts.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn failed_requests_feed_the_source_health_screen() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let id = app.current_id().unwrap();
+    app.current_feed_mut().unwrap().request = Some(41);
+    app.request_starts.insert(41, Instant::now());
+    app.handle_event(AppEvent::FeedLoaded {
+        view: id,
+        request: 41,
+        append: false,
+        result: Err(ProviderError::RateLimited {
+            retry_after: Some(5),
+        }),
+    });
+    assert_eq!(
+        app.health.last_status,
+        Some(crate::providers::ProviderStatus::RateLimited)
+    );
+    assert_eq!(app.health.requests, 1);
+    assert_eq!(app.health.failures, 1);
+    assert!(app.health.last_latency.is_some());
+    assert!(app.health.last_error.is_some());
+    assert!(app.request_starts.is_empty());
+}
+
+#[test]
+fn bookmarks_persist_snapshot_and_open_from_the_list() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-bookmarks-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    app.library_path = dir.join("library.toml");
+
+    app.toggle_bookmark_current();
+    assert!(app.library.is_bookmarked("p"));
+    assert_eq!(app.library.bookmarks.len(), 1);
+    let (loaded, warnings) = crate::library::Library::load(&app.library_path);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert_eq!(loaded.bookmarks[0].post.id, "p");
+    assert_eq!(loaded.bookmarks[0].post.title, "Post p");
+
+    app.open_bookmarks();
+    assert!(matches!(app.modal, Some(Modal::Bookmarks(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(matches!(app.current(), Some(View::Post(_))));
+    assert!(app.library.is_post_read("p"));
+
+    app.toggle_bookmark_current();
+    assert!(!app.library.is_bookmarked("p"));
+    let (loaded, _) = crate::library::Library::load(&app.library_path);
+    assert!(loaded.bookmarks.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn read_state_toggles_and_persists() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-read-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    app.library_path = dir.join("library.toml");
+
+    app.toggle_read_current();
+    assert!(app.library.is_post_read("p"));
+    let (loaded, _) = crate::library::Library::load(&app.library_path);
+    assert!(loaded.is_post_read("p"));
+
+    app.toggle_read_current();
+    assert!(!app.library.is_post_read("p"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn comment_navigation_keys_move_between_roots_and_parents() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let mut root = Comment::new("a", "alice", "Root");
+    root.replies.push(Comment::new("b", "bob", "Child"));
+    root.replies[0]
+        .replies
+        .push(Comment::new("c", "carol", "Grandchild"));
+    let second = Comment::new("d", "dave", "Second root");
+    let comments = vec![root, second];
+    push_post_view(&mut app, comments);
+    app.prepare();
+
+    app.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+    assert_eq!(
+        app.current_post().unwrap().rows[app.current_post().unwrap().selected].id,
+        "d"
+    );
+    app.handle_key(KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE));
+    assert_eq!(
+        app.current_post().unwrap().rows[app.current_post().unwrap().selected].id,
+        "a"
+    );
+    app.handle_key(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE));
+    app.current_post_mut().unwrap().selected = 2;
+    app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE));
+    assert_eq!(
+        app.current_post().unwrap().rows[app.current_post().unwrap().selected].id,
+        "b"
+    );
+}
+
+#[test]
+fn comment_collapse_all_and_op_only_change_rows() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let mut root = Comment::new("a", "alice", "Root");
+    root.replies.push(Comment::new("b", "bob", "Child"));
+    let second = Comment::new("d", "dave", "Second root");
+    push_post_view(&mut app, vec![root, second]);
+    app.prepare();
+
+    app.handle_key(KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE));
+    assert_eq!(app.current_post().unwrap().rows.len(), 2);
+    app.handle_key(KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE));
+    assert_eq!(app.current_post().unwrap().rows.len(), 3);
+
+    app.handle_key(KeyEvent::new(KeyCode::Char('O'), KeyModifiers::NONE));
+    assert!(app.current_post().unwrap().op_only);
+    assert_eq!(app.current_post().unwrap().rows.len(), 1);
+    assert_eq!(app.current_post().unwrap().rows[0].id, "a");
+    app.handle_key(KeyEvent::new(KeyCode::Char('O'), KeyModifiers::NONE));
+    assert!(!app.current_post().unwrap().op_only);
+}
+
+#[test]
+fn next_unread_comment_marks_and_skips_read_rows() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let mut root = Comment::new("a", "alice", "Root");
+    root.replies.push(Comment::new("b", "bob", "Read"));
+    root.replies.push(Comment::new("c", "carol", "Unread"));
+    push_post_view(&mut app, vec![root]);
+    app.prepare();
+    app.library.mark_comment_read("b");
+
+    app.handle_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE));
+    let view = app.current_post().unwrap();
+    assert_eq!(view.rows[view.selected].id, "c");
+    assert!(app.library.is_comment_read("c"));
+    assert!(
+        app.library.is_comment_read("a"),
+        "current row is marked read"
+    );
+}
+
+#[test]
+fn permalink_targets_follow_comment_focus() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let mut root = Comment::new("a", "alice", "Root");
+    root.replies.push(Comment::new("b", "bob", "Child"));
+    push_post_view(&mut app, vec![root]);
+    app.prepare();
+    app.focus = Focus::Comments;
+    app.current_post_mut().unwrap().selected = 1;
+    let (comment_url, label) = app.current_permalink().unwrap();
+    assert_eq!(label, "Comment permalink");
+    assert!(
+        comment_url.ends_with("/r/rust/comments/x/b/"),
+        "{comment_url}"
+    );
+
+    app.focus = Focus::PostBody;
+    let (post_url, label) = app.current_permalink().unwrap();
+    assert_eq!(label, "Post permalink");
+    assert_eq!(post_url, "https://www.reddit.com/r/rust/comments/x");
+}
+
+fn push_post_view(app: &mut App, comments: Vec<Comment>) {
+    let post = app.current_feed().unwrap().posts[0].clone();
+    let id = app.alloc_view();
+    app.nav.push(View::Post(PostView::with_comments(
+        id,
+        post,
+        comments,
+        CommentSort::Best,
+    )));
+    app.focus = Focus::Comments;
+}
+
+#[test]
+fn source_health_screen_opens_from_settings_and_offers_retry() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.open_settings();
+    app.activate_settings_item(2);
+    assert!(matches!(app.modal, Some(Modal::Source(_))));
+    app.execute_source_action(0);
+    assert!(matches!(app.modal, Some(Modal::Source(_))));
+    assert!(
+        app.notifications
+            .iter()
+            .any(|notice| notice.text.contains("Testing"))
+    );
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(matches!(app.modal, Some(Modal::ConfigPicker(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(matches!(app.modal, Some(Modal::Settings(_))));
+}
+
+#[test]
+fn local_filters_hide_loaded_posts_and_paginate_when_empty() {
+    let mut app = App::test_with_posts((0..4).map(|i| post(&format!("p{i}"))).collect());
+    app.library
+        .filters
+        .add_expression("keyword:Post p1")
+        .unwrap();
+    let id = app.current_id().unwrap();
+    app.current_feed_mut().unwrap().request = Some(77);
+    app.handle_event(AppEvent::FeedLoaded {
+        view: id,
+        request: 77,
+        append: false,
+        result: Ok(FeedPage {
+            posts: (0..4).map(|i| post(&format!("p{i}"))).collect(),
+            after: Some("next".into()),
+            has_more: true,
+        }),
+    });
+    let feed = app.current_feed().unwrap();
+    assert!(feed.posts.iter().all(|post| post.id != "p1"));
+    assert_eq!(feed.posts.len(), 3);
+    assert!(feed.has_more);
+    assert!(
+        app.notifications
+            .iter()
+            .any(|notice| notice.text.contains("1 post(s) hidden"))
+    );
+}
+
+#[test]
+fn hide_read_filter_drops_read_posts() {
+    let mut app = App::test_with_posts((0..3).map(|i| post(&format!("p{i}"))).collect());
+    app.library.filters.hide_read = true;
+    app.library.mark_post_read("p0");
+    let id = app.current_id().unwrap();
+    app.current_feed_mut().unwrap().request = Some(78);
+    app.handle_event(AppEvent::FeedLoaded {
+        view: id,
+        request: 78,
+        append: false,
+        result: Ok(FeedPage {
+            posts: (0..3).map(|i| post(&format!("p{i}"))).collect(),
+            after: None,
+            has_more: false,
+        }),
+    });
+    assert_eq!(app.current_feed().unwrap().posts.len(), 2);
+    assert!(app.library.is_post_read("p0"));
+}
+
+#[test]
+fn filters_modal_adds_removes_and_clears_rules() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.library_path = std::env::temp_dir().join(format!(
+        "reddtty-filters-{}-{}.toml",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    app.open_settings();
+    app.activate_settings_item(3);
+    assert!(matches!(app.modal, Some(Modal::Filters(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE));
+    assert!(matches!(app.modal, Some(Modal::Text(_))));
+    for c in "keyword:Post".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.library.filters.keywords, vec!["Post"]);
+    assert!(matches!(app.modal, Some(Modal::Filters(_))));
+
+    app.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE));
+    assert!(app.library.filters.keywords.is_empty());
+
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(app.library.filters.hide_read);
+    app.handle_key(KeyEvent::new(KeyCode::Char('C'), KeyModifiers::NONE));
+    assert!(!app.library.filters.is_active());
+    let (loaded, _) = crate::library::Library::load(&app.library_path);
+    assert!(!loaded.filters.is_active());
+    let _ = std::fs::remove_file(&app.library_path);
+}
+
+#[test]
+fn command_palette_runs_selected_actions() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.handle_key(KeyEvent::new(KeyCode::Char(':'), KeyModifiers::NONE));
+    assert!(matches!(app.modal, Some(Modal::CommandPalette(_))));
+    for c in "mocha".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Mocha);
+    assert!(app.modal.is_none());
+
+    app.open_command_palette();
+    for c in "filters".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(matches!(app.modal, Some(Modal::Filters(_))));
+
+    // Typing q inside the palette must filter, never quit the app.
+    app.open_command_palette();
+    app.handle_key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE));
+    assert!(!app.should_quit);
+    assert!(matches!(app.modal, Some(Modal::CommandPalette(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(app.modal.is_none());
+}
+
+#[test]
+fn ctrl_p_toggles_the_command_palette() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL));
+    assert!(matches!(app.modal, Some(Modal::CommandPalette(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL));
+    assert!(app.modal.is_none());
+}
+
+#[test]
 fn stale_requests_are_ignored() {
     let mut app = App::test_with_posts(vec![post("p")]);
     let id = app.current_id().unwrap();
@@ -354,8 +759,7 @@ fn stale_requests_are_ignored() {
         }),
     });
     assert_eq!(app.current_feed().unwrap().posts[0].id, "p");
-    // The provider is fixed for the session; a stale result cannot relabel the
-    // UI as if it came from another source.
+    // A stale result from an old view cannot relabel the UI or inject posts.
     assert_eq!(app.provider_label, "DEMO");
 }
 

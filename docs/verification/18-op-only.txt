@@ -1,0 +1,38 @@
+ REDDTTY   ›  r/rust · Post                                                                                                 ● DEMO   ? Help
+ r/rust   •   u/ferris_fan   •   2h ago   Discussion
+ Why I love building CLI applications with Rust
+
+ ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com
+ I have been writing command-line tools for a decade, and Rust is the first language where shipping feels this good.
+
+ What changed for me
+
+ • A single static binary is easy to hand to someone else
+ • Result makes failure paths visible instead of optional
+ • Cargo's defaults are boring in the best possible way
+ • The ecosystem has excellent crates for terminals, parsing and HTTP
+
+ ▌ The compiler is not fighting you. It is reviewing your work before your users do.
+
+ Here is the smallest argument parser I actually enjoy using:
+
+   code                                                                                                                             ↕ 14/23
+ COMMENTS  248                                                                                                                 Sort: Best ▾
+ ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                              No comments yet.
+                                                      Be the first to reply on Reddit.
+
+
+
+
+
+
+
+
+
+
+                                                                               ℹ Showing only comments by u/ferris_fan.
+                                                                               ℹ Jumped to the next unread comment.
+                                                                               ℹ Expanded all comment threads.
+
+j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

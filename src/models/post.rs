@@ -159,6 +159,16 @@ impl Post {
         Some(format!("https://www.reddit.com{path}"))
     }
 
+    /// Absolute permalink for one comment inside this post.
+    pub fn comment_url(&self, comment_id: &str) -> Option<String> {
+        let comment_id = comment_id.trim();
+        if comment_id.is_empty() || comment_id.starts_with("more") {
+            return None;
+        }
+        let base = self.reddit_url()?;
+        Some(format!("{}/{}/", base.trim_end_matches('/'), comment_id))
+    }
+
     pub fn is_hidden(&self, show_nsfw: bool, show_spoilers: bool) -> bool {
         (self.nsfw && !show_nsfw) || (self.spoiler && !show_spoilers)
     }
@@ -252,6 +262,16 @@ mod tests {
             post.reddit_url().unwrap(),
             "https://www.reddit.com/r/rust/comments/abc/hello/"
         );
+    }
+
+    #[test]
+    fn comment_permalink_appends_the_comment_id() {
+        let post = base_post(PostContent::Text);
+        assert_eq!(
+            post.comment_url("abc123").unwrap(),
+            "https://www.reddit.com/r/rust/comments/abc/hello/abc123/"
+        );
+        assert!(post.comment_url("").is_none());
     }
 
     #[test]

@@ -13,7 +13,7 @@
   r/webdev         │ ╰────────────────────────────────────────────────────────────────────────────╯│
   r/machinelearni… │                                                                               │
   r/askscience     │ ╭────────────────────────────────────────────────────────────────────────────╮│
-  r/gaming         │ │ r/linux  •  u/quiet_daemon  •  8h ago                                      ││
+  r/gaming         │ │ r/linux  •  u/quiet_daemon  •  8h ago                             ● unread ││
                    │ │                                                                            ││
  FAVORITES         │ │ I switched my entire workflow to Linux                                     ││
   f to add         │ │                                                                            ││

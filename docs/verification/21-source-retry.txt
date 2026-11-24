@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+
+                                 ╭ Source health ─────────────────────────────────────────────────────────╮
+                                 │ Source   DEMO                                                          │
+                                 │ Mode     Demo · offline synthetic data                                 │
+                                 │ Status   Available                                                     │
+                                 │ Last ok  just now   Attempt  just now                                  │
+                                 │ Latency  0 ms last · 1 ms average                                      │
+                                 │ Reliability 100% of 6 requests                                         │
+                                 │                                                                        │
+                                 │ Library  1 bookmarks · 0 local filter rules                            │
+                                 │ Cache    provider responses are in-memory for this session             │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │                                                                        │
+                                 │  ▸ Test now                                                            │
+                                 │    Change source                                                       │
+                                 │                    j/k move · Enter run · r test · c change · Esc back │
+                                 ╰────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+j/k Move · Enter Run · r Test · Esc Back

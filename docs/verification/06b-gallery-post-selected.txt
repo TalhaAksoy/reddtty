@@ -2,7 +2,7 @@
  NAVIGATION            │ Home                                                                   25 posts · more │ABOUT
 ┃ Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │Home
   Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │Demo mode: synthetic posts
-                       │ │ r/programming  •  u/clean_code_ish  •  4h ago                                     ││ │and comments, stored
+                       │ │ r/programming  •  u/clean_code_ish  •  4h ago                            ● unread ││ │and comments, stored
  COMMUNITIES           │ │                                                                                   ││ │locally.
   r/rust               │ │ The hidden cost of premature abstraction                                          ││ │
   r/linux              │ │                                                                                   ││ │SUGGESTED COMMUNITIES
@@ -19,7 +19,7 @@
   f to add             │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │s     sort
                        │                                                                                      │ │g     subreddit
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │/     search
-                       │ │ r/askscience  •  u/event_horizon  •  2d ago                                       ││ │v     image
+                       │ │ r/askscience  •  u/event_horizon  •  2d ago                              ● unread ││ │v     image
                        │ │                                                                                   ││ │?     help
                        │ │ Visualising a black hole merger                                                   ││ │
                        │ │                                                                                   ││ │
@@ -35,4 +35,4 @@
                        │ │ ▲ 1.7k   ◍ 83   Gallery  Astronomy                                        GALLERY ││ │
                        │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
  h hide · Tab focus    │                                                                                      │ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · ↓ More · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

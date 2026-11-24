@@ -2,7 +2,7 @@
  NAVIGATION            │ Search: terminal  search results                                               5 posts │ABOUT
   Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │Search: terminal
   Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │Demo mode: synthetic posts
-                       │ │ r/linux  •  u/sunset_terminal  •  25m ago                                         │┃ │and comments, stored
+                       │ │ r/linux  •  u/sunset_terminal  •  25m ago                                ● unread │┃ │and comments, stored
  COMMUNITIES           │ │                                                                                   │┃ │locally.
   r/rust               │ │ Sunset over my terminal                                                           │┃ │
   r/linux              │ │                                                                                   │┃ │SUGGESTED COMMUNITIES
@@ -30,9 +30,9 @@
                        │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                                      │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
-                       │ │ r/technology  •  u/packet_garden  •  23h ago                                      ││ │
+                       │ │ r/technology  •  u/packet_garden  •  23h ago                             ● unread ││ │
                        │ │                                                                                   ││ │
                        │ │ A new open standard for portable terminal graphics                                ││ │
                        │ │                                                                                   ││ │
  h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · b Save · B Saved · y Copy · o Open · v Image · ? Help · q Quit

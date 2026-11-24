@@ -13,7 +13,7 @@
   r/webdev             │ ╰─────────────────────────────────────────────────────────────────────────╯│ │▸ r/opensource
   r/machinelearning    │                                                                            │ │▸ r/unixporn
   r/askscience         │ ╭─────────────────────────────────────────────────────────────────────────╮│ │
-  r/gaming             │ │ r/linux  •  u/quiet_daemon  •  8h ago                                   ││ │SHORTCUTS
+  r/gaming             │ │ r/linux  •  u/quiet_daemon  •  8h ago                          ● unread ││ │SHORTCUTS
                        │ │                                                                         ││ │j/k   navigate
  FAVORITES             │ │ I switched my entire workflow to Linux                                  ││ │Enter open post
   f to add             │ │                                                                         ││ │s     sort
@@ -31,6 +31,6 @@
                        │ ╰─────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                            │ │
                        │ ╭─────────────────────────────────────────────────────────────────────────╮│ │
-                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                ││ │
+                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                       ● unread ││ │
  h hide · Tab focus    │ ╰─────────────────────────────────────────────────────────────────────────╯│ │
-j/k Navigate · Enter Open · s Sort · t Top · g Go · / Search · r Refresh · ↓ More · o Open · v Image · ? Help · q Quit
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

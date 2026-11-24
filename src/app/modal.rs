@@ -137,6 +137,7 @@ impl RangeModal {
 pub enum TextKind {
     GoToSubreddit,
     Search,
+    AddFilter,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -163,6 +164,19 @@ impl TextModal {
             kind: TextKind::GoToSubreddit,
             title: "Go to subreddit".into(),
             prompt: "r/".into(),
+            value: String::new(),
+            error: None,
+            scope: SearchScopeChoice::All,
+            current_subreddit: None,
+            cursor: 0,
+        }
+    }
+
+    pub fn add_filter() -> Self {
+        Self {
+            kind: TextKind::AddFilter,
+            title: "Add local filter".into(),
+            prompt: String::new(),
             value: String::new(),
             error: None,
             scope: SearchScopeChoice::All,
@@ -354,6 +368,219 @@ impl ThemePickerModal {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct BookmarksModal {
+    pub selected: usize,
+}
+
+impl BookmarksModal {
+    pub fn clamp(&mut self, total: usize) {
+        self.selected = self.selected.min(total.saturating_sub(1));
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FiltersModal {
+    pub selected: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommandId {
+    Help,
+    Settings,
+    Filters,
+    SourceHealth,
+    Bookmarks,
+    Search,
+    GoToSubreddit,
+    ChangeSource,
+    Refresh,
+    ToggleSidebar,
+    SortBest,
+    SortHot,
+    SortNew,
+    SortTop,
+    RangeAll,
+    ThemeNext,
+    ThemeDark,
+    ThemeLight,
+    ThemeLatte,
+    ThemeFrappe,
+    ThemeMacchiato,
+    ThemeMocha,
+    CopyPermalink,
+    MarkRead,
+    AddFilter,
+}
+
+impl CommandId {
+    pub const ALL: [Self; 25] = [
+        Self::Search,
+        Self::GoToSubreddit,
+        Self::SortBest,
+        Self::SortHot,
+        Self::SortNew,
+        Self::SortTop,
+        Self::RangeAll,
+        Self::ThemeNext,
+        Self::ThemeDark,
+        Self::ThemeLight,
+        Self::ThemeLatte,
+        Self::ThemeFrappe,
+        Self::ThemeMacchiato,
+        Self::ThemeMocha,
+        Self::Bookmarks,
+        Self::MarkRead,
+        Self::CopyPermalink,
+        Self::Filters,
+        Self::AddFilter,
+        Self::SourceHealth,
+        Self::ChangeSource,
+        Self::Refresh,
+        Self::ToggleSidebar,
+        Self::Settings,
+        Self::Help,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Help => "Keyboard shortcuts",
+            Self::Settings => "Open settings",
+            Self::Filters => "Open local filters",
+            Self::SourceHealth => "Open source health",
+            Self::Bookmarks => "Open bookmarks",
+            Self::Search => "Search posts",
+            Self::GoToSubreddit => "Go to subreddit",
+            Self::ChangeSource => "Change source / config",
+            Self::Refresh => "Refresh current view",
+            Self::ToggleSidebar => "Toggle sidebar",
+            Self::SortBest => "Sort feed: Best",
+            Self::SortHot => "Sort feed: Hot",
+            Self::SortNew => "Sort feed: New",
+            Self::SortTop => "Sort feed: Top",
+            Self::RangeAll => "Top range: All time",
+            Self::ThemeNext => "Theme: next",
+            Self::ThemeDark => "Theme: dark",
+            Self::ThemeLight => "Theme: light",
+            Self::ThemeLatte => "Theme: Catppuccin Latte",
+            Self::ThemeFrappe => "Theme: Catppuccin Frappé",
+            Self::ThemeMacchiato => "Theme: Catppuccin Macchiato",
+            Self::ThemeMocha => "Theme: Catppuccin Mocha",
+            Self::CopyPermalink => "Copy permalink",
+            Self::MarkRead => "Toggle read state",
+            Self::AddFilter => "Add local filter",
+        }
+    }
+
+    fn keywords(self) -> &'static str {
+        match self {
+            Self::Help => "keys shortcuts help ?",
+            Self::Settings => "config preferences theme settings S",
+            Self::Filters => "hide read keyword mute sub author domain",
+            Self::SourceHealth => "provider latency status error retry source",
+            Self::Bookmarks => "saved read later local B",
+            Self::Search => "find query /",
+            Self::GoToSubreddit => "community r/ g",
+            Self::ChangeSource => "provider config switch redlib demo",
+            Self::Refresh => "reload r",
+            Self::ToggleSidebar => "hide show sidebar h",
+            Self::SortBest => "order best",
+            Self::SortHot => "order hot",
+            Self::SortNew => "order new",
+            Self::SortTop => "order top",
+            Self::RangeAll => "top all time range",
+            Self::ThemeNext => "cycle theme T",
+            Self::ThemeDark => "colors dark",
+            Self::ThemeLight => "colors light",
+            Self::ThemeLatte => "colors catppuccin latte",
+            Self::ThemeFrappe => "colors catppuccin frappe",
+            Self::ThemeMacchiato => "colors catppuccin macchiato",
+            Self::ThemeMocha => "colors catppuccin mocha",
+            Self::CopyPermalink => "clipboard link y",
+            Self::MarkRead => "unread read m",
+            Self::AddFilter => "filter keyword mute",
+        }
+    }
+
+    pub fn matches(self, query: &str) -> bool {
+        let query = query.trim().to_ascii_lowercase();
+        if query.is_empty() {
+            return true;
+        }
+        let haystack = format!("{} {}", self.label(), self.keywords()).to_ascii_lowercase();
+        query.split_whitespace().all(|part| haystack.contains(part))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CommandPaletteModal {
+    pub query: String,
+    pub selected: usize,
+}
+
+impl CommandPaletteModal {
+    pub fn filtered(&self) -> Vec<CommandId> {
+        CommandId::ALL
+            .into_iter()
+            .filter(|command| command.matches(&self.query))
+            .collect()
+    }
+
+    pub fn selected_command(&self) -> Option<CommandId> {
+        self.filtered().get(self.selected).copied()
+    }
+
+    pub fn move_selection(&mut self, delta: isize) {
+        let total = self.filtered().len();
+        if total == 0 {
+            self.selected = 0;
+            return;
+        }
+        let max = total - 1;
+        self.selected = if delta < 0 {
+            self.selected.saturating_sub(delta.unsigned_abs())
+        } else {
+            (self.selected + delta as usize).min(max)
+        };
+    }
+
+    pub fn push_char(&mut self, c: char) {
+        if c.is_control() || self.query.chars().count() >= 80 {
+            return;
+        }
+        self.query.push(c);
+        self.selected = 0;
+    }
+
+    pub fn backspace(&mut self) {
+        self.query.pop();
+        self.selected = 0;
+    }
+
+    pub fn clear(&mut self) {
+        self.query.clear();
+        self.selected = 0;
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SourceModal {
+    pub selected: usize,
+}
+
+impl SourceModal {
+    pub const ACTIONS: [&'static str; 2] = ["Test now", "Change source"];
+
+    pub fn move_selection(&mut self, delta: isize) {
+        let max = Self::ACTIONS.len() - 1;
+        self.selected = if delta < 0 {
+            self.selected.saturating_sub(delta.unsigned_abs())
+        } else {
+            (self.selected + delta as usize).min(max)
+        };
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Modal {
     Help,
@@ -364,6 +591,10 @@ pub enum Modal {
     Settings(SettingsModal),
     ConfigPicker(ConfigPickerModal),
     ThemePicker(ThemePickerModal),
+    Bookmarks(BookmarksModal),
+    Source(SourceModal),
+    Filters(FiltersModal),
+    CommandPalette(CommandPaletteModal),
 }
 
 impl Modal {
@@ -380,6 +611,10 @@ impl Modal {
             Self::Settings(_) => "Settings",
             Self::ConfigPicker(_) => "Choose config",
             Self::ThemePicker(_) => "Theme",
+            Self::Bookmarks(_) => "Bookmarks",
+            Self::Source(_) => "Source health",
+            Self::Filters(_) => "Local filters",
+            Self::CommandPalette(_) => "Commands",
         }
     }
 }
@@ -429,6 +664,37 @@ mod tests {
         assert_eq!(modal.scope_label(), "r/rust");
         modal.toggle_scope();
         assert_eq!(modal.scope_label(), "All Reddit");
+    }
+
+    #[test]
+    fn command_palette_filters_by_label_and_keywords() {
+        let mut modal = CommandPaletteModal::default();
+        assert_eq!(modal.filtered().len(), CommandId::ALL.len());
+        for c in "mocha".chars() {
+            modal.push_char(c);
+        }
+        assert_eq!(modal.filtered(), vec![CommandId::ThemeMocha]);
+        assert_eq!(modal.selected_command(), Some(CommandId::ThemeMocha));
+        modal.clear();
+        for c in "book".chars() {
+            modal.push_char(c);
+        }
+        assert_eq!(modal.selected_command(), Some(CommandId::Bookmarks));
+        modal.push_char('z');
+        assert!(modal.filtered().is_empty());
+        modal.backspace();
+        assert_eq!(modal.selected_command(), Some(CommandId::Bookmarks));
+    }
+
+    #[test]
+    fn command_palette_moves_selection_within_results() {
+        let mut modal = CommandPaletteModal::default();
+        modal.move_selection(3);
+        assert_eq!(modal.selected, 3);
+        modal.move_selection(-100);
+        assert_eq!(modal.selected, 0);
+        modal.move_selection(10_000);
+        assert_eq!(modal.selected, CommandId::ALL.len() - 1);
     }
 
     #[test]

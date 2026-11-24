@@ -19,11 +19,13 @@ use tokio::sync::mpsc::unbounded_channel;
 fn test_config_path() -> PathBuf {
     use std::sync::atomic::{AtomicUsize, Ordering};
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
-    std::env::temp_dir().join(format!(
-        "reddtty-test-{}-{}.toml",
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-test-{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
-    ))
+    ));
+    std::fs::create_dir_all(&dir).expect("test config directory");
+    dir.join("config.toml")
 }
 
 fn settings() -> Settings {
@@ -767,6 +769,8 @@ async fn clipped_post_card_never_paints_over_bottom_border() {
                 true,
                 false,
                 0,
+                false,
+                false,
             );
         })
         .unwrap();
@@ -959,6 +963,104 @@ async fn bottom_of_feed_shows_loading_more_feedback() {
         text.contains("Loading more posts"),
         "missing footer loading feedback: {text}"
     );
+}
+
+#[tokio::test]
+async fn bookmarks_and_read_markers_are_visible() {
+    let (mut app, _provider, posts) = app_with_posts(100, 30).await;
+    let post = posts[0].clone();
+    app.library.toggle_bookmark(&post);
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("★ saved"), "{text}");
+    assert!(text.contains("● unread"), "{text}");
+
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('B'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("Bookmarks"), "{text}");
+    assert!(text.contains(&post.title), "{text}");
+    assert!(text.contains("Enter open"), "{text}");
+}
+
+#[tokio::test]
+async fn source_health_screen_shows_current_source_and_actions() {
+    let (mut app, _provider, _posts) = app_with_posts(110, 34).await;
+    for key in ['S', 'j', 'j', 'j'] {
+        app.handle_key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char(key),
+            crossterm::event::KeyModifiers::NONE,
+        ));
+    }
+    // The Settings screen has four rows; three j presses reach Source health.
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('k'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Enter,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    assert!(matches!(app.modal, Some(reddtty::app::Modal::Source(_))));
+    let terminal = draw(&mut app, 110, 34);
+    let text = screen(&terminal);
+    assert!(text.contains("Source health"), "{text}");
+    assert!(text.contains("DEMO"), "{text}");
+    assert!(text.contains("Test now"), "{text}");
+    assert!(text.contains("Change source"), "{text}");
+    assert!(text.contains("Library"), "{text}");
+}
+
+#[tokio::test]
+async fn filters_screen_lists_local_rules() {
+    let (mut app, _provider, _posts) = app_with_posts(110, 34).await;
+    app.library.filters.add_expression("keyword:ai").unwrap();
+    app.library.filters.hide_read = true;
+    for key in ['S', 'j', 'j', 'j', 'j'] {
+        app.handle_key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char(key),
+            crossterm::event::KeyModifiers::NONE,
+        ));
+    }
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Enter,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    assert!(matches!(app.modal, Some(reddtty::app::Modal::Filters(_))));
+    let terminal = draw(&mut app, 110, 34);
+    let text = screen(&terminal);
+    assert!(text.contains("Local filters"), "{text}");
+    assert!(text.contains("[x] Hide read posts"), "{text}");
+    assert!(text.contains("keyword  ai"), "{text}");
+    assert!(text.contains("a add"), "{text}");
+}
+
+#[tokio::test]
+async fn command_palette_filters_commands_on_screen() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char(':'),
+        crossterm::event::KeyModifiers::SHIFT,
+    ));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("Commands"), "{text}");
+    assert!(text.contains("Search posts"), "{text}");
+    assert!(text.contains("Theme: Catppuccin Mocha"), "{text}");
+
+    for c in "book".chars() {
+        app.handle_key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char(c),
+            crossterm::event::KeyModifiers::NONE,
+        ));
+    }
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("Open bookmarks"), "{text}");
+    assert!(!text.contains("Search posts"), "{text}");
 }
 
 #[tokio::test]
