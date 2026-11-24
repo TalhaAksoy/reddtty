@@ -18,6 +18,19 @@ A full manual TUI smoke test passed on 2026-11-24:
 - Post detail and comments loaded
 - Pagination and post links worked
 
+## `redlib-utilibre.toml` — recommended on 2026-11-24
+
+Uses the third-party Redlib instance `https://redlib.utilibre.org`.
+
+A full manual TUI smoke test passed on 2026-11-24:
+
+- Home feed, New, Rising and Top · All time loaded
+- `r/burdurland` opened
+- Post detail and comments loaded
+- Post links and sort routes worked
+
+The instance is protected by Anubis, so availability can vary.
+
 ## `redlib-zanity.toml` — recommended on 2026-11-23
 
 Uses the third-party Redlib instance `https://redlib.zanity.net`.
@@ -148,11 +161,13 @@ because they did not pass the full feed/sort/comment test:
 | `redlib.privadency.com` | Bot/CAPTCHA page |
 | `redlib.reallyaweso.me` | Redirects to `redlib.blueberry.reallyaweso.me`; Hot feed is partial, New/Rising return access-denied |
 | `reddit.nerdvpn.de` | HTTP/2 protocol error / empty reply |
+| `redlib.tiekoetter.com` | Home loaded, but New/Rising/Top returned empty responses |
 
 Additional candidates from the current public list were checked on 2026-11-24.
 Most returned DNS/connectivity failures, Cloudflare/Anubis challenges, HTTP 5xx,
-or a placeholder page. Only `red.artemislena.eu` passed the full test and was
-added as `redlib-artemislena.toml`.
+or a placeholder page. `red.artemislena.eu` passed the full test and was
+added as `redlib-artemislena.toml`; `redlib.utilibre.org` also passed and was
+added as `redlib-utilibre.toml`.
 
 ## Important limitations
 
