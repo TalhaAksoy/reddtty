@@ -28,6 +28,12 @@ pub const PRESETS: &[ConfigPreset] = &[
         contents: include_str!("../../configs/redlib-hbubli.toml"),
     },
     ConfigPreset {
+        id: "redlib-artemislena",
+        name: "Redlib · artemislena.eu",
+        description: "Third-party Redlib instance; manually smoke-tested.",
+        contents: include_str!("../../configs/redlib-artemislena.toml"),
+    },
+    ConfigPreset {
         id: "redlib-zanity",
         name: "Redlib · zanity.net",
         description: "Third-party Redlib instance; manually smoke-tested.",

@@ -5,6 +5,19 @@
 No network and no Reddit account. Safe first-run default when you want to try
 the interface immediately.
 
+## `redlib-artemislena.toml` — recommended on 2026-11-24
+
+Uses the third-party Redlib instance `https://red.artemislena.eu`.
+
+A full manual TUI smoke test passed on 2026-11-24:
+
+- Home feed loaded (25 posts, more available)
+- New and Rising returned listings
+- Top · All time returned posts
+- `r/burdurland` opened
+- Post detail and comments loaded
+- Pagination and post links worked
+
 ## `redlib-zanity.toml` — recommended on 2026-11-23
 
 Uses the third-party Redlib instance `https://redlib.zanity.net`.
@@ -122,9 +135,10 @@ Then run:
 reddtty
 ```
 
-## Instances checked on 2026-11-23
+## Instances checked
 
-These were not added because they did not pass the full feed/sort/comment test:
+These were researched from the public Redlib instance list and were not added
+because they did not pass the full feed/sort/comment test:
 
 | Instance | Result |
 |---|---|
@@ -134,6 +148,11 @@ These were not added because they did not pass the full feed/sort/comment test:
 | `redlib.privadency.com` | Bot/CAPTCHA page |
 | `redlib.reallyaweso.me` | Redirects to `redlib.blueberry.reallyaweso.me`; Hot feed is partial, New/Rising return access-denied |
 | `reddit.nerdvpn.de` | HTTP/2 protocol error / empty reply |
+
+Additional candidates from the current public list were checked on 2026-11-24.
+Most returned DNS/connectivity failures, Cloudflare/Anubis challenges, HTTP 5xx,
+or a placeholder page. Only `red.artemislena.eu` passed the full test and was
+added as `redlib-artemislena.toml`.
 
 ## Important limitations
 

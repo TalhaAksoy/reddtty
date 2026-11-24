@@ -359,8 +359,13 @@ None of these passed the full feed/sort/comment test, so no configs were added:
 | `redlib.privadency.com` | bot/CAPTCHA page |
 | `redlib.reallyaweso.me` | redirects to `redlib.blueberry.reallyaweso.me`; Hot was partial, New/Rising returned access-denied |
 | `reddit.nerdvpn.de` | HTTP/2 protocol error / empty reply |
+| `red.artemislena.eu` | **Passed full TUI test**; added as `redlib-artemislena.toml` |
 
-The working configs remain `redlib-hbubli.toml` and `redlib-zanity.toml`.
+The working configs are `redlib-artemislena.toml`, `redlib-hbubli.toml` and
+`redlib-zanity.toml`. A wider pass over the public Redlib instance list on
+2026-11-24 found mostly DNS/connectivity failures, Cloudflare/Anubis challenges,
+5xx responses or placeholder pages; only `red.artemislena.eu` passed the full
+feed/sort/comment check.
 
 ## Known limitations
 
