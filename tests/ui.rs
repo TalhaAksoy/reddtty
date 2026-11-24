@@ -971,3 +971,33 @@ async fn all_themes_render_without_losing_the_brand() {
         assert!(text.contains("REDDTTY"), "{theme:?}: {text}");
     }
 }
+
+#[tokio::test]
+async fn theme_picker_lists_all_themes() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('S'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('j'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Enter,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("Theme"), "{text}");
+    for label in [
+        "dark",
+        "light",
+        "Catppuccin Latte",
+        "Catppuccin Frappe",
+        "Catppuccin Macchiato",
+        "Catppuccin Mocha",
+    ] {
+        assert!(text.contains(label), "missing {label}: {text}");
+    }
+}

@@ -46,6 +46,9 @@ pub fn render(
             Some(Modal::ConfigPicker(_)) => {
                 vec![("j/k", "Move"), ("Enter", "Install"), ("Esc", "Back")]
             }
+            Some(Modal::ThemePicker(_)) => {
+                vec![("j/k", "Preview"), ("Enter", "Apply"), ("Esc", "Cancel")]
+            }
             None => Vec::new(),
         }
     } else {
@@ -226,6 +229,9 @@ fn micro_pairs(
 ) -> Vec<(&'static str, &'static str)> {
     if let Some(Modal::Confirm(_)) = modal {
         return vec![("y", "Remove"), ("Esc", "Cancel")];
+    }
+    if let Some(Modal::ThemePicker(_)) = modal {
+        return vec![("j/k", "Preview"), ("Esc", "Cancel")];
     }
     if let Some(Modal::Text(modal)) = modal
         && modal.kind == TextKind::GoToSubreddit

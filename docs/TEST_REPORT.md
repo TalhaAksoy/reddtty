@@ -19,7 +19,7 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 226 passed, 0 failed, 0 ignored
+cargo test                                 # 229 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
 python3 scripts/pty_verify.py              # 36 captures, 66 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
@@ -31,12 +31,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 166 | 166 | 0 | 0 |
+| Library unit tests (`src/**`) | 168 | 168 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 36 | 36 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 37 | 37 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **226** | **226** | **0** | **0** |
+| **Total** | **229** | **229** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -160,6 +160,9 @@ cargo build --release --example stress
   `Loading more posts…`, so a slow network does not look like a frozen app.
 - All six themes (dark, light and Catppuccin Latte/Frappé/Macchiato/Mocha)
   render without panic; theme cycling and config serialization are covered.
+- The Theme picker previews with `j/k`, commits with `Enter`, and restores the
+  original theme on `Esc`/outside click. Preview and persistence are app-tested;
+  the six-row picker is rendered in `TestBackend`.
 - Top bar shows `OLD REDDIT`/`REDLIB` instead of `DEMO`, includes
   `Access denied`/`HTML changed`/`Login required` statuses, and keeps the
   provider badge at 60 columns when space is tight.

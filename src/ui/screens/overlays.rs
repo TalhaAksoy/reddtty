@@ -9,7 +9,7 @@ use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Wr
 use crate::app::hit::{HitMap, HitTarget};
 use crate::app::modal::{
     ConfigPickerModal, ConfirmModal, Modal, SearchScopeChoice, SettingsModal, SortChoice,
-    SortContext, TextKind, TextModal,
+    SortContext, TextKind, TextModal, ThemePickerModal,
 };
 use crate::app::{NoticeKind, Notification};
 use crate::config::presets;
@@ -34,6 +34,7 @@ pub fn render_modal(
         Modal::Confirm(confirm) => render_confirm(frame, area, confirm, theme, hit_map),
         Modal::Settings(settings) => render_settings(frame, area, settings, theme, hit_map),
         Modal::ConfigPicker(picker) => render_config_picker(frame, area, picker, theme, hit_map),
+        Modal::ThemePicker(picker) => render_theme_picker(frame, area, picker, theme, hit_map),
     }
 }
 
@@ -204,7 +205,7 @@ fn render_settings(
         ),
         (
             format!("Theme: {}", settings.theme.label()),
-            "toggle dark / light".to_string(),
+            "preview light, dark and Catppuccin".to_string(),
         ),
     ];
     for (index, (title, description)) in rows.iter().enumerate() {
@@ -306,6 +307,70 @@ fn render_config_picker(
     }
     frame.render_widget(
         Paragraph::new("j/k move · Enter install · Esc back")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_theme_picker(
+    frame: &mut Frame,
+    area: Rect,
+    picker: &ThemePickerModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(56);
+    let height = (crate::config::ThemeMode::ALL.len() as u16 * 2 + 5)
+        .min(area.height.saturating_sub(2))
+        .max(9);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Theme", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+    for (index, mode) in crate::config::ThemeMode::ALL.iter().enumerate() {
+        let y = inner.y.saturating_add(index as u16 * 2);
+        if y >= inner.bottom().saturating_sub(1) {
+            break;
+        }
+        let selected = index == picker.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{}", mode.label())).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        frame.render_widget(
+            Paragraph::new(if selected {
+                "    Enter apply · Esc cancel"
+            } else {
+                ""
+            })
+            .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 2),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k preview · Enter apply · Esc cancel")
             .style(Style::default().fg(theme.muted).bg(theme.elevated))
             .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),

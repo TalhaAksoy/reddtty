@@ -36,7 +36,7 @@ use hit::{HitMap, HitTarget, Pane};
 pub use modal::Modal;
 use modal::{
     ConfigPickerModal, ConfirmAction, RangeModal, SettingsModal, SortChoice, SortContext,
-    SortModal, TextKind, TextModal,
+    SortModal, TextKind, TextModal, ThemePickerModal,
 };
 use post::{PostView, ToggleOutcome};
 use sidebar::{SidebarEntry, SidebarState};
@@ -575,18 +575,31 @@ impl App {
     }
 
     pub fn toggle_theme(&mut self) {
-        self.settings.general.theme = self.settings.general.theme.toggle();
-        self.persist_theme = self.settings.general.theme;
+        let next = self.settings.general.theme.toggle();
+        self.apply_theme_preview(next);
+        self.persist_theme = next;
+        self.persist();
+        self.notify(NoticeKind::Info, format!("Theme: {}", next.label()));
+    }
+
+    fn apply_theme_preview(&mut self, theme: crate::config::ThemeMode) {
+        if self.settings.general.theme == theme {
+            return;
+        }
+        self.settings.general.theme = theme;
         for view in &mut self.nav {
             if let View::Post(p) = view {
                 p.invalidate_body();
             }
         }
+        self.dirty = true;
+    }
+
+    fn commit_theme(&mut self, theme: crate::config::ThemeMode) {
+        self.apply_theme_preview(theme);
+        self.persist_theme = theme;
         self.persist();
-        self.notify(
-            NoticeKind::Info,
-            format!("Theme: {}", self.settings.general.theme.label()),
-        );
+        self.notify(NoticeKind::Info, format!("Theme: {}", theme.label()));
     }
 
     pub fn toggle_sidebar(&mut self) {
@@ -937,11 +950,9 @@ impl App {
                 self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
             }
             1 => {
-                self.toggle_theme();
-                self.modal = Some(Modal::Settings(SettingsModal {
-                    selected: 1,
-                    theme: self.settings.general.theme,
-                }));
+                self.modal = Some(Modal::ThemePicker(ThemePickerModal::new(
+                    self.settings.general.theme,
+                )));
             }
             _ => {}
         }
@@ -1268,6 +1279,39 @@ impl App {
                     }));
                 }
                 KeyCode::Enter => self.activate_settings_item(settings.selected),
+                _ => {}
+            },
+            Modal::ThemePicker(picker) => match key.code {
+                KeyCode::Esc => {
+                    self.apply_theme_preview(picker.original);
+                    self.modal = Some(Modal::Settings(SettingsModal {
+                        selected: 1,
+                        theme: picker.original,
+                    }));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let next = (picker.selected + 1).min(crate::config::ThemeMode::ALL.len() - 1);
+                    let theme = crate::config::ThemeMode::ALL[next];
+                    self.apply_theme_preview(theme);
+                    self.modal = Some(Modal::ThemePicker(ThemePickerModal {
+                        selected: next,
+                        original: picker.original,
+                    }));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    let next = picker.selected.saturating_sub(1);
+                    let theme = crate::config::ThemeMode::ALL[next];
+                    self.apply_theme_preview(theme);
+                    self.modal = Some(Modal::ThemePicker(ThemePickerModal {
+                        selected: next,
+                        original: picker.original,
+                    }));
+                }
+                KeyCode::Enter => {
+                    let theme = crate::config::ThemeMode::ALL[picker.selected];
+                    self.commit_theme(theme);
+                    self.modal = Some(Modal::Settings(SettingsModal { selected: 1, theme }));
+                }
                 _ => {}
             },
             Modal::ConfigPicker(picker) => match key.code {
@@ -1889,6 +1933,9 @@ impl App {
     fn handle_modal_click(&mut self, target: Option<HitTarget>) {
         match target {
             None | Some(HitTarget::ModalClose) => {
+                if let Some(Modal::ThemePicker(picker)) = &self.modal {
+                    self.apply_theme_preview(picker.original);
+                }
                 self.modal = None;
             }
             Some(HitTarget::ModalBody) => {}
@@ -1901,6 +1948,11 @@ impl App {
                     self.activate_settings_item(index);
                 } else if matches!(self.modal, Some(Modal::ConfigPicker(_))) {
                     self.activate_config_picker_item(index);
+                } else if matches!(self.modal, Some(Modal::ThemePicker(_)))
+                    && let Some(theme) = crate::config::ThemeMode::ALL.get(index).copied()
+                {
+                    self.commit_theme(theme);
+                    self.modal = Some(Modal::Settings(SettingsModal { selected: 1, theme }));
                 }
             }
             Some(HitTarget::ModalRangeItem(_)) => {

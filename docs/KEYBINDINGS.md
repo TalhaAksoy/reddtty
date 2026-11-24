@@ -146,11 +146,14 @@ names show an inline error and do not trigger a request.
 | Key | Action |
 |---|---|
 | `j` / `k` | Move between Settings rows |
-| `Enter` | Open Change config / toggle Theme |
+| `Enter` | Open Change config / choose Theme |
 | `Esc` | Close Settings |
 | `j` / `k` in Change config | Choose a bundled config preset |
 | `Enter` in Change config | Install the selected config (existing config is backed up) |
 | `Esc` in Change config | Return to Settings |
+| `j` / `k` in Theme | Preview the highlighted theme live |
+| `Enter` in Theme | Apply and persist the previewed theme |
+| `Esc` in Theme | Revert to the theme that was active when the list opened |
 
 Changing the config replaces only the provider settings; favorites, recents,
 theme, image and UI preferences are preserved. Provider changes take effect after

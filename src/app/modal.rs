@@ -336,6 +336,25 @@ pub struct ConfigPickerModal {
 }
 
 #[derive(Clone, Debug)]
+pub struct ThemePickerModal {
+    pub selected: usize,
+    pub original: crate::config::ThemeMode,
+}
+
+impl ThemePickerModal {
+    pub fn new(current: crate::config::ThemeMode) -> Self {
+        let selected = crate::config::ThemeMode::ALL
+            .iter()
+            .position(|theme| *theme == current)
+            .unwrap_or(0);
+        Self {
+            selected,
+            original: current,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Modal {
     Help,
     Sort(SortModal),
@@ -344,6 +363,7 @@ pub enum Modal {
     Confirm(ConfirmModal),
     Settings(SettingsModal),
     ConfigPicker(ConfigPickerModal),
+    ThemePicker(ThemePickerModal),
 }
 
 impl Modal {
@@ -359,6 +379,7 @@ impl Modal {
             Self::Confirm(modal) => &modal.title,
             Self::Settings(_) => "Settings",
             Self::ConfigPicker(_) => "Choose config",
+            Self::ThemePicker(_) => "Theme",
         }
     }
 }

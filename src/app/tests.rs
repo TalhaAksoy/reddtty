@@ -303,6 +303,43 @@ fn settings_config_picker_installs_preset_and_backs_up() {
 }
 
 #[test]
+fn theme_picker_previews_and_esc_restores() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Dark);
+    app.open_settings();
+    app.activate_settings_item(1);
+    assert!(matches!(app.modal, Some(Modal::ThemePicker(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Light);
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Dark);
+    assert!(matches!(app.modal, Some(Modal::Settings(_))));
+}
+
+#[test]
+fn theme_picker_enter_commits_and_persists() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-theme-picker-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    app.config_path = dir.join("config.toml");
+    app.open_settings();
+    app.activate_settings_item(1);
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Light);
+    assert_eq!(app.persist_theme, crate::config::ThemeMode::Light);
+    let (loaded, _) = Settings::load(&app.config_path);
+    assert_eq!(loaded.general.theme, crate::config::ThemeMode::Light);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn stale_requests_are_ignored() {
     let mut app = App::test_with_posts(vec![post("p")]);
     let id = app.current_id().unwrap();
