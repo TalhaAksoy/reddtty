@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ratatui::text::Line;
 
 use crate::event::ViewId;
-use crate::models::{Comment, CommentSort, Post};
+use crate::models::{Comment, CommentSort, Post, Subreddit};
 use crate::ui::theme::Theme;
 use crate::utils::text::{sanitize, strip_markdown, wrap_text};
 
@@ -43,6 +43,10 @@ pub struct PostView {
     pub post_loading: bool,
     pub post_request: Option<u64>,
     pub post_error: Option<String>,
+    /// Community context for the optional detail-screen sidebar.
+    pub subreddit: Option<Subreddit>,
+    pub subreddit_request: Option<u64>,
+    pub subreddit_error: Option<String>,
     pub comments: Vec<Comment>,
     pub rows: Vec<CommentRow>,
     pub heights: Vec<u16>,
@@ -74,6 +78,9 @@ impl PostView {
             post_loading: true,
             post_request: None,
             post_error: None,
+            subreddit: None,
+            subreddit_request: None,
+            subreddit_error: None,
             comments: Vec::new(),
             rows: Vec::new(),
             heights: Vec::new(),

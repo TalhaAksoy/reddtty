@@ -872,6 +872,50 @@ fn arrows_move_between_post_body_and_comments() {
 }
 
 #[test]
+fn post_detail_receives_its_community_context() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let subreddit = Subreddit {
+        name: "rust".into(),
+        title: "The Rust Programming Language".into(),
+        description: "Systems programming".into(),
+        subscribers: 10,
+        active_users: 2,
+        over18: false,
+        created_utc: 0,
+    };
+    if let Some(feed) = app.current_feed_mut() {
+        feed.subreddit = Some(subreddit.clone());
+    }
+    app.open_post();
+    assert_eq!(
+        app.current_post().unwrap().subreddit.as_ref().unwrap().name,
+        "rust"
+    );
+
+    let id = app.current_id().unwrap();
+    if let Some(post) = app.current_post_mut() {
+        post.subreddit_request = Some(55);
+    }
+    app.request_starts.insert(55, Instant::now());
+    app.handle_event(AppEvent::SubredditLoaded {
+        view: id,
+        request: 55,
+        name: "rust".into(),
+        result: Ok(Subreddit {
+            description: "Fresh description".into(),
+            ..subreddit
+        }),
+    });
+    let post = app.current_post().unwrap();
+    assert_eq!(
+        post.subreddit.as_ref().unwrap().description,
+        "Fresh description"
+    );
+    assert!(post.subreddit_request.is_none());
+    assert_eq!(app.health.requests, 1);
+}
+
+#[test]
 fn stale_requests_are_ignored() {
     let mut app = App::test_with_posts(vec![post("p")]);
     let id = app.current_id().unwrap();

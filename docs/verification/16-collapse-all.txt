@@ -1,38 +1,38 @@
  REDDTTY   ›  r/rust · Post                                                                                                 ● DEMO   ? Help
- r/rust   •   u/ferris_fan   •   2h ago   Discussion
- Why I love building CLI applications with Rust
-
- ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com
- I have been writing command-line tools for a decade, and Rust is the first language where shipping feels this good.
-
- What changed for me
-
- • A single static binary is easy to hand to someone else
- • Result makes failure paths visible instead of optional
- • Cargo's defaults are boring in the best possible way
- • The ecosystem has excellent crates for terminals, parsing and HTTP
-
- ▌ The compiler is not fighting you. It is reviewing your work before your users do.
-
- Here is the smallest argument parser I actually enjoy using:
-
-   code                                                                                                                             ↕ 14/23
- COMMENTS  248                                                                                                                 Sort: Best ▾
- ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ▌u/byte_wanderer   ▲ 1.3k   2h ago                                                                                                       ┃
- ▌The part about documentation is underrated. Half of my bookmarks are just good READMEs.                                                 ┃
- ▌                                                                                                                                        ┃
-  ▶ u/firefox_fox   ▲ 1.3k   2h ago   (1 replies hidden)                                                                                  ┃
-                                                                                                                                          ┃
-  ▶ u/quiet_signal   ▲ 1k   2h ago   (1 replies hidden)                                                                                   ┃
-                                                                                                                                          ┃
-  ▶ u/firefox_fox   ▲ 972   2h ago   (1 replies hidden)                                                                                   ┃
-                                                                                                                                          ┃
-  ▶ u/coffee_compiler   ▲ 815   2h ago   (4 replies hidden)                                                                               ┃
-                                                                                                                                          ┃
-                                                                                                                                          ┃
-                                                                               ℹ Collapsed all comment threads.                           ┃
-                                                                               ℹ Marked as read.                                          ┃
+ r/rust   •   u/ferris_fan   •   2h ago   Discussion                                                            │ABOUT
+ Why I love building CLI applications with Rust                                                                 │r/rust
+                                                                                                                │The Rust Programming
+ ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com                                       │Language
+ I have been writing command-line tools for a decade, and Rust is the first language where shipping feels this  │412k members  ·  8.4k
+ good.                                                                                                          │online
+                                                                                                                │
+ What changed for me                                                                                            │A place for all things
+                                                                                                                │Rust: news, questions,
+ • A single static binary is easy to hand to someone else                                                       │crates and the occasional
+ • Result makes failure paths visible instead of optional                                                       │Ferris drawing.
+ • Cargo's defaults are boring in the best possible way                                                         │
+ • The ecosystem has excellent crates for terminals, parsing and HTTP                                           │POST
+                                                                                                                │u/ferris_fan  ·  3.2k
+ ▌ The compiler is not fighting you. It is reviewing your work before your users do.                            │points  ·  248 comments
+                                                                                                                │Text
+ Here is the smallest argument parser I actually enjoy using:                                                   │
+                                                                                                                │SUGGESTED COMMUNITIES
+   code                                                                                                         │▸ r/rust
+   #[derive(clap::Parser)]                                                                                      │▸ r/linux
+   struct Args {                                                                                       ↕ 17/25  │▸ r/programming
+ COMMENTS  248                                                                                    Sort: Best ▾  │▸ r/technology
+ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────  │▸ r/opensource
+ ▌u/byte_wanderer   ▲ 1.3k   2h ago                                                                          ┃  │▸ r/unixporn
+ ▌The part about documentation is underrated. Half of my bookmarks are just good READMEs.                    ┃  │
+ ▌                                                                                                           ┃  │ACTIONS
+  ▶ u/firefox_fox   ▲ 1.3k   2h ago   (1 replies hidden)                                                     ┃  │G    open subreddit
+                                                                                                             ┃  │Y    open comments
+  ▶ u/quiet_signal   ▲ 1k   2h ago   (1 replies hidden)                                                      ┃  │b    bookmark
+                                                                                                             ┃  │Esc  back to feed
+  ▶ u/firefox_fox   ▲ 972   2h ago   (1 replies hidden)                                                      ┃  │
+                                                                                                             ┃  │
+  ▶ u/coffee_compiler   ▲ 815   2h ago   (4 replies hidden)                    ℹ Collapsed all comment threads. │
+                                                                               ℹ Marked as read.             ┃  │
                                                                                ✓ Saved “Why I love building CLI applications with Rust” wi…
-                                                                                                                                          ┃
+                                                                                                             ┃  │
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

@@ -531,7 +531,12 @@ impl App {
     fn open_post_object(&mut self, post: Post) {
         let id = self.alloc_view();
         let post_removed = post.is_deleted();
+        let initial_subreddit = self
+            .current_feed()
+            .and_then(|feed| feed.subreddit.clone())
+            .filter(|subreddit| subreddit.name.eq_ignore_ascii_case(&post.subreddit));
         let mut view = PostView::new(id, post.clone(), CommentSort::Best);
+        view.subreddit = initial_subreddit;
         if post_removed {
             view.comments_loading = false;
         }
@@ -547,6 +552,7 @@ impl App {
         if !post_removed {
             self.request_comments(id);
         }
+        self.request_post_subreddit(id);
     }
 
     pub fn open_gallery(&mut self) {
@@ -942,7 +948,6 @@ impl App {
     }
 
     fn request_subreddit_if_needed(&mut self, view_id: ViewId) {
-        let request_id = self.begin_request();
         let name = {
             let Some(view) = self.feed_mut(view_id) else {
                 return;
@@ -960,9 +965,52 @@ impl App {
             if view.subreddit_request.is_some() {
                 return;
             }
-            view.subreddit_request = Some(request_id);
             name
         };
+        let request_id = self.begin_request();
+        let Some(view) = self.feed_mut(view_id) else {
+            self.request_starts.remove(&request_id);
+            return;
+        };
+        view.subreddit_request = Some(request_id);
+        let provider = self.provider.clone();
+        let tx = self.tx.clone();
+        spawn_guarded(async move {
+            let result = provider.get_subreddit(&name).await;
+            let _ = tx.send(AppEvent::SubredditLoaded {
+                view: view_id,
+                request: request_id,
+                name,
+                result,
+            });
+        });
+    }
+
+    fn request_post_subreddit(&mut self, view_id: ViewId) {
+        let name = {
+            let Some(view) = self.post_mut(view_id) else {
+                return;
+            };
+            let name = view.post.subreddit.clone();
+            if view
+                .subreddit
+                .as_ref()
+                .is_some_and(|subreddit| subreddit.name.eq_ignore_ascii_case(&name))
+                && view.subreddit_error.is_none()
+            {
+                return;
+            }
+            if view.subreddit_request.is_some() {
+                return;
+            }
+            name
+        };
+        let request_id = self.begin_request();
+        let Some(view) = self.post_mut(view_id) else {
+            self.request_starts.remove(&request_id);
+            return;
+        };
+        view.subreddit_request = Some(request_id);
         let provider = self.provider.clone();
         let tx = self.tx.clone();
         spawn_guarded(async move {
@@ -1078,6 +1126,7 @@ impl App {
                 if !removed {
                     self.request_comments(id);
                 }
+                self.request_post_subreddit(id);
                 self.notify(NoticeKind::Info, "Refreshing post…");
             }
             Some(View::Gallery(_)) => {
@@ -1981,9 +2030,10 @@ impl App {
                 let post_id = p.id;
                 let preview = p.post.preview_image().map(str::to_string);
                 let has_body = !p.post.body.trim().is_empty();
+                let panels = layout::post(root.body, &self.settings);
                 let rects = crate::ui::screens::post::layout_for(
                     &p.post,
-                    root.body,
+                    panels.main,
                     &self.settings,
                     hidden,
                 );
@@ -3169,7 +3219,57 @@ impl App {
         name: String,
         result: Result<Subreddit, ProviderError>,
     ) {
+        let post_exists = self
+            .nav
+            .iter()
+            .any(|view| matches!(view, View::Post(post) if post.id == view_id));
+        if post_exists {
+            let target = self.nav.iter().any(|view| {
+                matches!(view, View::Post(post) if post.id == view_id && post.subreddit_request == Some(request))
+            });
+            if target {
+                self.handle_post_subreddit_loaded(view_id, request, name, result);
+            } else {
+                self.request_starts.remove(&request);
+            }
+            return;
+        }
         let Some(view) = self.feed_mut(view_id) else {
+            return;
+        };
+        if view.subreddit_request != Some(request) {
+            self.request_starts.remove(&request);
+            return;
+        }
+        view.subreddit_request = None;
+        let status = result
+            .as_ref()
+            .map_or_else(crate::providers::ProviderStatus::from_error, |_| {
+                crate::providers::ProviderStatus::Available
+            });
+        let error_message = result.as_ref().err().map(ToString::to_string);
+        match result {
+            Ok(subreddit) => {
+                if subreddit.name.eq_ignore_ascii_case(&name) {
+                    view.subreddit = Some(subreddit);
+                    view.subreddit_error = None;
+                }
+            }
+            Err(error) => {
+                view.subreddit_error = Some(error.to_string());
+            }
+        }
+        self.finish_request(request, status, error_message);
+    }
+
+    fn handle_post_subreddit_loaded(
+        &mut self,
+        view_id: ViewId,
+        request: u64,
+        name: String,
+        result: Result<Subreddit, ProviderError>,
+    ) {
+        let Some(view) = self.post_mut(view_id) else {
             return;
         };
         if view.subreddit_request != Some(request) {

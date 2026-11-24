@@ -16,6 +16,7 @@ galleries, inline images, search, sorting and multiple content sources.
 ## Features
 
 - Feed, post detail, recursive comments, gallery and image viewer
+- Responsive post detail: content-sized post pane and a community/about sidebar on wide terminals
 - Vim-style navigation, mouse support, responsive three-pane layout
 - Demo data offline; Reddit OAuth; opt-in Old Reddit and Redlib HTML providers
 - Local bookmarks with offline snapshots and read/unread state

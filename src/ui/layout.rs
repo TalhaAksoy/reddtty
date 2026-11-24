@@ -117,9 +117,40 @@ pub fn cards_and_scrollbar(list: Rect) -> (Rect, Option<Rect>) {
 #[derive(Clone, Copy, Debug)]
 pub struct DetailParams {
     pub title_lines: u16,
+    /// Estimated wrapped body lines used to size the post pane responsively.
+    pub body_lines: u16,
     pub has_comments: bool,
     pub has_image: bool,
     pub has_body: bool,
+}
+
+/// Post detail with an optional community/about column on wide terminals.
+#[derive(Clone, Copy, Debug)]
+pub struct PostRects {
+    pub main: Rect,
+    pub right: Option<Rect>,
+}
+
+pub fn post(area: Rect, settings: &Settings) -> PostRects {
+    let mut main = area;
+    let mut right = None;
+    if settings.ui.show_right_panel && area.width >= 130 {
+        let width = if area.width >= 170 { 32 } else { 28 };
+        if main.width > width + 46 {
+            right = Some(Rect::new(
+                area.x + area.width - width,
+                area.y,
+                width,
+                area.height,
+            ));
+            main = Rect::new(area.x, area.y, area.width - width - 1, area.height);
+        }
+    }
+    PostRects { main, right }
+}
+
+fn detail_image_height(width: u16) -> u16 {
+    (width / 8).clamp(5, 14)
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -138,10 +169,27 @@ pub struct DetailRects {
 pub fn detail(area: Rect, params: DetailParams) -> DetailRects {
     let min_comments = 7u16;
     let (post_h, comments_h) = if params.has_comments && area.height >= 12 {
-        let desired = (area.height as u32 * 50 / 100) as u16;
-        let post_h = desired
-            .clamp(8, area.height.saturating_sub(min_comments))
-            .min(area.height);
+        // Size the post pane to its actual content, with a cap so comments stay
+        // usable. A short text post no longer wastes half the screen.
+        let available_with_comments = area.height.saturating_sub(min_comments).max(1);
+        let ratio_cap = ((area.height as u32 * 60) / 100) as u16;
+        let max_post = ratio_cap.max(1).min(available_with_comments);
+        let header = 3u16.saturating_add(params.title_lines);
+        let image_extra = if params.has_image {
+            1u16.saturating_add(detail_image_height(area.width))
+        } else {
+            0
+        };
+        let body_extra = if params.has_body {
+            params.body_lines
+        } else {
+            0
+        };
+        let desired = header
+            .saturating_add(image_extra)
+            .saturating_add(body_extra);
+        let min_post = header.min(max_post).max(1);
+        let post_h = desired.clamp(min_post, max_post).min(area.height);
         (post_h, area.height.saturating_sub(post_h))
     } else {
         (area.height, 0)
@@ -166,18 +214,14 @@ pub fn detail(area: Rect, params: DetailParams) -> DetailRects {
     y = y.saturating_add(1);
 
     let mut image = None;
-    let mut image_h = 0u16;
-    if params.has_image && post_pane.height >= 16 {
-        let available = post_pane.bottom().saturating_sub(y + 2);
-        image_h = (post_pane.height / 3).clamp(5, 16).min(available);
+    if params.has_image && post_pane.height >= 10 {
+        let available = post_pane.bottom().saturating_sub(y + 1);
+        let image_h = detail_image_height(post_pane.width).min(available);
         if image_h >= 5 {
             image = Some(Rect::new(pad_x, y + 1, content_w, image_h));
             y = y.saturating_add(1 + image_h);
-        } else {
-            image_h = 0;
         }
     }
-    let _ = image_h;
 
     let body_top = y;
     let body_h = if params.has_body {
@@ -298,6 +342,7 @@ mod tests {
             Rect::new(0, 0, 20, 4),
             DetailParams {
                 title_lines: 2,
+                body_lines: 12,
                 has_comments: true,
                 has_image: true,
                 has_body: true,
@@ -314,12 +359,75 @@ mod tests {
             Rect::new(0, 0, 80, 20),
             DetailParams {
                 title_lines: 2,
+                body_lines: 12,
                 has_comments: true,
                 has_image: true,
                 has_body: true,
             },
         );
         assert!(d.image.is_none() || d.image.unwrap().height <= 16);
+    }
+
+    #[test]
+    fn detail_sizes_the_post_pane_to_its_content() {
+        let short = detail(
+            Rect::new(0, 0, 100, 40),
+            DetailParams {
+                title_lines: 1,
+                body_lines: 1,
+                has_comments: true,
+                has_image: false,
+                has_body: true,
+            },
+        );
+        let long = detail(
+            Rect::new(0, 0, 100, 40),
+            DetailParams {
+                title_lines: 1,
+                body_lines: 30,
+                has_comments: true,
+                has_image: false,
+                has_body: true,
+            },
+        );
+        assert!(
+            short.post_pane.height < long.post_pane.height,
+            "short post: {}, long post: {}",
+            short.post_pane.height,
+            long.post_pane.height
+        );
+        assert!(short.comments_list.height > long.comments_list.height);
+        assert!(
+            long.post_pane.height <= 24,
+            "post pane should leave comments room"
+        );
+    }
+
+    #[test]
+    fn detail_never_panics_at_the_minimum_comment_height() {
+        let d = detail(
+            Rect::new(0, 0, 80, 12),
+            DetailParams {
+                title_lines: 3,
+                body_lines: 40,
+                has_comments: true,
+                has_image: true,
+                has_body: true,
+            },
+        );
+        assert!(d.post_pane.height >= 1);
+        assert!(d.post_pane.bottom() <= 12);
+    }
+
+    #[test]
+    fn post_detail_has_an_optional_right_panel() {
+        let settings = Settings::default();
+        let wide = post(Rect::new(0, 0, 170, 45), &settings);
+        assert!(wide.right.is_some());
+        assert!(wide.main.width < 170);
+        let medium = post(Rect::new(0, 0, 100, 30), &settings);
+        assert!(medium.right.is_none());
+        assert_eq!(medium.main.width, 100);
     }
 
     #[test]

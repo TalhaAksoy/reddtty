@@ -9,7 +9,9 @@
  What changed for me
 
  • A single static binary is easy to hand to someone else
- • Result makes failure paths visible instead of optional                ↕ 7/26
+ • Result makes failure paths visible instead of optional
+ • Cargo's defaults are boring in the best possible way
+ • The ecosystem has excellent crates for terminals, parsing and HTTP    ↕ 9/26
  COMMENTS  248                                                     Sort: Best ▾
  ──────────────────────────────────────────────────────────────────────────────
  ▌u/byte_wanderer   ▲ 1.3k   2h ago                                           ┃
@@ -19,6 +21,4 @@
   u/firefox_fox   ▲ 1.3k   2h ago                                             │
   The examples are great, but I would add a warning about running this as     │
   root.                                                                       │
-                                                                              │
-  ├─ u/null_pointer   ▲ 738   2h ago                                          │
 j/k Move · Enter Toggle · Esc Back · ? Help · q Quit

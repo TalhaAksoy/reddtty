@@ -126,6 +126,16 @@
       "ok": true
     },
     {
+      "name": "post community sidebar",
+      "needle": "ABOUT",
+      "ok": true
+    },
+    {
+      "name": "post related communities",
+      "needle": "SUGGESTED COMMUNITIES",
+      "ok": true
+    },
+    {
       "name": "left arrow focuses post body",
       "needle": "Reveal",
       "ok": true

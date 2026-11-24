@@ -12,19 +12,19 @@
  • Result makes failure paths visible instead of optional
  • Cargo's defaults are boring in the best possible way
  • The ecosystem has excellent crates for terminals, parsing and HTTP
-                                                                                            ↕ 10/25
+
+ ▌ The compiler is not fighting you. It is reviewing your work before your users do.
+                                                                                            ↕ 12/25
  COMMENTS  248                                                                         Sort: Best ▾
  ──────────────────────────────────────────────────────────────────────────────────────────────────
  ▌u/byte_wanderer   ▲ 1.3k   2h ago                                                               ┃
  ▌The part about documentation is underrated. Half of my bookmarks are just good READMEs.         ┃
  ▌                                                                                                ┃
-  u/firefox_fox   ▲ 1.3k   2h ago                                                                 ┃
+  u/firefox_fox   ▲ 1.3k   2h ago                                                                 │
   The examples are great, but I would add a warning about running this as root.                   │
                                                                                                   │
   ├─ u/null_pointer   ▲ 738   2h ago                                                              │
   │    I have been using this approach in production for a year. One caveat: watch the memory     │
   │    usage.                                                                                     │
                                                                                                   │
-  u/quiet_signal   ▲ 1k   2h ago                                                                  │
-  Does this work with older terminals? I spend a lot of time on servers over SSH.                 │
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

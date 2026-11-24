@@ -10,7 +10,9 @@ use reddtty::app::{App, Focus, View};
 use reddtty::config::Settings;
 use reddtty::event::ViewId;
 use reddtty::media::ImageManager;
-use reddtty::models::{Comment, CommentSort, FeedRequest, FeedSort, FeedSpec, Post, TopRange};
+use reddtty::models::{
+    Comment, CommentSort, FeedRequest, FeedSort, FeedSpec, Post, Subreddit, TopRange,
+};
 use reddtty::providers::ContentProvider;
 use reddtty::providers::demo::DemoProvider;
 use reddtty::ui;
@@ -1015,6 +1017,37 @@ async fn bookmarks_and_read_markers_are_visible() {
     assert!(text.contains("Bookmarks"), "{text}");
     assert!(text.contains(&post.title), "{text}");
     assert!(text.contains("Enter open"), "{text}");
+}
+
+#[tokio::test]
+async fn post_detail_shows_community_sidebar_on_wide_layout() {
+    let (mut app, _provider, _posts) = app_with_posts(160, 45).await;
+    let subreddit = Subreddit {
+        name: "rust".into(),
+        title: "The Rust Programming Language".into(),
+        description: "A community for Rust developers and systems programming.".into(),
+        subscribers: 250_000,
+        active_users: 1_200,
+        over18: false,
+        created_utc: 0,
+    };
+    if let Some(feed) = app.current_feed_mut() {
+        feed.subreddit = Some(subreddit.clone());
+    }
+    app.open_post();
+    if let Some(post) = app.current_post_mut() {
+        post.subreddit = Some(subreddit);
+        post.subreddit_request = None;
+    }
+    app.prepare();
+    let terminal = draw(&mut app, 160, 45);
+    let text = screen(&terminal);
+    assert!(text.contains("ABOUT"), "{text}");
+    assert!(text.contains("The Rust Programming"), "{text}");
+    assert!(text.contains("A community for Rust"), "{text}");
+    assert!(text.contains("SUGGESTED COMMUNITIES"), "{text}");
+    assert!(text.contains("ACTIONS"), "{text}");
+    assert!(text.contains("open subreddit"), "{text}");
 }
 
 #[tokio::test]

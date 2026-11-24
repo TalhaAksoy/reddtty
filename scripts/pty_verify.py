@@ -130,6 +130,8 @@ def main() -> int:
         assert_seen("post detail body", detail, "shipping")
         assert_seen("post detail comments", detail, "COMMENTS")
         assert_seen("post detail sort", detail, "Sort: Best")
+        assert_seen("post community sidebar", detail, "ABOUT")
+        assert_seen("post related communities", detail, "SUGGESTED COMMUNITIES")
 
         # Left/Right switch the post body and comments panes.
         send(session, "Left")

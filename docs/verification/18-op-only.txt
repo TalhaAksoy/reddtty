@@ -1,38 +1,38 @@
  REDDTTY   ›  r/rust · Post                                                                                                 ● DEMO   ? Help
- r/rust   •   u/ferris_fan   •   2h ago   Discussion
- Why I love building CLI applications with Rust
-
- ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com
- I have been writing command-line tools for a decade, and Rust is the first language where shipping feels this good.
-
- What changed for me
-
- • A single static binary is easy to hand to someone else
- • Result makes failure paths visible instead of optional
- • Cargo's defaults are boring in the best possible way
- • The ecosystem has excellent crates for terminals, parsing and HTTP
-
- ▌ The compiler is not fighting you. It is reviewing your work before your users do.
-
- Here is the smallest argument parser I actually enjoy using:
-
-   code                                                                                                                             ↕ 14/23
- COMMENTS  248                                                                                                                 Sort: Best ▾
- ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-                                                              No comments yet.
-                                                      Be the first to reply on Reddit.
-
-
-
-
-
-
-
-
-
-
+ r/rust   •   u/ferris_fan   •   2h ago   Discussion                                                            │ABOUT
+ Why I love building CLI applications with Rust                                                                 │r/rust
+                                                                                                                │The Rust Programming
+ ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com                                       │Language
+ I have been writing command-line tools for a decade, and Rust is the first language where shipping feels this  │412k members  ·  8.4k
+ good.                                                                                                          │online
+                                                                                                                │
+ What changed for me                                                                                            │A place for all things
+                                                                                                                │Rust: news, questions,
+ • A single static binary is easy to hand to someone else                                                       │crates and the occasional
+ • Result makes failure paths visible instead of optional                                                       │Ferris drawing.
+ • Cargo's defaults are boring in the best possible way                                                         │
+ • The ecosystem has excellent crates for terminals, parsing and HTTP                                           │POST
+                                                                                                                │u/ferris_fan  ·  3.2k
+ ▌ The compiler is not fighting you. It is reviewing your work before your users do.                            │points  ·  248 comments
+                                                                                                                │Text
+ Here is the smallest argument parser I actually enjoy using:                                                   │
+                                                                                                                │SUGGESTED COMMUNITIES
+   code                                                                                                         │▸ r/rust
+   #[derive(clap::Parser)]                                                                                      │▸ r/linux
+   struct Args {                                                                                       ↕ 17/25  │▸ r/programming
+ COMMENTS  248                                                                                    Sort: Best ▾  │▸ r/technology
+ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────  │▸ r/opensource
+                                               No comments yet.                                                 │▸ r/unixporn
+                                       Be the first to reply on Reddit.                                         │
+                                                                                                                │ACTIONS
+                                                                                                                │G    open subreddit
+                                                                                                                │Y    open comments
+                                                                                                                │b    bookmark
+                                                                                                                │Esc  back to feed
+                                                                                                                │
+                                                                                                                │
                                                                                ℹ Showing only comments by u/ferris_fan.
                                                                                ℹ Jumped to the next unread comment.
-                                                                               ℹ Expanded all comment threads.
-
+                                                                               ℹ Expanded all comment threads.  │
+                                                                                                                │
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

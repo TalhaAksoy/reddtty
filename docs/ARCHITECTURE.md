@@ -308,14 +308,18 @@ function. Every mouse action has a keyboard equivalent.
 
 | Full terminal width | Layout |
 |---|---|
-| ≥ 130 | sidebar + feed + right panel |
-| 76–139 | sidebar + feed |
-| < 76 | single feed column |
+| ≥ 130 | feed: sidebar + feed + right panel; post detail: content + community panel |
+| 76–139 | sidebar + feed; post detail full width |
+| < 76 | single column |
 | very small | compact headers, clipped cards, compact status hints |
 
-The right panel and sidebar also yield space if the feed would become too narrow.
-Resizing invalidates cached heights, body line caches and comment rows; the next
-frame recomputes them.
+The right panel and sidebar also yield space if the main pane would become too
+narrow. Post detail is content-sized: the post pane estimates its title, body and
+image height, caps itself at roughly 60% so comments stay usable, and gives a
+short text post much less space than the old fixed 50/50 split. On wide screens
+the same breakpoint adds an `ABOUT`/community/related panel. Resizing
+invalidates cached heights, body line caches and comment rows; the next frame
+recomputes them.
 
 Additional measured rules:
 
@@ -405,9 +409,9 @@ request(original_url, fetch_url, w, h)
   login walls and changed structure, plus a local HTTP mock for content types,
   403/429, origin checks and the network gate. Live access is still unverified.
 - The release binary is driven through a real PTY by `scripts/pty_verify.py`
-  (isolated tmux socket, 36 captures / 66 assertions): feed, detail, body
-  scroll, comment collapse/expand, gallery, sort, goto, search, quit and a
-  responsive sweep. This catches clipping and key-loss bugs that `TestBackend`
+  (isolated tmux socket, 58 captures / 97 assertions): feed, arrow pane focus,
+  detail with community sidebar, body scroll, comment collapse/expand, gallery,
+  sort, goto, search, quit and a responsive sweep. This catches clipping and key-loss bugs that `TestBackend`
   cannot.
 - `scripts/protocol_probe.py` runs the binary in a raw PTY with each forced image
   protocol and scans the emitted escape sequences. This proves the encoder path,

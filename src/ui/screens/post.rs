@@ -4,7 +4,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 
 use crate::app::Focus;
 use crate::app::hit::{HitMap, HitTarget, Pane};
@@ -15,7 +15,7 @@ use crate::models::Post;
 use crate::ui::layout::{self, DetailParams, DetailRects};
 use crate::ui::theme::Theme;
 use crate::ui::widgets::comment_tree;
-use crate::utils::text::{ellipsize, format_count, sanitize, wrap_text};
+use crate::utils::text::{ellipsize, format_count, sanitize, strip_markdown, wrap_text};
 use crate::utils::time::{absolute, relative_now};
 
 pub fn layout_for(post: &Post, area: Rect, settings: &Settings, hidden: bool) -> DetailRects {
@@ -24,10 +24,21 @@ pub fn layout_for(post: &Post, area: Rect, settings: &Settings, hidden: bool) ->
         .len()
         .max(1) as u16;
     let has_body = !post.body.trim().is_empty();
+    let body_lines = if has_body {
+        wrap_text(
+            &strip_markdown(&sanitize(&post.body)),
+            content_width.max(8) as usize,
+        )
+        .len()
+        .min(200) as u16
+    } else {
+        0
+    };
     layout::detail(
         area,
         DetailParams {
             title_lines,
+            body_lines,
             has_comments: true,
             has_image: !hidden
                 && settings.images.enabled
@@ -59,7 +70,8 @@ pub fn render(
             !settings.content.hide_spoilers || show,
         )
     };
-    let rects = layout_for(&post_view.post, area, settings, hidden);
+    let panels = layout::post(area, settings);
+    let rects = layout_for(&post_view.post, panels.main, settings, hidden);
     let post = &post_view.post;
 
     // Post pane background.
@@ -172,6 +184,139 @@ pub fn render(
             );
         }
     }
+
+    if let Some(right) = panels.right {
+        render_community_panel(frame, right, post_view, spinner, theme);
+    }
+}
+
+fn render_community_panel(
+    frame: &mut Frame,
+    area: Rect,
+    post_view: &PostView,
+    spinner: &str,
+    theme: &Theme,
+) {
+    if area.height < 4 || area.width < 12 {
+        return;
+    }
+    let block = Block::default()
+        .borders(Borders::LEFT)
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.surface));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    let heading = |text: &'static str| {
+        Line::from(Span::styled(
+            text,
+            Style::default()
+                .fg(theme.muted)
+                .add_modifier(Modifier::BOLD),
+        ))
+    };
+    lines.push(heading("ABOUT"));
+    lines.push(Line::from(Span::styled(
+        format!(
+            "r/{}",
+            crate::utils::text::sanitize(&post_view.post.subreddit)
+        ),
+        Style::default()
+            .fg(theme.accent)
+            .add_modifier(Modifier::BOLD),
+    )));
+    if let Some(subreddit) = &post_view.subreddit {
+        if !subreddit.title.is_empty() && !subreddit.title.eq_ignore_ascii_case(&subreddit.name) {
+            lines.push(Line::from(Span::styled(
+                crate::utils::text::sanitize(&subreddit.title),
+                Style::default().fg(theme.text_dim),
+            )));
+        }
+        lines.push(Line::from(Span::styled(
+            format!(
+                "{} members  ·  {} online",
+                crate::utils::text::format_count(subreddit.subscribers as i64),
+                crate::utils::text::format_count(subreddit.active_users as i64)
+            ),
+            Style::default().fg(theme.text_dim),
+        )));
+        if !subreddit.description.is_empty() {
+            lines.push(Line::from(""));
+            for wrapped in wrap_text(
+                &crate::utils::text::sanitize(&subreddit.description),
+                inner.width.saturating_sub(2) as usize,
+            )
+            .into_iter()
+            .take(8)
+            {
+                lines.push(Line::from(Span::styled(
+                    wrapped,
+                    Style::default().fg(theme.text_dim),
+                )));
+            }
+        }
+    } else if let Some(error) = &post_view.subreddit_error {
+        lines.push(Line::from(Span::styled(
+            ellipsize(
+                &crate::utils::text::sanitize(error),
+                inner.width.saturating_sub(2) as usize,
+            ),
+            Style::default().fg(theme.danger),
+        )));
+    } else if post_view.subreddit_request.is_some() {
+        lines.push(Line::from(Span::styled(
+            format!("{spinner} loading community…"),
+            Style::default().fg(theme.muted),
+        )));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(heading("POST"));
+    lines.push(Line::from(Span::styled(
+        format!(
+            "u/{}  ·  {} points  ·  {} comments",
+            crate::utils::text::sanitize(&post_view.post.author),
+            crate::utils::text::format_count(post_view.post.score),
+            crate::utils::text::format_count(post_view.post.num_comments as i64)
+        ),
+        Style::default().fg(theme.text_dim),
+    )));
+    lines.push(Line::from(Span::styled(
+        post_view.post.content.kind_label().to_string(),
+        Style::default().fg(theme.info),
+    )));
+
+    lines.push(Line::from(""));
+    lines.push(heading("SUGGESTED COMMUNITIES"));
+    for name in crate::app::sidebar::SUGGESTED.iter().take(6) {
+        lines.push(Line::from(vec![
+            Span::styled("▸ ", Style::default().fg(theme.accent)),
+            Span::styled(format!("r/{name}"), Style::default().fg(theme.text_dim)),
+        ]));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(heading("ACTIONS"));
+    for (key, desc) in [
+        ("G", "open subreddit"),
+        ("Y", "open comments"),
+        ("b", "bookmark"),
+        ("Esc", "back to feed"),
+    ] {
+        lines.push(Line::from(vec![
+            Span::styled(format!("{key:<5}"), Style::default().fg(theme.accent)),
+            Span::styled(desc.to_string(), Style::default().fg(theme.text_dim)),
+        ]));
+    }
+
+    lines.truncate(inner.height as usize);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .style(Style::default().bg(theme.surface).fg(theme.text))
+            .wrap(Wrap { trim: false }),
+        inner,
+    );
 }
 
 fn render_meta(frame: &mut Frame, area: Rect, post: &Post, settings: &Settings, theme: &Theme) {

@@ -7,14 +7,14 @@
  Rust is the first language where shipping feels this good.
 
  What changed for me
-                                                     ↕ 5/29
+
+ • A single static binary is easy to hand to someone ↕ 6/29
  COMMENTS  248                                 Sort: Best ▾
  ──────────────────────────────────────────────────────────
  ▌u/byte_wanderer   ▲ 1.3k   2h ago                       ┃
- ▌The part about documentation is underrated. Half of my  ┃
+ ▌The part about documentation is underrated. Half of my  │
  ▌bookmarks are just good READMEs.                        │
  ▌                                                        │
   u/firefox_fox   ▲ 1.3k   2h ago                         │
   The examples are great, but I would add a warning about │
-  running this as root.                                   │
 j/k Move · Enter Toggle · Esc Back · ? Help · q Quit
