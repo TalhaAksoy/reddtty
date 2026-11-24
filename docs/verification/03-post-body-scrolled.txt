@@ -35,4 +35,4 @@
   │    [deleted]                                                                                                                          │
                                                                                                                                           │
   u/firefox_fox   ▲ 972   2h ago                                                                                                          │
-j/k Scroll · Tab Comments · v Image · o Browser · x Reveal · Esc Back · ? Help · q Quit
+j/k Scroll · →/Tab Comments · v Image · o Browser · x Reveal · Esc Back · ? Help · q Quit

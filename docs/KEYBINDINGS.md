@@ -51,6 +51,7 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 | `G` | Open the selected/current subreddit in the browser |
 | `h` | Show/hide the sidebar (persisted) |
 | `Tab` / `Shift+Tab` | Switch focus between sidebar and feed |
+| `←` | Focus the sidebar (shows it when the terminal is wide enough) |
 | `q` | Quit |
 
 ### While the sidebar pane has focus
@@ -59,6 +60,7 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 |---|---|
 | `j` / `↓`, `k` / `↑` | Move through sidebar sections |
 | `Enter` | Open the selected Home/Popular/subreddit feed |
+| `→` | Return focus to the feed |
 | `Esc` | Return focus to the feed |
 | `Tab` / `Shift+Tab` | Return focus to the feed |
 | `f` | Add favorite, or ask before removing an existing favorite |
@@ -74,6 +76,8 @@ between them. Comments are focused by default after opening a post.
 | Key | Action |
 |---|---|
 | `Tab` / `Shift+Tab` | Switch post body ↔ comments |
+| `←` | Focus the post body |
+| `→` | Focus the comments |
 | `j` / `↓` | Scroll body down, or select next comment |
 | `k` / `↑` | Scroll body up, or select previous comment |
 | `PageDown` / `PageUp` | Page the focused pane |

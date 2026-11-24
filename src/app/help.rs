@@ -36,6 +36,8 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
         entries: &[
             entry("j / k", "Next / previous post"),
             entry("↑ / ↓", "Same as j / k"),
+            entry("←", "Focus sidebar (shows it if wide)"),
+            entry("→", "Return focus from sidebar to feed"),
             entry("PgUp / PgDn", "Move by half a viewport"),
             entry("Home / End", "First / last loaded post"),
             entry("Enter", "Open selected post"),
@@ -64,6 +66,7 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
         entries: &[
             entry("j / k", "Move between entries"),
             entry("Enter", "Open selected entry"),
+            entry("→", "Return focus to feed"),
             entry("Esc", "Return focus to feed"),
             entry("Tab", "Return focus to feed"),
             entry("f", "Add/remove favorite"),
@@ -77,6 +80,7 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
         title: "POST DETAIL",
         entries: &[
             entry("Tab", "Switch body / comments"),
+            entry("← / →", "Focus body / comments"),
             entry("j / k", "Scroll body or next comment"),
             entry("PgUp / PgDn", "Page focused pane"),
             entry("Home / End", "Start / end of pane"),

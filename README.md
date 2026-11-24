@@ -96,6 +96,7 @@ reddtty --diagnostics
 | `j` / `k` | Move / scroll |
 | `Enter` | Open post or selected item |
 | `Tab` | Switch focus pane |
+| `←` / `→` | Focus sidebar/feed or post/comments (pane-aware) |
 | `s` | Sort |
 | `t` | Top time range |
 | `g` | Go to subreddit |

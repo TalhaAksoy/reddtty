@@ -20,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 271 passed, 0 failed, 0 ignored
+cargo test                                 # 275 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 54 captures, 91 assertions, all pass
+python3 scripts/pty_verify.py              # 58 captures, 95 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 205 | 205 | 0 | 0 |
+| Library unit tests (`src/**`) | 209 | 209 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
 | UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 42 | 42 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **271** | **271** | **0** | **0** |
+| **Total** | **275** | **275** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -184,6 +184,10 @@ cargo build --release --example stress
   its Retry/Change-source actions are app- and render-tested.
 - The command palette filters by label and keywords, moves selection, runs
   actions, tolerates typing `q` without quitting, and toggles with `Ctrl+P`.
+- Directional focus is app-tested: `←` moves feed → sidebar (showing a hidden
+  sidebar on wide terminals and explaining the 76-column limit on narrow ones),
+  `→` moves sidebar → feed, and post detail moves comments ↔ body. PTY captures
+  verify the real status-bar hint changes.
 - Link actions are covered for post comments URLs, validated subreddit URLs,
   selected-post/gallery image URLs, invalid-subreddit rejection and the demo
   image guard. Clipboard remains the shared cross-platform pbcopy/xclip path.
@@ -228,7 +232,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 54, "assertions": 91}
+{"ok": true, "captures": 58, "assertions": 95}
 ```
 
 Captures and the machine-readable summary are in
@@ -240,8 +244,9 @@ against the compiled terminal application and its alternate-screen output.
 | # | Scenario | Result |
 |---|---|---|
 | 1 | `--demo` starts at Home; brand, title, `DEMO`, cards and sort tabs render; no stuck loading state | **Pass** |
+| 1b | `←` focuses the sidebar and `→` returns to the feed; status-bar hints change accordingly | **Pass** |
 | 2 | `Enter` opens post detail; title, author, body, `COMMENTS` and `Sort: Best` visible | **Pass** |
-| 3 | Body scroll shows the `↕` indicator | **Pass** |
+| 3 | `←` focuses the post body, `→` returns to comments, and body scroll shows the `↕` indicator | **Pass** |
 | 4 | `c` collapses a comment; `▶` marker and hidden-reply count appear | **Pass** |
 | 5 | `c` expands again; hidden marker disappears | **Pass** |
 | 6 | `Esc` returns to the feed with the prior context | **Pass** |

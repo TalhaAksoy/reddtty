@@ -1,8 +1,12 @@
 {
   "captures": [
     "docs/verification/01-feed-140x38.txt",
+    "docs/verification/01b-sidebar-focus.txt",
+    "docs/verification/01c-feed-focus.txt",
     "docs/verification/02-post-detail.txt",
+    "docs/verification/03a-post-body-focus.txt",
     "docs/verification/03-post-body-scrolled.txt",
+    "docs/verification/03b-comments-focus.txt",
     "docs/verification/04-comments-collapsed.txt",
     "docs/verification/05-comments-expanded.txt",
     "docs/verification/06-feed-return.txt",
@@ -87,6 +91,16 @@
       "ok": true
     },
     {
+      "name": "left arrow focuses sidebar",
+      "needle": "Favorite",
+      "ok": true
+    },
+    {
+      "name": "right arrow returns to feed",
+      "needle": "Search",
+      "ok": true
+    },
+    {
       "name": "post detail title",
       "needle": "Why I love building CLI applications with Rust",
       "ok": true
@@ -112,8 +126,18 @@
       "ok": true
     },
     {
+      "name": "left arrow focuses post body",
+      "needle": "Reveal",
+      "ok": true
+    },
+    {
       "name": "body scroll indicator",
       "needle": "\u2195",
+      "ok": true
+    },
+    {
+      "name": "right arrow focuses comments",
+      "needle": "Toggle",
       "ok": true
     },
     {

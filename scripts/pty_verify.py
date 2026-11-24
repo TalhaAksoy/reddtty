@@ -109,6 +109,16 @@ def main() -> int:
         assert_seen("feed sort tabs", feed, "Controversial")
         assert_not_seen("feed not stuck loading", feed, "Loading posts…")
 
+        # Left/Right move between the sidebar and the feed without Tab.
+        send(session, "Left")
+        sidebar_focus = capture(session)
+        save("01b-sidebar-focus", sidebar_focus)
+        assert_seen("left arrow focuses sidebar", sidebar_focus, "Favorite")
+        send(session, "Right")
+        feed_focus = capture(session)
+        save("01c-feed-focus", feed_focus)
+        assert_seen("right arrow returns to feed", feed_focus, "Search")
+
         # j then k verifies selection movement without changing the visible list.
         send(session, "j")
         send(session, "k")
@@ -121,15 +131,21 @@ def main() -> int:
         assert_seen("post detail comments", detail, "COMMENTS")
         assert_seen("post detail sort", detail, "Sort: Best")
 
-        # Body pane has its own scroll; Tab from comments focuses the body.
-        send(session, "Tab")
+        # Left/Right switch the post body and comments panes.
+        send(session, "Left")
+        body_focus = capture(session)
+        save("03a-post-body-focus", body_focus)
+        assert_seen("left arrow focuses post body", body_focus, "Reveal")
         send(session, "PageDown")
         body = capture(session)
         save("03-post-body-scrolled", body)
         assert_seen("body scroll indicator", body, "↕")
 
         # Back to comments, collapse a parent with replies.
-        send(session, "Tab")
+        send(session, "Right")
+        comments_focus = capture(session)
+        save("03b-comments-focus", comments_focus)
+        assert_seen("right arrow focuses comments", comments_focus, "Toggle")
         send(session, "j")
         send(session, "c")
         collapsed = capture(session)

@@ -2090,6 +2090,8 @@ impl App {
             KeyCode::Char('h') => self.toggle_sidebar(),
             KeyCode::Tab => self.cycle_focus(true),
             KeyCode::BackTab => self.cycle_focus(false),
+            KeyCode::Left => self.focus_left(),
+            KeyCode::Right => self.focus_right(),
             KeyCode::Char('f') => self.toggle_favorite(),
             KeyCode::Char('b') => self.toggle_bookmark_current(),
             KeyCode::Char('B') => self.open_bookmarks(),
@@ -2165,6 +2167,8 @@ impl App {
             KeyCode::Char(':') => self.open_command_palette(),
             KeyCode::Esc => self.back(),
             KeyCode::Tab | KeyCode::BackTab => self.cycle_focus(true),
+            KeyCode::Left => self.focus_left(),
+            KeyCode::Right => self.focus_right(),
             KeyCode::Char('s') => self.open_sort_modal(),
             KeyCode::Char('v') | KeyCode::Enter if self.focus == Focus::PostBody => {
                 self.open_gallery()
@@ -2565,6 +2569,52 @@ impl App {
             KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('r') => self.refresh_current(),
             KeyCode::Char('T') => self.toggle_theme(),
+            _ => {}
+        }
+    }
+
+    /// Move focus to the pane on the left: feed → sidebar, comments → post.
+    fn focus_left(&mut self) {
+        match self.nav.last() {
+            Some(View::Feed(_)) => {
+                if self.focus == Focus::Feed {
+                    if self.size.width < 76 {
+                        self.notify(
+                            NoticeKind::Info,
+                            "The sidebar needs at least 76 columns; widen the terminal to use it.",
+                        );
+                        return;
+                    }
+                    if !self.settings.general.show_sidebar {
+                        self.settings.general.show_sidebar = true;
+                        self.persist();
+                    }
+                    self.focus = Focus::Sidebar;
+                    self.clamp_sidebar();
+                    self.dirty = true;
+                }
+            }
+            Some(View::Post(_)) if self.focus == Focus::Comments => {
+                self.focus = Focus::PostBody;
+                self.dirty = true;
+            }
+            _ => {}
+        }
+    }
+
+    /// Move focus to the pane on the right: sidebar → feed, post → comments.
+    fn focus_right(&mut self) {
+        match self.nav.last() {
+            Some(View::Feed(_)) => {
+                if self.focus == Focus::Sidebar {
+                    self.focus = Focus::Feed;
+                    self.dirty = true;
+                }
+            }
+            Some(View::Post(_)) if self.focus == Focus::PostBody => {
+                self.focus = Focus::Comments;
+                self.dirty = true;
+            }
             _ => {}
         }
     }

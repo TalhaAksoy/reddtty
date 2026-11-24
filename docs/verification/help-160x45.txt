@@ -13,6 +13,7 @@
                     │                                                                                                                      │
                     │ FEED                                                                                                                 │
                     │ j / k       Next / previous post                          ↑ / ↓       Same as j / k                                  │
+                    │ ←           Focus sidebar (shows it if wide)              →           Return focus from sidebar to feed              │
                     │ PgUp / PgDn Move by half a viewport                       Home / End  First / last loaded post                       │
                     │ Enter       Open selected post                            s           Feed sort menu                                 │
                     │ t           Top time range                                g           Go to subreddit                                │
@@ -27,14 +28,13 @@
                     │                                                                                                                      │
                     │ SIDEBAR                                                                                                              │
                     │ j / k       Move between entries                          Enter       Open selected entry                            │
-                    │ Esc         Return focus to feed                          Tab         Return focus to feed                           │
-                    │ f           Add/remove favorite                           h           Hide sidebar                                   │
-                    │ G           Open selected subreddit                       s, t, g, /  Same feed actions                              │
-                    │ r, o, v, x  Same feed actions                                                                                        │
+                    │ →           Return focus to feed                          Esc         Return focus to feed                           │
+                    │ Tab         Return focus to feed                          f           Add/remove favorite                            │
+                    │ h           Hide sidebar                                  G           Open selected subreddit                        │
+                    │ s, t, g, /  Same feed actions                             r, o, v, x  Same feed actions                              │
                     │                                                                                                                      │
                     │ POST DETAIL                                                                                                          │
-                    │ Tab         Switch body / comments                        j / k       Scroll body or next comment                    │
-                    │ j/k scroll · PgUp/PgDn page · Home/End                                                   29/93 · 64 more · Esc close │
+                    │ j/k scroll · PgUp/PgDn page · Home/End                                                   29/94 · 65 more · Esc close │
                     ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 

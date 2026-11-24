@@ -822,6 +822,56 @@ fn invalid_subreddits_do_not_produce_browser_urls() {
 }
 
 #[test]
+fn arrows_move_between_sidebar_and_feed() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.focus = Focus::Feed;
+    app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+    assert_eq!(app.focus, Focus::Sidebar);
+    app.handle_key(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert_eq!(app.focus, Focus::Feed);
+}
+
+#[test]
+fn left_arrow_shows_a_hidden_sidebar_on_wide_terminals() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.settings.general.show_sidebar = false;
+    app.focus = Focus::Feed;
+    app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+    assert!(app.settings.general.show_sidebar);
+    assert_eq!(app.focus, Focus::Sidebar);
+}
+
+#[test]
+fn left_arrow_explains_narrow_terminals_without_a_sidebar() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.set_size(60, 24);
+    app.focus = Focus::Feed;
+    app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+    assert_eq!(app.focus, Focus::Feed);
+    assert!(
+        app.notifications
+            .iter()
+            .any(|notice| notice.text.contains("76 columns")),
+        "{:?}",
+        app.notifications
+    );
+}
+
+#[test]
+fn arrows_move_between_post_body_and_comments() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let mut root = Comment::new("a", "alice", "Root");
+    root.replies.push(Comment::new("b", "bob", "Child"));
+    push_post_view(&mut app, vec![root]);
+    app.prepare();
+    assert_eq!(app.focus, Focus::Comments);
+    app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+    assert_eq!(app.focus, Focus::PostBody);
+    app.handle_key(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert_eq!(app.focus, Focus::Comments);
+}
+
+#[test]
 fn stale_requests_are_ignored() {
     let mut app = App::test_with_posts(vec![post("p")]);
     let id = app.current_id().unwrap();

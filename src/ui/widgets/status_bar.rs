@@ -85,7 +85,7 @@ pub fn render(
             Some(View::Feed(_)) if focus == Focus::Sidebar => vec![
                 ("j/k", "Navigate"),
                 ("Enter", "Open"),
-                ("Tab", "Feed"),
+                ("→/Tab", "Feed"),
                 ("f", "Favorite"),
                 ("h", "Hide"),
                 ("?", "Help"),
@@ -94,6 +94,7 @@ pub fn render(
             Some(View::Feed(feed)) => {
                 let mut pairs = vec![
                     ("j/k", "Navigate"),
+                    ("←", "Sidebar"),
                     ("Enter", "Open"),
                     ("s", "Sort"),
                     ("t", "Top"),
@@ -119,6 +120,7 @@ pub fn render(
                 ("j/k", "Comments"),
                 ("Enter", "Toggle"),
                 ("c", "Collapse"),
+                ("←", "Post"),
                 ("z", "All"),
                 ("n", "Unread"),
                 ("[ ]", "Root"),
@@ -136,7 +138,7 @@ pub fn render(
             ],
             Some(View::Post(_)) => vec![
                 ("j/k", "Scroll"),
-                ("Tab", "Comments"),
+                ("→/Tab", "Comments"),
                 ("v", "Image"),
                 ("o", "Browser"),
                 ("x", "Reveal"),
@@ -222,7 +224,7 @@ fn medium_pairs(
         Some(View::Feed(_)) if focus == Focus::Sidebar => vec![
             ("j/k", "Move"),
             ("Enter", "Open"),
-            ("Tab", "Feed"),
+            ("→/Tab", "Feed"),
             ("f", "Fav"),
             ("?", "Help"),
             ("q", "Quit"),
@@ -343,7 +345,7 @@ fn compact_pairs(
             ],
             Some(View::Post(_)) => vec![
                 ("j/k", "Scroll"),
-                ("Tab", "Comments"),
+                ("→/Tab", "Comments"),
                 ("Esc", "Back"),
                 ("q", "Quit"),
             ],
