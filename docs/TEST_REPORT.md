@@ -184,11 +184,12 @@ cargo build --release --example stress
   its Retry/Change-source actions are app- and render-tested.
 - The command palette filters by label and keywords, moves selection, runs
   actions, tolerates typing `q` without quitting, and toggles with `Ctrl+P`.
-- Image protocol `Auto` now detects iTerm2 from `TERM_PROGRAM`,
-  `LC_TERMINAL` or `ITERM_SESSION_ID` and selects iTerm2's native inline-image
-  protocol instead of the Kitty query result. The helper is unit-tested; a live
-  iTerm2 launch logged `protocol=Iterm2`. `--diagnostics` reports the effective
-  protocol. A forced-iTerm2 protocol probe emits a valid OSC 1337 image stream.
+- Image protocol `Auto` detects iTerm2 from `TERM_PROGRAM`, `LC_TERMINAL` or
+  `ITERM_SESSION_ID` and uses Unicode half-blocks there. Both iTerm2's Kitty
+  placeholder path and its native inline-image path were blank or unstable in
+  the full-screen repaint loop, while half-blocks rendered reliably. The helper
+  is unit-tested; `--diagnostics` reports the effective protocol. Users can
+  still force `iterm2`/`kitty` explicitly.
 - Redlib live-feed media markup (`div.post_media_content` /
   `a.post_media_image`) is parsed as an image, and `video.post_media_video`
   contributes a video URL plus its poster image. This was the missing selector
@@ -305,9 +306,9 @@ image. The script and raw scan are in `scripts/` and
 - **Ghostty 1.4.0**: launched with the release binary; log reports
   `terminal image capabilities probed protocol=Kitty`.
 - **iTerm2 3.7.7**: launched with the release binary. `Auto` detects iTerm2
-  from the environment and selects its native OSC 1337 protocol; the log now
-  reports `protocol=Iterm2` instead of the Kitty placeholder path. This was
-  added after Kitty placeholders rendered as blank cells in iTerm2.
+  from the environment and selects Unicode half-blocks; the log reports
+  `protocol=Halfblocks`. Kitty placeholders and the native inline-image path
+  both left blank image regions in the real TUI, while half-blocks rendered.
 - No window/display screenshot could be captured because macOS Screen Recording
   permission is unavailable to this environment (`screencapture` returned
   “could not create image from window/display”). Therefore **pixel rendering in
@@ -320,7 +321,7 @@ image. The script and raw scan are in `scripts/` and
 |---|---|---|
 | tmux + half-blocks | Real PTY, 58 captures, visual inspection | **Verified** |
 | Ghostty 1.4.0 | Detection only (Kitty), no screenshot | Detection verified; pixels **unverified** |
-| iTerm2 3.7.7 | Auto selects native iTerm2 OSC 1337; log verified, no screenshot | Detection/protocol verified; pixels **unverified** |
+| iTerm2 3.7.7 | Auto selects half-blocks; log and working image verified | **Verified via half-blocks**; native protocols blank |
 | Kitty | Encoder bytes only; binary absent | Encoder verified; terminal **unverified** |
 | WezTerm | Encoder bytes only; binary absent | Encoder verified; terminal **unverified** |
 | foot / Konsole / Alacritty / xterm-like | Not run | **Unverified** |
@@ -441,7 +442,7 @@ feed/sort/comment check.
 2. Pixel output in Kitty/iTerm2/Sixel is still not screenshot-verified in this
    environment (Screen Recording permission is unavailable). Detection and
    encoded sequences are proven; half-blocks are visually verified. `Auto`
-   avoids the Kitty placeholder path on iTerm2 because it blanked there.
+   uses half-blocks on iTerm2 because both native/Kitty paths blanked there.
 3. Third-party Redlib instances can see requests and IP addresses; ReddTTY
    does not rotate instances or verify their policies.
 4. Sixel residue may persist after closing the viewer in some terminals.

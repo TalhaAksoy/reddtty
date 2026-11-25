@@ -354,19 +354,20 @@ fn make_picker(settings: &Settings, notices: &mut Vec<String>) -> Picker {
 
     match settings.images.protocol {
         ImageProtocolSetting::Auto => {
-            // iTerm2 answers the Kitty capability probe, but its Kitty
-            // placeholder implementation is less reliable than its native
-            // inline-image protocol. Prefer iTerm2 on iTerm2.
+            // iTerm2 answers the Kitty probe, but both Kitty placeholders and
+            // its inline-image path can be erased by full-screen Ratatui
+            // repaints. Half-blocks are the reliable default there; users can
+            // still force `iterm2`/`kitty` explicitly.
             let term_program = std::env::var("TERM_PROGRAM").ok();
             let lc_terminal = std::env::var("LC_TERMINAL").ok();
             let iterm_session = std::env::var_os("ITERM_SESSION_ID").is_some();
-            if reddtty::media::prefers_iterm2_native(
+            if reddtty::media::is_iterm2_terminal(
                 term_program.as_deref(),
                 lc_terminal.as_deref(),
                 iterm_session,
             ) {
-                tracing::info!("iTerm2 detected; using the native iTerm2 image protocol");
-                picker.set_protocol_type(ProtocolType::Iterm2);
+                tracing::info!("iTerm2 detected; using Unicode half-blocks for reliable images");
+                picker.set_protocol_type(ProtocolType::Halfblocks);
             }
         }
         ImageProtocolSetting::Kitty => picker.set_protocol_type(ProtocolType::Kitty),
@@ -543,18 +544,18 @@ fn print_diagnostics(
                 let lc_terminal = std::env::var("LC_TERMINAL").ok();
                 let iterm_session = std::env::var_os("ITERM_SESSION_ID").is_some();
                 let effective = if settings.images.protocol == ImageProtocolSetting::Auto
-                    && reddtty::media::prefers_iterm2_native(
+                    && reddtty::media::is_iterm2_terminal(
                         term_program.as_deref(),
                         lc_terminal.as_deref(),
                         iterm_session,
                     ) {
-                    ProtocolType::Iterm2
+                    ProtocolType::Halfblocks
                 } else {
                     detected
                 };
                 if effective != detected {
                     println!(
-                        "image protocol detected: {detected:?}; using {effective:?} (native iTerm2) (font {}x{} px, configured: {})",
+                        "image protocol detected: {detected:?}; using {effective:?} (iTerm2 TUI fallback) (font {}x{} px, configured: {})",
                         font.width,
                         font.height,
                         settings.images.protocol.label()

@@ -126,6 +126,11 @@ the same metrics are updated without a separate probe.
   is configuration-dependent). Explicitly forced `kitty`/`iterm2`/`sixel`
   protocols still query and encode that protocol, with passthrough left to the
   user's tmux configuration.
+- **iTerm2 prefers half-blocks in `Auto`.** iTerm2 answers the Kitty capability
+  probe, but both Kitty placeholders and its native inline-image path rendered
+  blank in the real full-screen repaint loop. `Auto` therefore selects
+  half-blocks on iTerm2 (detected via `TERM_PROGRAM`, `LC_TERMINAL` or
+  `ITERM_SESSION_ID`); `iterm2`/`kitty` remain available as explicit overrides.
 
 ### Provider selection and HTML parsing
 

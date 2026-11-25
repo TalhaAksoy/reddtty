@@ -5,10 +5,10 @@ pub mod renderer;
 pub use cache::{ImageCache, ImageKey};
 pub use renderer::{ImageManager, ImageStatus};
 
-/// iTerm2 answers the Kitty capability query, but its native inline-image
-/// protocol is the reliable path for Kitty-style placeholder rendering. Detect
-/// it independently of the query so `Auto` can pick iTerm2.
-pub fn prefers_iterm2_native(
+/// Detect iTerm2 independently of the image-protocol query. iTerm2 answers the
+/// Kitty capability probe, but its inline-image protocols are unreliable in a
+/// full-screen Ratatui repaint loop, so `Auto` uses half-blocks there.
+pub fn is_iterm2_terminal(
     term_program: Option<&str>,
     lc_terminal: Option<&str>,
     has_iterm_session: bool,
@@ -24,14 +24,10 @@ mod tests {
 
     #[test]
     fn detects_iterm2_through_each_environment_marker() {
-        assert!(prefers_iterm2_native(Some("iTerm.app"), None, false));
-        assert!(prefers_iterm2_native(None, Some("iTerm2"), false));
-        assert!(prefers_iterm2_native(None, None, true));
-        assert!(!prefers_iterm2_native(
-            Some("ghostty"),
-            Some("Ghostty"),
-            false
-        ));
-        assert!(!prefers_iterm2_native(None, None, false));
+        assert!(is_iterm2_terminal(Some("iTerm.app"), None, false));
+        assert!(is_iterm2_terminal(None, Some("iTerm2"), false));
+        assert!(is_iterm2_terminal(None, None, true));
+        assert!(!is_iterm2_terminal(Some("ghostty"), Some("Ghostty"), false));
+        assert!(!is_iterm2_terminal(None, None, false));
     }
 }
