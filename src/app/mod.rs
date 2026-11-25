@@ -1609,6 +1609,10 @@ impl App {
             CommandId::ThemeFrappe => self.commit_theme(crate::config::ThemeMode::Frappe),
             CommandId::ThemeMacchiato => self.commit_theme(crate::config::ThemeMode::Macchiato),
             CommandId::ThemeMocha => self.commit_theme(crate::config::ThemeMode::Mocha),
+            CommandId::ThemeHighContrast => {
+                self.commit_theme(crate::config::ThemeMode::HighContrast)
+            }
+            CommandId::ThemeMono => self.commit_theme(crate::config::ThemeMode::Mono),
             CommandId::CopyPermalink => self.copy_permalink(),
             CommandId::CopyImageUrl => self.copy_image_url(),
             CommandId::OpenComments => self.open_comments(),

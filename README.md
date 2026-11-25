@@ -321,6 +321,8 @@ commands:
 ```text
 sort new
 theme mocha
+theme high-contrast
+theme mono
 source
 bookmarks
 filter add keyword:ai

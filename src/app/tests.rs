@@ -789,6 +789,44 @@ fn command_palette_runs_text_aliases() {
             .as_deref()
             .is_some_and(|e| e.contains("Usage"))
     );
+
+    app.open_command_palette();
+    for c in "monochrome".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Mono);
+
+    app.open_command_palette();
+    for c in "high contrast".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(
+        app.settings.general.theme,
+        crate::config::ThemeMode::HighContrast
+    );
+
+    // Incomplete alias text falls back to the highlighted action.
+    app.open_command_palette();
+    for c in "theme".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    for _ in 0..6 {
+        app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Mocha);
+
+    app.open_command_palette();
+    for c in "theme Ma".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(
+        app.settings.general.theme,
+        crate::config::ThemeMode::Macchiato
+    );
 }
 
 #[test]

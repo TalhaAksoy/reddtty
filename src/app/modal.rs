@@ -468,6 +468,8 @@ pub enum CommandId {
     ThemeFrappe,
     ThemeMacchiato,
     ThemeMocha,
+    ThemeHighContrast,
+    ThemeMono,
     CopyPermalink,
     CopyImageUrl,
     OpenComments,
@@ -477,7 +479,7 @@ pub enum CommandId {
 }
 
 impl CommandId {
-    pub const ALL: [Self; 29] = [
+    pub const ALL: [Self; 31] = [
         Self::Search,
         Self::GoToSubreddit,
         Self::SortBest,
@@ -492,6 +494,8 @@ impl CommandId {
         Self::ThemeFrappe,
         Self::ThemeMacchiato,
         Self::ThemeMocha,
+        Self::ThemeHighContrast,
+        Self::ThemeMono,
         Self::Bookmarks,
         Self::MarkRead,
         Self::CopyPermalink,
@@ -534,6 +538,8 @@ impl CommandId {
             Self::ThemeFrappe => "Theme: Catppuccin Frappé",
             Self::ThemeMacchiato => "Theme: Catppuccin Macchiato",
             Self::ThemeMocha => "Theme: Catppuccin Mocha",
+            Self::ThemeHighContrast => "Theme: high contrast",
+            Self::ThemeMono => "Theme: monochrome",
             Self::CopyPermalink => "Copy permalink",
             Self::CopyImageUrl => "Copy image URL",
             Self::OpenComments => "Open comments in browser",
@@ -568,6 +574,8 @@ impl CommandId {
             Self::ThemeFrappe => "colors catppuccin frappe",
             Self::ThemeMacchiato => "colors catppuccin macchiato",
             Self::ThemeMocha => "colors catppuccin mocha",
+            Self::ThemeHighContrast => "colors high contrast accessibility",
+            Self::ThemeMono => "colors monochrome mono no color",
             Self::CopyPermalink => "clipboard link y",
             Self::CopyImageUrl => "clipboard image url picture",
             Self::OpenComments => "browser thread comments Y",
@@ -783,6 +791,20 @@ mod tests {
             modal.push_char(c);
         }
         assert_eq!(modal.selected_command(), Some(CommandId::Bookmarks));
+        modal.clear();
+        for c in "monochrome".chars() {
+            modal.push_char(c);
+        }
+        assert_eq!(modal.selected_command(), Some(CommandId::ThemeMono));
+        modal.clear();
+        for c in "contrast".chars() {
+            modal.push_char(c);
+        }
+        assert_eq!(modal.selected_command(), Some(CommandId::ThemeHighContrast));
+        modal.clear();
+        for c in "book".chars() {
+            modal.push_char(c);
+        }
         modal.push_char('z');
         assert!(modal.filtered().is_empty());
         modal.backspace();

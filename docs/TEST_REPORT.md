@@ -208,6 +208,7 @@ cargo build --release --example stress
   subreddit updates through the same `SubredditLoaded` event as feeds.
 - Monochrome/high-contrast selected rows use a dark selection background with
   white foreground; a theme test prevents the unreadable white-on-white state.
+  Both themes are also available as command-palette actions and aliases.
 - Palette Enter prefers the highlighted action when a text alias is incomplete
   (`theme`, `theme Ma`), while complete aliases (`theme mocha`) still execute.
   The wide feed right panel lists refresh/browser/image/reveal shortcuts.
