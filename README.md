@@ -6,6 +6,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Build](https://github.com/TalhaAksoy/reddtty/actions/workflows/build.yml/badge.svg)](https://github.com/TalhaAksoy/reddtty/actions/workflows/build.yml)
 
 A fast, keyboard-first Reddit reader for the terminal, written in Rust with
 [Ratatui](https://ratatui.rs). It supports feeds, post detail, nested comments,
@@ -184,7 +185,11 @@ cargo test
 cargo build --release
 ```
 
-- Real-terminal verification: [`scripts/pty_verify.py`](scripts/pty_verify.py)
+- GitHub Actions builds and tests on Ubuntu and macOS, and uploads
+`reddtty-<os>-<arch>.tar.gz` artifacts (with SHA-256 sums) on every push, pull
+request and manual run.
+
+Real-terminal verification: [`scripts/pty_verify.py`](scripts/pty_verify.py)
 - Architecture and internals: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - API access and limitations: [`docs/API_ACCESS.md`](docs/API_ACCESS.md)
 - Test evidence: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)
