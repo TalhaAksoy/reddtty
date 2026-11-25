@@ -66,6 +66,29 @@ about Ratatui.
 - Presets are embedded with `include_str!`, so `cargo install` users do not need
   a repository checkout.
 
+## UI state, settings and accessibility
+
+- **Info drawer**: `i` snapshots the current feed/post community and opens a
+  centered overlay. It works below the 130-column right-panel breakpoint, so
+  community/about/actions never disappear on narrow terminals.
+- **Settings** is a small hub: config, theme, image protocol, appearance,
+  source health and filters. Image protocol changes clear the encoded-protocol
+  cache, switch the picker immediately, and discard late results from the
+  previous protocol. Appearance toggles relative/absolute timestamps and reduced
+  motion.
+- **Help** opens with the current screen's section first and supports `/` search
+  over key names and descriptions.
+- **Command palette** accepts text aliases (`sort new`, `theme mocha`,
+  `mute sub ...`, `filter add ...`, `images halfblocks`, `open comments`, ...)
+  and remembers recent actions for the session.
+- **Breadcrumbs** are derived from the navigation stack and shown in the top
+  bar. The last feed/sort is stored in `library.toml` and restored when no CLI
+  feed override is present.
+- **Terminal title** follows `ReddTTY — <breadcrumb>` and is reset on exit.
+- **Accessibility**: `--no-color`/`NO_COLOR` forces the mono theme for the
+  session, high-contrast and monochrome themes are selectable, and reduced motion
+  keeps spinners static. Full ASCII-glyph replacement is still future work.
+
 ## Local library, filters and source health
 
 `library.toml` sits next to `config.toml`. It stores:

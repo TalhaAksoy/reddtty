@@ -382,6 +382,63 @@ impl BookmarksModal {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct InfoSnapshot {
+    pub title: String,
+    pub subtitle: Option<String>,
+    pub description: Option<String>,
+    pub members: Option<(u64, u64)>,
+    pub error: Option<String>,
+    pub loading: bool,
+    pub post_lines: Vec<String>,
+    pub actions: Vec<(String, String)>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct InfoModal {
+    pub info: InfoSnapshot,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImageProtocolModal {
+    pub selected: usize,
+}
+
+impl ImageProtocolModal {
+    pub fn new(current: crate::config::ImageProtocolSetting) -> Self {
+        let selected = crate::config::ImageProtocolSetting::ALL
+            .iter()
+            .position(|setting| *setting == current)
+            .unwrap_or(0);
+        Self { selected }
+    }
+
+    pub fn move_selection(&mut self, delta: isize) {
+        let max = crate::config::ImageProtocolSetting::ALL.len() - 1;
+        self.selected = if delta < 0 {
+            self.selected.saturating_sub(delta.unsigned_abs())
+        } else {
+            (self.selected + delta as usize).min(max)
+        };
+    }
+
+    pub fn current(&self) -> crate::config::ImageProtocolSetting {
+        crate::config::ImageProtocolSetting::ALL
+            .get(self.selected)
+            .copied()
+            .unwrap_or_default()
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AppearanceModal {
+    pub selected: usize,
+}
+
+impl AppearanceModal {
+    pub const ROWS: usize = 2;
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct FiltersModal {
     pub selected: usize,
 }
@@ -392,6 +449,7 @@ pub enum CommandId {
     Settings,
     Filters,
     SourceHealth,
+    Info,
     Bookmarks,
     Search,
     GoToSubreddit,
@@ -419,7 +477,7 @@ pub enum CommandId {
 }
 
 impl CommandId {
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Search,
         Self::GoToSubreddit,
         Self::SortBest,
@@ -443,6 +501,7 @@ impl CommandId {
         Self::Filters,
         Self::AddFilter,
         Self::SourceHealth,
+        Self::Info,
         Self::ChangeSource,
         Self::Refresh,
         Self::ToggleSidebar,
@@ -456,6 +515,7 @@ impl CommandId {
             Self::Settings => "Open settings",
             Self::Filters => "Open local filters",
             Self::SourceHealth => "Open source health",
+            Self::Info => "Show community info",
             Self::Bookmarks => "Open bookmarks",
             Self::Search => "Search posts",
             Self::GoToSubreddit => "Go to subreddit",
@@ -489,6 +549,7 @@ impl CommandId {
             Self::Settings => "config preferences theme settings S",
             Self::Filters => "hide read keyword mute sub author domain",
             Self::SourceHealth => "provider latency status error retry source",
+            Self::Info => "community about description members sidebar i",
             Self::Bookmarks => "saved read later local B",
             Self::Search => "find query /",
             Self::GoToSubreddit => "community r/ g",
@@ -530,10 +591,26 @@ impl CommandId {
 pub struct CommandPaletteModal {
     pub query: String,
     pub selected: usize,
+    pub recent: Vec<CommandId>,
+    pub error: Option<String>,
 }
 
 impl CommandPaletteModal {
     pub fn filtered(&self) -> Vec<CommandId> {
+        if self.query.trim().is_empty() {
+            let mut out = Vec::new();
+            for command in &self.recent {
+                if !out.contains(command) {
+                    out.push(*command);
+                }
+            }
+            for command in CommandId::ALL {
+                if !out.contains(&command) {
+                    out.push(command);
+                }
+            }
+            return out;
+        }
         CommandId::ALL
             .into_iter()
             .filter(|command| command.matches(&self.query))
@@ -564,16 +641,19 @@ impl CommandPaletteModal {
         }
         self.query.push(c);
         self.selected = 0;
+        self.error = None;
     }
 
     pub fn backspace(&mut self) {
         self.query.pop();
         self.selected = 0;
+        self.error = None;
     }
 
     pub fn clear(&mut self) {
         self.query.clear();
         self.selected = 0;
+        self.error = None;
     }
 }
 
@@ -608,6 +688,9 @@ pub enum Modal {
     Bookmarks(BookmarksModal),
     Source(SourceModal),
     Filters(FiltersModal),
+    Info(InfoModal),
+    ImagePicker(ImageProtocolModal),
+    Appearance(AppearanceModal),
     CommandPalette(CommandPaletteModal),
 }
 
@@ -628,6 +711,9 @@ impl Modal {
             Self::Bookmarks(_) => "Bookmarks",
             Self::Source(_) => "Source health",
             Self::Filters(_) => "Local filters",
+            Self::Info(_) => "Info",
+            Self::ImagePicker(_) => "Image protocol",
+            Self::Appearance(_) => "Appearance",
             Self::CommandPalette(_) => "Commands",
         }
     }

@@ -16,7 +16,7 @@ detail it behaves as the reverse of `Tab` (both toggle the two panes).
 | `?` | Open keyboard help |
 | `:` or `Ctrl+P` | Open the command palette |
 | `S` | Open Settings |
-| `T` | Cycle dark, light and Catppuccin themes (persisted) |
+| `T` | Cycle dark, light, Catppuccin, high-contrast and mono themes (persisted) |
 | Terminal resize | Layout recalculates automatically; no restart required |
 
 Mouse wheel, clicks and double-clicks are described at the end of this file.
@@ -46,7 +46,10 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 | `B` | Open the local bookmarks list |
 | `m` | Mark the selected post read/unread |
 | `y` | Copy the selected post's permalink |
-| `i` | Copy the selected post's image-preview URL |
+| `i` | Open the community-info drawer |
+| `I` | Copy the selected post's image-preview URL |
+| `M` / `A` / `D` | Quick-mute subreddit / author / domain |
+| `u` | Undo the last quick mute |
 | `Y` | Open the comments page in the browser |
 | `G` | Open the selected/current subreddit in the browser |
 | `h` | Show/hide the sidebar (persisted) |
@@ -90,7 +93,10 @@ between them. Comments are focused by default after opening a post.
 | `O` | Show only comments written by the original poster |
 | `n` | Mark the current comment read and jump to the next unread one |
 | `y` | Copy the selected comment permalink (post permalink from the body pane) |
-| `i` | Copy the post's image-preview URL |
+| `i` | Open the community-info drawer |
+| `I` | Copy the post's image-preview URL |
+| `M` / `A` / `D` | Quick-mute subreddit / author / domain |
+| `u` | Undo the last quick mute |
 | `Y` | Open that permalink in the browser |
 | `G` | Open this post's subreddit in the browser |
 | `b` / `B` | Bookmark this post / open bookmarks |
@@ -126,6 +132,7 @@ Removed posts hide their comments with an explanatory placeholder.
 | `Esc` | Close viewer (returns to feed or detail) |
 | `o` | Open the current image externally |
 | `y` / `i` | Copy the current image URL |
+| `I` | Open the community-info drawer |
 | `Y` | Open the post's comments page in the browser |
 | `G` | Open the post's subreddit in the browser |
 | `r` | Request a cleared redraw of the image |
@@ -179,7 +186,7 @@ names show an inline error and do not trigger a request.
 | Key | Action |
 |---|---|
 | `j` / `k` | Move between Settings rows |
-| `Enter` | Open Change config / Theme / Source health / Filters |
+| `Enter` | Open Change config / Theme / Images / Appearance / Source health / Filters |
 | `Esc` | Close Settings |
 | `j` / `k` in Change config | Choose a bundled config preset |
 | `Enter` in Change config | Install the selected config (existing config is backed up) |
@@ -187,11 +194,18 @@ names show an inline error and do not trigger a request.
 | `j` / `k` in Theme | Preview the highlighted theme live |
 | `Enter` in Theme | Apply and persist the previewed theme |
 | `Esc` in Theme | Revert to the theme that was active when the list opened |
+| `j` / `k` in Images | Move through Auto / Kitty / iTerm2 / Sixel / Halfblocks / Disabled |
+| `Enter` in Images | Apply the image protocol immediately |
+| `j` / `k` in Appearance | Move between timestamp and motion rows |
+| `Enter` in Appearance | Toggle relative/absolute time or reduced/full motion |
 
 Changing the config replaces only the provider settings; favorites, recents,
 theme, image, bookmarks, filters and UI preferences are preserved. The new
 provider is built immediately and the navigation stack is reset safely; no
 restart is required. Theme changes apply immediately and are persisted.
+
+`--no-color` (or the standard `NO_COLOR` environment variable) forces the
+monochrome theme for the session without overwriting the saved theme.
 
 ## Bookmarks and read state
 
@@ -213,7 +227,7 @@ restart is required. Theme changes apply immediately and are persisted.
 | Action | Feed | Post detail | Image viewer |
 |---|---|---|---|
 | Copy post/comment permalink | `y` | `y` | — |
-| Copy current image URL | `i` | `i` (post image preview) | `y` / `i` |
+| Copy current image URL | `I` | `I` (post image preview) | `y` / `i` |
 | Open comments/permalink | `Y` | `Y` | `Y` |
 | Open current subreddit | `G` | `G` | `G` |
 | Open post/image externally | `o` | `o` | `o` |
@@ -221,6 +235,18 @@ restart is required. Theme changes apply immediately and are persisted.
 Clipboard support uses `pbcopy` on macOS, `clip` on Windows, and
 `wl-copy`/`xclip`/`xsel` on Linux. Demo image URLs are local fixtures, so
 ReddTTY explains that there is no external URL to copy instead of claiming one.
+
+## Info drawer
+
+`i` opens a community drawer that works on narrow terminals where the wide
+right panel is hidden. It shows the community name, title, member counts,
+description, post details, suggested communities and actions.
+
+| Key | Action |
+|---|---|
+| `i` (feed/post) or `I` (gallery) | Open the info drawer |
+| `Esc` / `i` / `I` | Close |
+| Click outside | Close |
 
 ## Local filters
 
@@ -234,6 +260,15 @@ Open **Settings → Filters**. Filters are local and provider-independent.
 | `d` / `Delete` | Remove the selected rule |
 | `C` | Clear all filters |
 | `Esc` | Back to Settings |
+
+Quick mute from a selected post:
+
+| Key | Action |
+|---|---|
+| `M` | Mute the post's subreddit |
+| `A` | Mute the post's author |
+| `D` | Mute the post's domain |
+| `u` | Undo the last quick mute |
 
 Accepted expressions:
 
@@ -273,8 +308,31 @@ Open with `:` or `Ctrl+P`.
 | `↑` / `↓`, `Tab` | Move selection |
 | `Backspace` | Delete the last query character |
 | `Ctrl+U` | Clear the query |
-| `Enter` | Run the selected command |
+| `Enter` | Run the selected command or text command |
 | `Esc` | Close |
+
+Text commands:
+
+```text
+sort new
+theme mocha
+source
+bookmarks
+filter add keyword:ai
+filter clear
+mute sub politics
+mute author someone
+mute domain example.com
+unmute sub politics
+images halfblocks
+open comments
+copy url
+info
+settings
+refresh
+sidebar
+quit
+```
 
 ## Favorite removal confirmation
 
@@ -291,10 +349,11 @@ Adding a new favorite is still immediate.
 
 ## Help modal
 
-The help screen is a categorised reference rather than a flat list. Sections
-are: `GLOBAL`, `FEED`, `SIDEBAR`, `POST DETAIL`, `IMAGE VIEWER`,
-`CLIPBOARD & LINKS`, `SORT & RANGE`, `TEXT INPUT`, `BOOKMARKS`, `LOCAL FILTERS`,
-`SOURCE HEALTH`, `COMMAND PALETTE` and `MOUSE`.
+The help screen is a categorised reference rather than a flat list. The current
+screen's section is shown first. Sections are: `GLOBAL`, `FEED`, `SIDEBAR`,
+`POST DETAIL`, `IMAGE VIEWER`, `CLIPBOARD & LINKS`, `SORT & RANGE`,
+`TEXT INPUT`, `BOOKMARKS`, `LOCAL FILTERS`, `SOURCE HEALTH`,
+`COMMAND PALETTE` and `MOUSE`.
 
 | Key | Action |
 |---|---|
@@ -302,7 +361,9 @@ are: `GLOBAL`, `FEED`, `SIDEBAR`, `POST DETAIL`, `IMAGE VIEWER`,
 | `PageDown` / `PageUp` | Scroll one page |
 | `Home` / `End` | First / last row |
 | Mouse wheel | Scroll the reference |
-| `Esc` or `?` | Close |
+| `/` | Search shortcuts |
+| `Esc` | Clear search, then close |
+| `?` | Close when not searching |
 | Click outside | Close |
 
 At wide terminals entries are shown in two columns; the footer reports the

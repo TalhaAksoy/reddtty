@@ -54,6 +54,8 @@ impl App {
             )),
             health: SourceHealth::default(),
             request_starts: std::collections::HashMap::new(),
+            recent_commands: Vec::new(),
+            last_filter_undo: None,
         };
         app.set_size(100, 30);
         app
@@ -602,10 +604,39 @@ fn push_post_view(app: &mut App, comments: Vec<Comment>) {
 }
 
 #[test]
-fn source_health_screen_opens_from_settings_and_offers_retry() {
+fn settings_can_change_image_protocol_and_appearance() {
     let mut app = App::test_with_posts(vec![post("p")]);
     app.open_settings();
     app.activate_settings_item(2);
+    assert!(matches!(app.modal, Some(Modal::ImagePicker(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(
+        app.settings.images.protocol,
+        crate::config::ImageProtocolSetting::Kitty
+    );
+    assert_eq!(
+        app.persist_images_protocol,
+        crate::config::ImageProtocolSetting::Kitty
+    );
+    assert!(app.settings.images.enabled);
+
+    app.activate_settings_item(3);
+    assert!(matches!(app.modal, Some(Modal::Appearance(_))));
+    let before_time = app.settings.ui.relative_time;
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_ne!(app.settings.ui.relative_time, before_time);
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    let before_motion = app.settings.ui.reduce_motion;
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_ne!(app.settings.ui.reduce_motion, before_motion);
+}
+
+#[test]
+fn source_health_screen_opens_from_settings_and_offers_retry() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.open_settings();
+    app.activate_settings_item(4);
     assert!(matches!(app.modal, Some(Modal::Source(_))));
     app.execute_source_action(0);
     assert!(matches!(app.modal, Some(Modal::Source(_))));
@@ -684,7 +715,7 @@ fn filters_modal_adds_removes_and_clears_rules() {
             .as_nanos()
     ));
     app.open_settings();
-    app.activate_settings_item(3);
+    app.activate_settings_item(5);
     assert!(matches!(app.modal, Some(Modal::Filters(_))));
     app.handle_key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE));
     assert!(matches!(app.modal, Some(Modal::Text(_))));
@@ -733,6 +764,52 @@ fn command_palette_runs_selected_actions() {
     assert!(matches!(app.modal, Some(Modal::CommandPalette(_))));
     app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
     assert!(app.modal.is_none());
+}
+
+#[test]
+fn command_palette_runs_text_aliases() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.open_command_palette();
+    for c in "theme mocha".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.settings.general.theme, crate::config::ThemeMode::Mocha);
+    app.open_command_palette();
+    for c in "theme nope".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    let Some(Modal::CommandPalette(palette)) = &app.modal else {
+        panic!("palette should stay open on an invalid alias");
+    };
+    assert!(
+        palette
+            .error
+            .as_deref()
+            .is_some_and(|e| e.contains("Usage"))
+    );
+}
+
+#[test]
+fn quick_mute_and_undo_update_local_filters() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-mute-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    app.library_path = dir.join("library.toml");
+    app.handle_key(KeyEvent::new(KeyCode::Char('M'), KeyModifiers::NONE));
+    assert_eq!(app.library.filters.subreddits, vec!["rust"]);
+    assert!(app.last_filter_undo.is_some());
+    app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
+    assert!(app.library.filters.subreddits.is_empty());
+    assert!(app.last_filter_undo.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -799,7 +876,7 @@ fn demo_image_urls_are_not_offered_as_external_links() {
     };
     let mut app = App::test_with_posts(vec![image]);
     assert_eq!(app.current_image_url().unwrap(), "demo://img/a.png");
-    app.handle_key(KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Char('I'), KeyModifiers::NONE));
     assert!(
         app.notifications
             .iter()
@@ -818,6 +895,48 @@ fn invalid_subreddits_do_not_produce_browser_urls() {
     assert!(
         app.comments_url().is_some(),
         "the post itself is still valid"
+    );
+}
+
+#[test]
+fn info_drawer_snapshots_community_and_post_details() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    if let Some(feed) = app.current_feed_mut() {
+        feed.subreddit = Some(Subreddit {
+            name: "rust".into(),
+            title: "The Rust Programming Language".into(),
+            description: "Systems programming".into(),
+            subscribers: 100,
+            active_users: 5,
+            over18: false,
+            created_utc: 0,
+        });
+    }
+    app.open_info();
+    let Some(Modal::Info(modal)) = &app.modal else {
+        panic!("expected info drawer");
+    };
+    assert_eq!(modal.info.title, "Home");
+    assert_eq!(modal.info.members, Some((100, 5)));
+    assert!(modal.info.actions.iter().any(|(key, _)| key == "g"));
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(app.modal.is_none());
+
+    app.open_post();
+    if let Some(post) = app.current_post_mut() {
+        post.subreddit = Some(Subreddit::new("rust"));
+    }
+    app.open_info();
+    let Some(Modal::Info(modal)) = &app.modal else {
+        panic!("expected info drawer");
+    };
+    assert_eq!(modal.info.title, "r/rust");
+    assert!(
+        modal
+            .info
+            .post_lines
+            .iter()
+            .any(|line| line.contains("points"))
     );
 }
 
@@ -913,6 +1032,59 @@ fn post_detail_receives_its_community_context() {
     );
     assert!(post.subreddit_request.is_none());
     assert_eq!(app.health.requests, 1);
+}
+
+#[test]
+fn breadcrumb_tracks_the_navigation_stack() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    app.open_feed(FeedSpec::Subreddit("rust".into()), None, true);
+    if let Some(feed) = app.current_feed_mut() {
+        feed.posts = vec![post("p")];
+    }
+    assert_eq!(app.breadcrumb(), "Home › r/rust");
+    app.open_post();
+    assert!(
+        app.breadcrumb().ends_with("r/rust › Post"),
+        "{}",
+        app.breadcrumb()
+    );
+}
+
+#[test]
+fn new_restores_the_last_feed_and_sort() {
+    let dir = std::env::temp_dir().join(format!(
+        "reddtty-last-view-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let config_path = dir.join("config.toml");
+    let library = crate::library::Library {
+        last_feed: Some(FeedSpec::Subreddit("rust".into())),
+        last_sort: Some(FeedSort::New),
+        ..crate::library::Library::default()
+    };
+    library
+        .save(&crate::library::Library::path_for(&config_path))
+        .unwrap();
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+    let app = App::new(
+        Arc::new(TestProvider),
+        Settings::default(),
+        config_path,
+        ImageManager::disabled(tx.clone()),
+        tx,
+        None,
+        None,
+        Vec::new(),
+    );
+    let feed = app.current_feed().unwrap();
+    assert_eq!(feed.spec, FeedSpec::Subreddit("rust".into()));
+    assert_eq!(feed.sort, FeedSort::New);
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

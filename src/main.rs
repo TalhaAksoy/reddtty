@@ -9,6 +9,7 @@ use clap::Parser;
 use crossterm::cursor::Show;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event};
 use crossterm::execute;
+use crossterm::terminal::SetTitle;
 use ratatui_image::picker::cap_parser::QueryStdioOptions;
 use ratatui_image::picker::{Picker, ProtocolType};
 use reddtty::app::App;
@@ -112,7 +113,13 @@ async fn run() -> Result<()> {
             ThemeArg::Frappe => ThemeMode::Frappe,
             ThemeArg::Macchiato => ThemeMode::Macchiato,
             ThemeArg::Mocha => ThemeMode::Mocha,
+            ThemeArg::HighContrast => ThemeMode::HighContrast,
+            ThemeArg::Mono => ThemeMode::Mono,
         };
+    }
+    if cli.no_color || std::env::var_os("NO_COLOR").is_some() {
+        settings.general.theme = ThemeMode::Mono;
+        warnings.push("NO_COLOR/no-color: using the monochrome theme for this session.".into());
     }
     if cli.no_images {
         settings.images.enabled = false;
@@ -243,11 +250,20 @@ async fn run_loop(
     app: &mut App,
     mut rx: UnboundedReceiver<AppEvent>,
 ) -> Result<()> {
+    let mut last_title = String::new();
     loop {
         let Some(event) = rx.recv().await else {
             break;
         };
         app.handle_event(event);
+        let title = reddtty::utils::text::ellipsize(
+            &reddtty::utils::text::sanitize(&format!("ReddTTY — {}", app.breadcrumb())),
+            120,
+        );
+        if title != last_title {
+            let _ = execute!(stdout(), SetTitle(title.clone()));
+            last_title = title;
+        }
         if app.should_quit {
             break;
         }
@@ -290,7 +306,7 @@ impl Drop for SessionGuard {
         if self.mouse {
             let _ = execute!(stdout(), DisableMouseCapture);
         }
-        let _ = execute!(stdout(), Show);
+        let _ = execute!(stdout(), Show, SetTitle("Terminal"));
         match ratatui::try_restore() {
             Ok(()) => tracing::info!("terminal restored"),
             Err(error) => tracing::error!(error = %error, "terminal restore failed"),

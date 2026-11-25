@@ -20,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 288 passed, 0 failed, 0 ignored
+cargo test                                 # 300 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 60 captures, 100 assertions, all pass
+python3 scripts/pty_verify.py              # 66 captures, 109 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 220 | 220 | 0 | 0 |
+| Library unit tests (`src/**`) | 230 | 230 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 44 | 44 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 46 | 46 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **288** | **288** | **0** | **0** |
+| **Total** | **300** | **300** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -206,6 +206,11 @@ cargo build --release --example stress
   wide-screen community panel. A UI test renders the community name, title,
   description, suggested communities and actions. The post watch state receives
   subreddit updates through the same `SubredditLoaded` event as feeds.
+- The info drawer snapshots community/member/post data and renders on narrow
+  layouts. Settings image-protocol and appearance actions are app-tested; image
+  protocol changes clear pending encoded work. Help search/context ordering,
+  palette text aliases, quick mute/undo, breadcrumbs, last-feed restoration and
+  the eight themes are covered by unit/UI tests.
 - Directional focus is app-tested: `←` moves feed → sidebar (showing a hidden
   sidebar on wide terminals and explaining the 76-column limit on narrow ones),
   `→` moves sidebar → feed, and post detail moves comments ↔ body. PTY captures
@@ -254,7 +259,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 60, "assertions": 100}
+{"ok": true, "captures": 66, "assertions": 109}
 ```
 
 Captures and the machine-readable summary are in
@@ -288,6 +293,11 @@ against the compiled terminal application and its alternate-screen output.
 | 18 | Settings → Filters adds `keyword  black hole`; the feed reports `1 post(s) hidden by local filters` and the matching card disappears | **Pass** |
 | 19 | `:` opens Commands; typing `mocha` and Enter applies and persists `Theme: Catppuccin Mocha` | **Pass** |
 | 20 | Settings → Change config installs Demo in-process and shows `Provider applied immediately` without restarting | **Pass** |
+| 21 | `i` opens the community-info drawer with `ABOUT` and `SUGGESTED COMMUNITIES` at 140 columns | **Pass** |
+| 22 | Help `/` search for `zoom` shows the image-viewer shortcuts and hides feed shortcuts | **Pass** |
+| 23 | Settings → Images lists the protocol picker including `Halfblocks` | **Pass** |
+| 24 | Settings → Appearance shows relative timestamps and motion controls | **Pass** |
+| 25 | `M` mutes the selected subreddit and `u` undoes it with visible toasts | **Pass** |
 
 Visual inspection of the captures (not only assertions) found and drove the
 fixes listed in [`UX_REVIEW.md`](UX_REVIEW.md).
@@ -481,6 +491,12 @@ feed/sort/comment check.
     switched; they are not persisted across launches.
 18. Local filters apply to feed pages. Changing a filter refetches the current
     feed; unchanged pages already loaded from a provider are not archived.
+19. The last **feed/sort** is restored, not the last open post or gallery.
+20. ASCII/legacy glyph fallback is not implemented; Unicode box drawing and
+    icons are still required. `--no-color`, mono/high-contrast themes and
+    reduced motion are available.
+21. The custom self-hosted Redlib URL workflow still requires editing the config
+    or CLI; there is no dedicated in-app custom-URL form yet.
 
 ## Next steps
 

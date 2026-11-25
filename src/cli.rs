@@ -16,6 +16,10 @@ pub enum ThemeArg {
     Macchiato,
     #[value(alias = "catppuccin-mocha")]
     Mocha,
+    #[value(alias = "high-contrast")]
+    HighContrast,
+    #[value(alias = "mono", alias = "monochrome")]
+    Mono,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -99,6 +103,10 @@ pub struct Cli {
     #[arg(long)]
     pub no_images: bool,
 
+    /// Force the monochrome theme for this session (also honours NO_COLOR).
+    #[arg(long)]
+    pub no_color: bool,
+
     /// Override the terminal image protocol for this session.
     #[arg(long, value_enum, value_name = "PROTOCOL")]
     pub images_protocol: Option<ProtocolArg>,
@@ -136,6 +144,12 @@ mod tests {
         assert_eq!(cli.theme, Some(ThemeArg::Light));
         assert!(cli.no_images);
         assert!(cli.provider.is_none());
+    }
+
+    #[test]
+    fn parses_no_color() {
+        let cli = Cli::try_parse_from(["reddtty", "--no-color"]).unwrap();
+        assert!(cli.no_color);
     }
 
     #[test]

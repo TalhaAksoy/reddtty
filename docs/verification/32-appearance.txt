@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                           ╭ Appearance ────────────────────────────────────────╮
+                                           │  ▸ Timestamps: relative                            │
+                                           │     relative times such as “2h ago” or fixed dates │
+                                           │    Motion: full                                    │
+                                           │     stop spinner animation when reduced            │
+                                           │                                                    │
+                                           │                                                    │
+                                           │                 j/k move · Enter toggle · Esc back │
+                                           ╰────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+j/k Move · Enter Toggle · Esc Back

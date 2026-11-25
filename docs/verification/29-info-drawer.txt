@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+                               ╭ Info ──────────────────────────────────────────────────────────────────────╮
+                               │ ABOUT                                                                      │
+                               │ Home                                                                       │
+                               │                                                                            │
+                               │ DETAILS                                                                    │
+                               │ 24 posts                                                                   │
+                               │ Sort: Best                                                                 │
+                               │                                                                            │
+                               │ SUGGESTED COMMUNITIES                                                      │
+                               │ ▸ r/rust                                                                   │
+                               │ ▸ r/linux                                                                  │
+                               │ ▸ r/programming                                                            │
+                               │ ▸ r/technology                                                             │
+                               │ ▸ r/opensource                                                             │
+                               │ ▸ r/unixporn                                                               │
+                               │                                                                            │
+                               │ ACTIONS                                                                    │
+                               │ g    go to subreddit                                                       │
+                               │ f    favorite                                                              │
+                               │ r    refresh                                                               │
+                               │ Esc  close                                                                 │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                                            │
+                               │                                                          Esc or i to close │
+                               ╰────────────────────────────────────────────────────────────────────────────╯
+
+
+
+Esc/i Close

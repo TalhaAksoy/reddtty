@@ -22,7 +22,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::config::Settings;
 use crate::error::ProviderError;
 use crate::event::{AppEvent, ViewId};
-use crate::library::Library;
+use crate::library::{FilterKind, Library};
 use crate::media::renderer::ImageManager;
 use crate::models::{
     Comment, CommentSort, FeedPage, FeedRequest, FeedSort, FeedSpec, Post, Subreddit, TopRange,
@@ -41,9 +41,10 @@ use help::HelpModal;
 use hit::{HitMap, HitTarget, Pane};
 pub use modal::Modal;
 use modal::{
-    BookmarksModal, CommandId, CommandPaletteModal, ConfigPickerModal, ConfirmAction, FiltersModal,
-    RangeModal, SettingsModal, SortChoice, SortContext, SortModal, SourceModal, TextKind,
-    TextModal, ThemePickerModal,
+    AppearanceModal, BookmarksModal, CommandId, CommandPaletteModal, ConfigPickerModal,
+    ConfirmAction, FiltersModal, ImageProtocolModal, InfoModal, InfoSnapshot, RangeModal,
+    SettingsModal, SortChoice, SortContext, SortModal, SourceModal, TextKind, TextModal,
+    ThemePickerModal,
 };
 use post::{PostView, ToggleOutcome};
 use sidebar::{SidebarEntry, SidebarState};
@@ -151,6 +152,10 @@ pub struct App {
     pub health: SourceHealth,
     /// Start time for each in-flight request, used for latency reporting.
     pub request_starts: HashMap<u64, Instant>,
+    /// Recently executed palette actions; session-only.
+    pub recent_commands: Vec<CommandId>,
+    /// Last quick-mute rule, so `u` can undo it.
+    pub last_filter_undo: Option<(FilterKind, String)>,
 }
 
 impl App {
@@ -167,9 +172,25 @@ impl App {
     ) -> Self {
         let demo = provider.is_demo();
         let provider_label = provider.display_name();
-        let spec = initial_spec.unwrap_or_else(|| default_spec(&settings));
-        let requested_sort =
-            initial_sort.or_else(|| FeedSort::from_str_loose(&settings.general.default_sort));
+        let library_path = Library::path_for(&config_path);
+        let (library, library_warnings) = Library::load(&library_path);
+        notices.extend(library_warnings);
+        let explicit_feed = initial_spec.is_some();
+        let restored_feed = if explicit_feed {
+            None
+        } else {
+            library.last_feed.clone()
+        };
+        let spec = initial_spec
+            .or(restored_feed)
+            .unwrap_or_else(|| default_spec(&settings));
+        let requested_sort = initial_sort
+            .or(if explicit_feed {
+                None
+            } else {
+                library.last_sort
+            })
+            .or_else(|| FeedSort::from_str_loose(&settings.general.default_sort));
         let mut sort = requested_sort.unwrap_or_else(|| spec.default_sort());
         let options = provider.supported_sorts(&spec);
         let sort_supported = options.contains(&sort);
@@ -182,9 +203,6 @@ impl App {
         let persist_theme = settings.general.theme;
         let persist_images_enabled = settings.images.enabled;
         let persist_images_protocol = settings.images.protocol;
-        let library_path = Library::path_for(&config_path);
-        let (library, library_warnings) = Library::load(&library_path);
-        notices.extend(library_warnings);
 
         let mut app = Self {
             provider,
@@ -218,6 +236,8 @@ impl App {
             library_path,
             health: SourceHealth::default(),
             request_starts: HashMap::new(),
+            recent_commands: Vec::new(),
+            last_filter_undo: None,
         };
         for notice in notices {
             let kind = if notice.to_ascii_lowercase().contains("demo") {
@@ -254,6 +274,52 @@ impl App {
 
     pub fn theme(&self) -> Theme {
         Theme::from_mode(self.settings.general.theme)
+    }
+
+    /// Compact navigation trail for the top bar.
+    pub fn breadcrumb(&self) -> String {
+        let mut parts = Vec::new();
+        for (index, view) in self.nav.iter().enumerate() {
+            match view {
+                View::Feed(feed) => parts.push(feed.spec.short_title()),
+                View::Post(post) => {
+                    let same_subreddit = index
+                        .checked_sub(1)
+                        .and_then(|index| self.nav.get(index))
+                        .and_then(|view| match view {
+                            View::Feed(feed) => feed.spec.subreddit_name(),
+                            _ => None,
+                        })
+                        .is_some_and(|name| name.eq_ignore_ascii_case(&post.post.subreddit));
+                    if same_subreddit {
+                        parts.push("Post".into());
+                    } else {
+                        parts.push(format!("r/{} · Post", post.post.subreddit));
+                    }
+                }
+                View::Gallery(gallery) => {
+                    let same_subreddit = index
+                        .checked_sub(1)
+                        .and_then(|index| self.nav.get(index))
+                        .and_then(|view| match view {
+                            View::Feed(feed) => feed.spec.subreddit_name(),
+                            View::Post(post) => Some(post.post.subreddit.as_str()),
+                            _ => None,
+                        })
+                        .is_some_and(|name| name.eq_ignore_ascii_case(&gallery.post.subreddit));
+                    if same_subreddit {
+                        parts.push("Image".into());
+                    } else {
+                        parts.push(format!("r/{} · Image", gallery.post.subreddit));
+                    }
+                }
+            }
+        }
+        if parts.is_empty() {
+            "Home".into()
+        } else {
+            parts.join(" › ")
+        }
     }
 
     pub fn current(&self) -> Option<&View> {
@@ -378,6 +444,18 @@ impl App {
         }
     }
 
+    fn remember_last_view(&mut self) {
+        let Some((spec, sort)) = self
+            .current_feed()
+            .map(|feed| (feed.spec.clone(), feed.sort))
+        else {
+            return;
+        };
+        self.library.last_feed = Some(spec);
+        self.library.last_sort = Some(sort);
+        self.save_library();
+    }
+
     /// Rebuild the provider from the current settings and restart navigation
     /// without leaving the app. Favorites, recents, themes and the local
     /// library are never touched. Old in-flight requests are ignored because
@@ -498,6 +576,7 @@ impl App {
         self.dirty = true;
         self.request_feed_initial(id);
         self.request_subreddit_if_needed(id);
+        self.remember_last_view();
     }
 
     pub fn back(&mut self) {
@@ -514,6 +593,9 @@ impl App {
         };
         if self.library.filters.hide_read {
             self.prune_current_feed();
+        }
+        if matches!(self.nav.last(), Some(View::Feed(_))) {
+            self.remember_last_view();
         }
         self.dirty = true;
     }
@@ -1193,21 +1275,320 @@ impl App {
     }
 
     pub fn open_help(&mut self) {
-        self.modal = Some(Modal::Help(HelpModal::default()));
+        let context = match self.nav.last() {
+            Some(View::Feed(_)) if self.focus == Focus::Sidebar => "SIDEBAR",
+            Some(View::Feed(_)) => "FEED",
+            Some(View::Post(_)) => "POST DETAIL",
+            Some(View::Gallery(_)) => "IMAGE VIEWER",
+            None => "GLOBAL",
+        };
+        self.modal = Some(Modal::Help(HelpModal {
+            context: Some(context),
+            ..HelpModal::default()
+        }));
+    }
+
+    pub fn open_info(&mut self) {
+        self.modal = Some(Modal::Info(InfoModal {
+            info: self.info_snapshot(),
+        }));
+        self.dirty = true;
+    }
+
+    fn info_snapshot(&self) -> InfoSnapshot {
+        let mut info = InfoSnapshot::default();
+        match self.nav.last() {
+            Some(View::Feed(feed)) => {
+                info.title = feed.spec.title();
+                if let Some(subreddit) = &feed.subreddit {
+                    info.subtitle = Some(subreddit.title.clone()).filter(|title| {
+                        !title.is_empty() && !title.eq_ignore_ascii_case(&subreddit.name)
+                    });
+                    info.description = Some(subreddit.description.clone())
+                        .filter(|description| !description.is_empty());
+                    info.members = Some((subreddit.subscribers, subreddit.active_users));
+                }
+                info.error = feed.subreddit_error.clone();
+                info.loading = feed.subreddit_request.is_some();
+                info.post_lines = vec![
+                    format!("{} posts", feed.posts.len()),
+                    format!("Sort: {}", feed.sort.label()),
+                ];
+                info.actions = vec![
+                    ("g".into(), "go to subreddit".into()),
+                    ("f".into(), "favorite".into()),
+                    ("r".into(), "refresh".into()),
+                    ("Esc".into(), "close".into()),
+                ];
+            }
+            Some(View::Post(post)) => {
+                info.title = format!("r/{}", post.post.subreddit);
+                if let Some(subreddit) = &post.subreddit {
+                    info.subtitle = Some(subreddit.title.clone()).filter(|title| {
+                        !title.is_empty() && !title.eq_ignore_ascii_case(&subreddit.name)
+                    });
+                    info.description = Some(subreddit.description.clone())
+                        .filter(|description| !description.is_empty());
+                    info.members = Some((subreddit.subscribers, subreddit.active_users));
+                }
+                info.error = post.subreddit_error.clone();
+                info.loading = post.subreddit_request.is_some();
+                info.post_lines = vec![
+                    format!("u/{}", post.post.author),
+                    format!("{} points", post.post.score),
+                    format!("{} comments", post.post.num_comments),
+                    post.post.content.kind_label().to_string(),
+                ];
+                info.actions = vec![
+                    ("G".into(), "open subreddit".into()),
+                    ("Y".into(), "open comments".into()),
+                    ("b".into(), "bookmark".into()),
+                    ("Esc".into(), "close".into()),
+                ];
+            }
+            Some(View::Gallery(gallery)) => {
+                info.title = format!("r/{}", gallery.post.subreddit);
+                info.post_lines = vec![
+                    format!("u/{}", gallery.post.author),
+                    format!("{} points", gallery.post.score),
+                    format!("{} / {} image", gallery.index + 1, gallery.images.len()),
+                ];
+                info.actions = vec![
+                    ("G".into(), "open subreddit".into()),
+                    ("Y".into(), "open comments".into()),
+                    ("Esc".into(), "close".into()),
+                ];
+            }
+            None => {}
+        }
+        info
     }
 
     pub fn open_command_palette(&mut self) {
-        self.modal = Some(Modal::CommandPalette(CommandPaletteModal::default()));
+        self.modal = Some(Modal::CommandPalette(CommandPaletteModal {
+            recent: self.recent_commands.clone(),
+            ..CommandPaletteModal::default()
+        }));
         self.dirty = true;
+    }
+
+    fn execute_palette_query(&mut self, raw: &str) -> Result<bool, String> {
+        let tokens: Vec<&str> = raw.split_whitespace().collect();
+        let Some(command) = tokens.first().map(|token| token.to_ascii_lowercase()) else {
+            return Ok(false);
+        };
+        let rest = tokens.get(1..).unwrap_or(&[]).join(" ");
+        let arg = || rest.trim().to_string();
+        match command.as_str() {
+            "sort" => {
+                let sort = FeedSort::from_str_loose(&rest).ok_or_else(|| {
+                    "Usage: sort best|hot|new|top|rising|controversial".to_string()
+                })?;
+                self.apply_feed_sort(sort);
+                Ok(true)
+            }
+            "theme" => {
+                let theme = match rest.to_ascii_lowercase().as_str() {
+                    "dark" => crate::config::ThemeMode::Dark,
+                    "light" => crate::config::ThemeMode::Light,
+                    "latte" | "catppuccin-latte" => crate::config::ThemeMode::Latte,
+                    "frappe" | "catppuccin-frappe" => crate::config::ThemeMode::Frappe,
+                    "macchiato" | "catppuccin-macchiato" => {
+                        crate::config::ThemeMode::Macchiato
+                    }
+                    "mocha" | "catppuccin-mocha" => crate::config::ThemeMode::Mocha,
+                    "high-contrast" | "contrast" => crate::config::ThemeMode::HighContrast,
+                    "mono" | "monochrome" => crate::config::ThemeMode::Mono,
+                    "next" => self.settings.general.theme.next(),
+                    _ => return Err("Usage: theme dark|light|latte|frappe|macchiato|mocha|high-contrast|mono|next".into()),
+                };
+                self.commit_theme(theme);
+                Ok(true)
+            }
+            "source" => {
+                if rest.is_empty() {
+                    self.open_source_health();
+                } else {
+                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+                }
+                Ok(true)
+            }
+            "bookmark" | "bookmarks" => {
+                self.open_bookmarks();
+                Ok(true)
+            }
+            "filter" | "filters" => {
+                if rest.is_empty() {
+                    self.open_filters();
+                } else if rest == "clear" {
+                    self.clear_all_filters();
+                } else if let Some(expression) = rest.strip_prefix("add ") {
+                    let message = self.library.filters.add_expression(expression)?;
+                    self.apply_filter_change(message);
+                } else {
+                    return Err("Usage: filter | filter add <kind:value> | filter clear".into());
+                }
+                Ok(true)
+            }
+            "mute" => {
+                let Some((kind, value)) = rest.split_once(' ') else {
+                    return Err("Usage: mute sub|author|domain|keyword <value>".into());
+                };
+                let kind = match kind.to_ascii_lowercase().as_str() {
+                    "sub" | "subreddit" | "r" => FilterKind::Subreddit,
+                    "author" | "user" | "u" => FilterKind::Author,
+                    "domain" | "d" => FilterKind::Domain,
+                    "keyword" | "word" => FilterKind::Keyword,
+                    _ => return Err("Unknown mute kind".into()),
+                };
+                self.add_filter_rule(kind, value.trim());
+                Ok(true)
+            }
+            "unmute" => {
+                let Some((kind, value)) = rest.split_once(' ') else {
+                    return Err("Usage: unmute sub|author|domain|keyword <value>".into());
+                };
+                let kind = match kind.to_ascii_lowercase().as_str() {
+                    "sub" | "subreddit" | "r" => FilterKind::Subreddit,
+                    "author" | "user" | "u" => FilterKind::Author,
+                    "domain" | "d" => FilterKind::Domain,
+                    "keyword" | "word" => FilterKind::Keyword,
+                    _ => return Err("Unknown filter kind".into()),
+                };
+                if self.library.filters.remove_entry(kind, value.trim()) {
+                    self.apply_filter_change(format!(
+                        "Removed {} filter “{}”.",
+                        kind.label(),
+                        value.trim()
+                    ));
+                } else {
+                    return Err("No matching local filter.".into());
+                }
+                Ok(true)
+            }
+            "open" => {
+                match rest.to_ascii_lowercase().as_str() {
+                    "comments" => self.open_comments(),
+                    "subreddit" | "sub" => self.open_subreddit(),
+                    "image" => self.open_gallery(),
+                    "post" | "browser" | "" => self.open_url(),
+                    _ => return Err("Usage: open comments|subreddit|image|post".into()),
+                }
+                Ok(true)
+            }
+            "copy" => {
+                match rest.to_ascii_lowercase().as_str() {
+                    "url" | "permalink" | "post" => self.copy_permalink(),
+                    "image" => self.copy_image_url(),
+                    "comments" => {
+                        if let Some(url) = self.comments_url() {
+                            match crate::utils::clipboard::copy(&url) {
+                                Ok(()) => self.notify(
+                                    NoticeKind::Success,
+                                    "Comments URL copied to clipboard.",
+                                ),
+                                Err(error) => self.notify(NoticeKind::Error, error),
+                            }
+                        } else {
+                            self.notify(NoticeKind::Info, "This item has no comments URL.");
+                        }
+                    }
+                    _ => return Err("Usage: copy url|image|comments".into()),
+                }
+                Ok(true)
+            }
+            "images" => {
+                let setting = crate::config::ImageProtocolSetting::from_str_loose(&rest)
+                    .ok_or_else(|| {
+                        "Usage: images auto|kitty|iterm2|sixel|halfblocks|disabled".to_string()
+                    })?;
+                self.commit_image_protocol(setting);
+                Ok(true)
+            }
+            "info" => {
+                self.open_info();
+                Ok(true)
+            }
+            "settings" => {
+                self.open_settings();
+                Ok(true)
+            }
+            "help" => {
+                self.open_help();
+                Ok(true)
+            }
+            "refresh" => {
+                self.refresh_current();
+                Ok(true)
+            }
+            "sidebar" => {
+                self.toggle_sidebar();
+                Ok(true)
+            }
+            "quit" | "q" => {
+                self.should_quit = true;
+                Ok(true)
+            }
+            _ => {
+                let _ = arg;
+                Ok(false)
+            }
+        }
+    }
+
+    fn add_filter_rule(&mut self, kind: FilterKind, value: &str) {
+        let expression = format!("{}:{}", kind.label(), value);
+        match self.library.filters.add_expression(&expression) {
+            Ok(message) => {
+                self.last_filter_undo = Some((kind, value.trim().to_string()));
+                self.apply_filter_change(message);
+                self.notify(NoticeKind::Info, "Press u to undo the last filter.");
+            }
+            Err(error) => self.notify(NoticeKind::Error, error),
+        }
+    }
+
+    fn undo_last_filter(&mut self) {
+        let Some((kind, value)) = self.last_filter_undo.take() else {
+            self.notify(NoticeKind::Info, "No recent filter change to undo.");
+            return;
+        };
+        if self.library.filters.remove_entry(kind, &value) {
+            self.apply_filter_change(format!("Removed {} filter “{value}”.", kind.label()));
+        }
+    }
+
+    fn mute_current(&mut self, kind: FilterKind) {
+        let Some(post) = self.action_post() else {
+            self.notify(NoticeKind::Info, "Select a post first.");
+            return;
+        };
+        let value = match kind {
+            FilterKind::Subreddit => post.subreddit.clone(),
+            FilterKind::Author => post.author.clone(),
+            FilterKind::Domain => post.domain_or_subreddit().to_string(),
+            FilterKind::Keyword => {
+                self.notify(
+                    NoticeKind::Info,
+                    "Use :mute keyword <text> for keyword filters.",
+                );
+                return;
+            }
+        };
+        self.add_filter_rule(kind, &value);
     }
 
     fn execute_command(&mut self, command: CommandId) {
         self.modal = None;
+        self.recent_commands.retain(|recent| *recent != command);
+        self.recent_commands.insert(0, command);
+        self.recent_commands.truncate(8);
         match command {
             CommandId::Help => self.open_help(),
             CommandId::Settings => self.open_settings(),
             CommandId::Filters => self.open_filters(),
             CommandId::SourceHealth => self.open_source_health(),
+            CommandId::Info => self.open_info(),
             CommandId::Bookmarks => self.open_bookmarks(),
             CommandId::Search => self.open_search_modal(),
             CommandId::GoToSubreddit => self.open_goto_modal(),
@@ -1255,10 +1636,72 @@ impl App {
                     self.settings.general.theme,
                 )));
             }
-            2 => self.open_source_health(),
-            3 => self.open_filters(),
+            2 => {
+                self.modal = Some(Modal::ImagePicker(ImageProtocolModal::new(
+                    self.settings.images.protocol,
+                )));
+            }
+            3 => {
+                self.modal = Some(Modal::Appearance(AppearanceModal::default()));
+            }
+            4 => self.open_source_health(),
+            5 => self.open_filters(),
             _ => {}
         }
+    }
+
+    fn commit_image_protocol(&mut self, setting: crate::config::ImageProtocolSetting) {
+        let enabled = setting != crate::config::ImageProtocolSetting::Disabled;
+        if let Err(error) = self.images.set_protocol(setting, enabled) {
+            self.notify(NoticeKind::Error, error);
+            return;
+        }
+        self.settings.images.protocol = setting;
+        self.settings.images.enabled = enabled;
+        self.persist_images_protocol = setting;
+        self.persist_images_enabled = enabled;
+        self.persist();
+        self.force_clear = true;
+        self.dirty = true;
+        if enabled {
+            self.notify(
+                NoticeKind::Success,
+                format!("Image protocol: {}.", setting.label()),
+            );
+        } else {
+            self.notify(NoticeKind::Info, "Images disabled for this configuration.");
+        }
+    }
+
+    fn toggle_relative_time(&mut self) {
+        self.settings.ui.relative_time = !self.settings.ui.relative_time;
+        self.persist();
+        self.notify(
+            NoticeKind::Info,
+            if self.settings.ui.relative_time {
+                "Timestamps: relative."
+            } else {
+                "Timestamps: absolute."
+            },
+        );
+        self.dirty = true;
+    }
+
+    fn toggle_reduce_motion(&mut self) {
+        self.settings.ui.reduce_motion = !self.settings.ui.reduce_motion;
+        if self.settings.ui.reduce_motion {
+            self.spinner = 0;
+        }
+        self.persist();
+        self.notify(
+            NoticeKind::Info,
+            if self.settings.ui.reduce_motion {
+                "Reduced motion enabled."
+            } else {
+                "Reduced motion disabled."
+            },
+        );
+        self.dirty = true;
     }
 
     pub fn open_filters(&mut self) {
@@ -1423,6 +1866,7 @@ impl App {
         self.focus = Focus::Feed;
         self.force_clear = true;
         self.request_feed_initial(view_id);
+        self.remember_last_view();
         self.notify(NoticeKind::Info, format!("Sorted by {}.", sort.label()));
     }
 
@@ -1440,6 +1884,7 @@ impl App {
         self.focus = Focus::Feed;
         self.force_clear = true;
         self.request_feed_initial(view_id);
+        self.remember_last_view();
         if top_changed {
             self.notify(NoticeKind::Info, format!("Top · {}", range.label()));
         }
@@ -1624,7 +2069,28 @@ impl App {
                     self.modal = Some(Modal::CommandPalette(palette));
                 }
                 KeyCode::Enter => {
-                    if let Some(command) = palette.selected_command() {
+                    let selected = palette.selected_command();
+                    let query = palette.query.clone();
+                    let recent = palette.recent.clone();
+                    self.modal = None;
+                    if !query.trim().is_empty() {
+                        match self.execute_palette_query(&query) {
+                            Ok(true) => {}
+                            Ok(false) => {
+                                if let Some(command) = selected {
+                                    self.execute_command(command);
+                                }
+                            }
+                            Err(error) => {
+                                self.modal = Some(Modal::CommandPalette(CommandPaletteModal {
+                                    query,
+                                    selected: palette.selected,
+                                    recent,
+                                    error: Some(error),
+                                }));
+                            }
+                        }
+                    } else if let Some(command) = selected {
                         self.execute_command(command);
                     }
                 }
@@ -1649,34 +2115,52 @@ impl App {
             Modal::Help(mut help) => {
                 let width = self.size.width;
                 let height = self.size.height;
+                if help.searching {
+                    match key.code {
+                        KeyCode::Esc => help.clear_query(),
+                        KeyCode::Enter => help.searching = false,
+                        KeyCode::Backspace => help.backspace(),
+                        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            help.query.clear();
+                            help.offset = 0;
+                        }
+                        KeyCode::Up => help.scroll_by(-1, width, height),
+                        KeyCode::Down => help.scroll_by(1, width, height),
+                        KeyCode::PageUp => help.page(false, width, height),
+                        KeyCode::PageDown => help.page(true, width, height),
+                        KeyCode::Home => help.home(),
+                        KeyCode::End => help.end(width, height),
+                        KeyCode::Char(c)
+                            if !key
+                                .modifiers
+                                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+                        {
+                            help.push_char(c);
+                        }
+                        _ => {}
+                    }
+                    self.modal = Some(Modal::Help(help));
+                    return;
+                }
                 match key.code {
-                    KeyCode::Esc | KeyCode::Char('?') => self.modal = None,
-                    KeyCode::Char('j') | KeyCode::Down => {
-                        help.scroll_by(1, width, height);
-                        self.modal = Some(Modal::Help(help));
+                    KeyCode::Esc | KeyCode::Char('?') if help.query.is_empty() => {
+                        self.modal = None;
+                        return;
                     }
-                    KeyCode::Char('k') | KeyCode::Up => {
-                        help.scroll_by(-1, width, height);
-                        self.modal = Some(Modal::Help(help));
+                    KeyCode::Esc => help.clear_query(),
+                    KeyCode::Char('/') => {
+                        help.searching = true;
+                        help.offset = 0;
                     }
-                    KeyCode::PageDown => {
-                        help.page(true, width, height);
-                        self.modal = Some(Modal::Help(help));
-                    }
-                    KeyCode::PageUp => {
-                        help.page(false, width, height);
-                        self.modal = Some(Modal::Help(help));
-                    }
-                    KeyCode::Home => {
-                        help.home();
-                        self.modal = Some(Modal::Help(help));
-                    }
-                    KeyCode::End => {
-                        help.end(width, height);
-                        self.modal = Some(Modal::Help(help));
-                    }
+                    KeyCode::Char('j') | KeyCode::Down => help.scroll_by(1, width, height),
+                    KeyCode::Char('k') | KeyCode::Up => help.scroll_by(-1, width, height),
+                    KeyCode::PageDown => help.page(true, width, height),
+                    KeyCode::PageUp => help.page(false, width, height),
+                    KeyCode::Home => help.home(),
+                    KeyCode::End => help.end(width, height),
                     _ => {}
                 }
+                self.modal = Some(Modal::Help(help));
             }
             Modal::Sort(mut sort_modal) => match key.code {
                 KeyCode::Esc => self.modal = None,
@@ -1738,7 +2222,7 @@ impl App {
             Modal::Settings(settings) => match key.code {
                 KeyCode::Esc => self.modal = None,
                 KeyCode::Char('j') | KeyCode::Down => {
-                    let next = (settings.selected + 1).min(3);
+                    let next = (settings.selected + 1).min(5);
                     self.modal = Some(Modal::Settings(SettingsModal {
                         selected: next,
                         theme: settings.theme,
@@ -1835,6 +2319,59 @@ impl App {
                     self.remove_filter_row(filters.selected);
                 }
                 KeyCode::Char('C') => self.clear_all_filters(),
+                _ => {}
+            },
+            Modal::Info(_) => match key.code {
+                KeyCode::Esc | KeyCode::Char('i') | KeyCode::Char('I') => self.modal = None,
+                _ => {}
+            },
+            Modal::ImagePicker(mut picker) => match key.code {
+                KeyCode::Esc => {
+                    self.modal = Some(Modal::Settings(SettingsModal::new(
+                        self.settings.general.theme,
+                    )));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    picker.move_selection(1);
+                    self.modal = Some(Modal::ImagePicker(picker));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    picker.move_selection(-1);
+                    self.modal = Some(Modal::ImagePicker(picker));
+                }
+                KeyCode::Enter => {
+                    let setting = picker.current();
+                    self.commit_image_protocol(setting);
+                    self.modal = Some(Modal::Settings(SettingsModal {
+                        selected: 2,
+                        theme: self.settings.general.theme,
+                    }));
+                }
+                _ => {}
+            },
+            Modal::Appearance(mut appearance) => match key.code {
+                KeyCode::Esc => {
+                    self.modal = Some(Modal::Settings(SettingsModal {
+                        selected: 3,
+                        theme: self.settings.general.theme,
+                    }));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    appearance.selected = (appearance.selected + 1).min(AppearanceModal::ROWS - 1);
+                    self.modal = Some(Modal::Appearance(appearance));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    appearance.selected = appearance.selected.saturating_sub(1);
+                    self.modal = Some(Modal::Appearance(appearance));
+                }
+                KeyCode::Enter => {
+                    match appearance.selected {
+                        0 => self.toggle_relative_time(),
+                        1 => self.toggle_reduce_motion(),
+                        _ => {}
+                    }
+                    self.modal = Some(Modal::Appearance(appearance));
+                }
                 _ => {}
             },
             Modal::Source(mut source) => match key.code {
@@ -2169,7 +2706,12 @@ impl App {
             KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('m') => self.toggle_read_current(),
             KeyCode::Char('y') => self.copy_permalink(),
-            KeyCode::Char('i') => self.copy_image_url(),
+            KeyCode::Char('i') => self.open_info(),
+            KeyCode::Char('I') => self.copy_image_url(),
+            KeyCode::Char('M') => self.mute_current(FilterKind::Subreddit),
+            KeyCode::Char('A') => self.mute_current(FilterKind::Author),
+            KeyCode::Char('D') => self.mute_current(FilterKind::Domain),
+            KeyCode::Char('u') => self.undo_last_filter(),
             KeyCode::Char('Y') => self.open_comments(),
             KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('T') => self.toggle_theme(),
@@ -2259,7 +2801,12 @@ impl App {
             KeyCode::Char('B') => self.open_bookmarks(),
             KeyCode::Char('m') => self.toggle_read_current(),
             KeyCode::Char('y') => self.copy_permalink(),
-            KeyCode::Char('i') => self.copy_image_url(),
+            KeyCode::Char('i') => self.open_info(),
+            KeyCode::Char('I') => self.copy_image_url(),
+            KeyCode::Char('M') => self.mute_current(FilterKind::Subreddit),
+            KeyCode::Char('A') => self.mute_current(FilterKind::Author),
+            KeyCode::Char('D') => self.mute_current(FilterKind::Domain),
+            KeyCode::Char('u') => self.undo_last_filter(),
             KeyCode::Char('Y') => self.open_permalink(),
             KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('[') => self.comment_prev_root(),
@@ -2692,6 +3239,7 @@ impl App {
             KeyCode::Char('0') => self.gallery_reset_zoom(),
             KeyCode::Char('o') => self.open_url(),
             KeyCode::Char('y') | KeyCode::Char('i') => self.copy_image_url(),
+            KeyCode::Char('I') => self.open_info(),
             KeyCode::Char('Y') => self.open_comments(),
             KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('b') => self.toggle_bookmark_current(),
@@ -2916,6 +3464,28 @@ impl App {
                     self.open_bookmark_item(index);
                 } else if matches!(self.modal, Some(Modal::Source(_))) {
                     self.execute_source_action(index);
+                } else if matches!(self.modal, Some(Modal::ImagePicker(_))) {
+                    if let Some(setting) =
+                        crate::config::ImageProtocolSetting::ALL.get(index).copied()
+                    {
+                        self.commit_image_protocol(setting);
+                        self.modal = Some(Modal::Settings(SettingsModal {
+                            selected: 2,
+                            theme: self.settings.general.theme,
+                        }));
+                    }
+                } else if matches!(self.modal, Some(Modal::Appearance(_))) {
+                    if let Some(Modal::Appearance(modal)) = &mut self.modal {
+                        modal.selected = index.min(AppearanceModal::ROWS - 1);
+                    }
+                    match index {
+                        0 => self.toggle_relative_time(),
+                        1 => self.toggle_reduce_motion(),
+                        _ => {}
+                    }
+                    self.modal = Some(Modal::Appearance(AppearanceModal {
+                        selected: index.min(AppearanceModal::ROWS - 1),
+                    }));
                 } else if matches!(self.modal, Some(Modal::Filters(_))) {
                     if index == 0 {
                         self.toggle_hide_read();
@@ -3026,7 +3596,11 @@ impl App {
                 }
             }
             AppEvent::Tick => {
-                self.spinner = (self.spinner + 1) % crate::ui::SPINNER.len();
+                self.spinner = if self.settings.ui.reduce_motion {
+                    0
+                } else {
+                    (self.spinner + 1) % crate::ui::SPINNER.len()
+                };
                 let now = Instant::now();
                 let before = self.notifications.len();
                 self.notifications.retain(|n| !n.expired(now));

@@ -141,7 +141,8 @@ impl TopRange {
 }
 
 /// Where a feed's content comes from.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 pub enum SearchScope {
     All,
     Subreddit(String),
@@ -163,7 +164,8 @@ impl SearchScope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 pub enum FeedSpec {
     Home,
     Popular,

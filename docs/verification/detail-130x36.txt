@@ -1,4 +1,4 @@
- REDDTTY   ›  r/rust · Post                                                                                       ● DEMO   ? Help
+ REDDTTY   ›  Home › r/rust · Post                                                                                ● DEMO   ? Help
  r/rust   •   u/ferris_fan   •   2h ago   Discussion                                                  │ABOUT
  Why I love building CLI applications with Rust                                                       │r/rust
                                                                                                       │The Rust Programming

@@ -2,7 +2,7 @@
  NAVIGATION            │ Home                                                         25 posts · more │ABOUT
 ┃ Home                 │  Best   Hot   New   Top   Rising   Controversial                             │Home
   Popular              │ ╭─────────────────────────────────────────────────────────────────────────╮┃ │Demo mode: synthetic posts
-                       │ │ r/rust  •  u/ferris_fan  •  2h ago                                      │┃ │and comments, stored
+                       │ │ r/rust  •  u/ferris_fan  •  2h ago                             ● unread │┃ │and comments, stored
  COMMUNITIES           │ │                                                                         │┃ │locally.
   r/rust               │ │ Why I love building CLI applications with Rust                          ││ │
   r/linux              │ │                                                                         ││ │SUGGESTED COMMUNITIES

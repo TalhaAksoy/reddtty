@@ -1,15 +1,6 @@
  REDDTTY   ›  Home                                                                  ● DEMO   ? Help
 
   ╭ Keyboard Shortcuts ──────────────────────────────────────────────────────────────────────────╮
-  │ GLOBAL                                                                                       │
-  │ ?           Open this help                                                                   │
-  │ S           Settings                                                                         │
-  │ : / Ctrl+P  Command palette                                                                  │
-  │ T           Cycle theme                                                                      │
-  │ Esc         Back / close modal                                                               │
-  │ Ctrl+C      Quit immediately                                                                 │
-  │ q           Quit (not in text input)                                                         │
-  │                                                                                              │
   │ FEED                                                                                         │
   │ j / k       Next / previous post                                                             │
   │ ↑ / ↓       Same as j / k                                                                    │
@@ -24,7 +15,16 @@
   │ /           Search posts                                                                     │
   │ r           Refresh first page                                                               │
   │ o           Open post/link in browser                                                        │
-  │ j/k scroll · PgUp/PgDn page · Home/End                         23/161 · 138 more · Esc close │
+  │ v           Open image / gallery                                                             │
+  │ x           Reveal NSFW or spoiler                                                           │
+  │ f           Favorite subreddit                                                               │
+  │ b           Bookmark selected post                                                           │
+  │ B           Open bookmarks                                                                   │
+  │ m           Toggle read / unread                                                             │
+  │ y           Copy post permalink                                                              │
+  │ i           Community info drawer                                                            │
+  │ I           Copy image preview URL                                                           │
+  │ j/k scroll · PgUp/PgDn page · / search                         23/168 · 145 more · Esc close │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 
 j/k Scroll · PgUp/PgDn Page · Esc/? Close

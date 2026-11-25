@@ -80,6 +80,9 @@ def send(session: str, key: str, literal: bool = False) -> None:
 
 def start(width: int, height: int, name: str, config: Path = CONFIG) -> str:
     tmux("kill-session", "-t", name)
+    library = config.parent / "library.toml"
+    if library.exists():
+        library.unlink()
     cmd = (
         f"cd {ROOT} && {BIN} --demo --config {config}; "
         "echo EXIT:$?; sleep 20"
@@ -130,6 +133,7 @@ def main() -> int:
         assert_seen("post detail body", detail, "shipping")
         assert_seen("post detail comments", detail, "COMMENTS")
         assert_seen("post detail sort", detail, "Sort: Best")
+        assert_seen("post breadcrumb", detail, "Home ›")
         assert_seen("post community sidebar", detail, "ABOUT")
         assert_seen("post related communities", detail, "SUGGESTED COMMUNITIES")
 
@@ -281,8 +285,8 @@ def main() -> int:
 
         send(session, "S")
         wait_for(session, "Settings")
-        send(session, "j")
-        send(session, "j")
+        for _ in range(4):
+            send(session, "j")
         send(session, "Enter")
         health = wait_for(session, "Source health")
         save("20-source-health", health)
@@ -299,9 +303,8 @@ def main() -> int:
 
         send(session, "Escape")
         wait_for(session, "Settings")
-        send(session, "j")
-        send(session, "j")
-        send(session, "j")
+        for _ in range(5):
+            send(session, "j")
         send(session, "Enter")
         filters = wait_for(session, "Local filters")
         save("22-local-filters", filters)
@@ -326,7 +329,7 @@ def main() -> int:
         save("25-command-palette", palette)
         assert_seen("command palette", palette, "Search posts")
         assert_seen("command palette themes", palette, "Theme: Catppuccin Mocha")
-        send(session, "mocha", literal=True)
+        send(session, "theme mocha", literal=True)
         send(session, "Enter")
         themed = wait_for(session, "Theme: Catppuccin Mocha")
         save("26-command-theme", themed)
@@ -344,10 +347,66 @@ def main() -> int:
         assert_seen("provider switch", switched, "Provider applied immediately")
         assert_seen("provider still demo", switched, "DEMO")
 
+        send(session, "i")
+        info = wait_for(session, "ABOUT")
+        save("29-info-drawer", info)
+        assert_seen("info drawer about", info, "ABOUT")
+        assert_seen("info drawer related", info, "SUGGESTED COMMUNITIES")
+        send(session, "Escape")
+        wait_for(session, "Home")
+
+        send(session, "?")
+        wait_for(session, "Keyboard Shortcuts")
+        send(session, "/")
+        send(session, "zoom", literal=True)
+        help_search = wait_for(session, "Zoom in / out")
+        save("30-help-search", help_search)
+        assert_seen("help search result", help_search, "Zoom in / out")
+        assert_not_seen("help search filters feed", help_search, "Next / previous post")
+        send(session, "Escape")
+        send(session, "Escape")
+        wait_for(session, "Home")
+
+        send(session, "S")
+        wait_for(session, "Settings")
+        send(session, "j")
+        send(session, "j")
+        send(session, "Enter")
+        images = wait_for(session, "Image protocol")
+        save("31-image-protocol", images)
+        assert_seen("image protocol menu", images, "Halfblocks")
+        send(session, "Escape")
+        wait_for(session, "Settings")
+        send(session, "Escape")
+        wait_for(session, "Home")
+
+        send(session, "S")
+        wait_for(session, "Settings")
+        send(session, "j")
+        send(session, "j")
+        send(session, "j")
+        send(session, "Enter")
+        appearance = wait_for(session, "Appearance")
+        save("32-appearance", appearance)
+        assert_seen("appearance timestamps", appearance, "Timestamps")
+        send(session, "Escape")
+        wait_for(session, "Settings")
+        send(session, "Escape")
+        wait_for(session, "Home")
+
+        send(session, "M")
+        muted = wait_for(session, "Muting r/")
+        save("33-quick-mute", muted)
+        assert_seen("quick mute", muted, "Muting r/")
+        send(session, "u")
+        undone = wait_for(session, "Removed subreddit filter")
+        save("34-filter-undo", undone)
+        assert_seen("filter undo", undone, "Removed subreddit filter")
+
         send(session, "q")
         time.sleep(0.8)
         after_features = capture(session)
-        save("29-features-after-quit", after_features)
+        save("35-features-after-quit", after_features)
         assert_seen("features shell resumed", after_features, "EXIT:0")
         tmux("kill-session", "-t", session)
 

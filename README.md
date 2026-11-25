@@ -22,6 +22,7 @@ and filters stay on your machine, and source changes never require a restart.
 - Feed, post detail, recursive comments, gallery and full-screen image viewer
 - Image viewer with zoom/pan, thumbnail strip and next-image preloading
 - Content-sized post detail with a community/about panel on wide terminals
+- `i` community-info drawer on narrow terminals
 - Comment navigation: root/parent jumps, collapse all, OP-only, next unread
 - Cursor pagination, search, sort menus and Top time ranges
 - Mouse support and responsive three-pane layout
@@ -31,6 +32,7 @@ and filters stay on your machine, and source changes never require a restart.
 - Local bookmarks with an offline post snapshot
 - Read/unread state for posts and comments
 - Local filters: hide read, keywords, subreddits, authors and domains
+- Quick mute (`M`/`A`/`D`) with `u` undo for subreddit/author/domain
 - Bookmarks, read state and filters live in `library.toml` next to the config
 - No Reddit write actions: saving, reading and filtering are client-side only
 
@@ -44,9 +46,11 @@ and filters stay on your machine, and source changes never require a restart.
 
 ### Interface
 
-- Command palette (`:` or `Ctrl+P`)
-- Dark, light and Catppuccin themes (Latte, Frappé, Macchiato, Mocha)
-- Context-aware keyboard hints and a categorized, scrollable help screen
+- Command palette (`:` or `Ctrl+P`) with text aliases and recent actions
+- Dark, light, Catppuccin, high-contrast and monochrome themes
+- `--no-color` / `NO_COLOR`, reduced motion and a categorized searchable help screen
+- Context-aware keyboard hints, breadcrumbs and a scrollable/searchable help screen
+- Last feed and sort restored on the next launch
 - Kitty, iTerm2, Sixel and Unicode half-block image rendering
 - No telemetry or credential logging
 
@@ -142,16 +146,19 @@ recents, theme, bookmarks, read state and filters.
 | `b` / `B` | Bookmark post / open bookmarks |
 | `m` | Toggle read state |
 | `y` / `Y` | Copy permalink / open comments |
-| `i` | Copy a post or image-preview URL |
+| `i` | Community info drawer |
+| `I` | Copy a post or image-preview URL |
 | `G` | Open the current subreddit in the browser |
 | `[` / `]` | Previous / next top-level comment |
 | `p` | Jump to parent comment |
 | `z` | Collapse or expand all threads |
 | `O` | Show only the original poster's comments |
 | `n` | Next unread comment |
+| `M` / `A` / `D` | Mute selected post's subreddit / author / domain |
+| `u` | Undo the last quick mute |
 | `:` / `Ctrl+P` | Command palette |
 | `S` | Settings: config, theme, source health, filters |
-| `T` | Cycle themes |
+| `T` | Cycle themes (8 themes) |
 | `v` | Image viewer / gallery |
 | `+` / `-` | Zoom image in / out |
 | `Shift+←/→/↑/↓` | Pan a zoomed image |
@@ -160,10 +167,11 @@ recents, theme, bookmarks, read state and filters.
 | `?` | Help |
 | `q` | Quit |
 
-The `?` help screen groups keys by context: Global, Feed, Sidebar, Post Detail,
-Image Viewer, Clipboard & Links, Sort & Range, Text Input, Bookmarks, Local
-Filters, Source Health, Command Palette and Mouse. Use `j/k` or
-`PageUp/PageDown` to scroll it.
+The `?` help screen groups keys by context and puts the current screen's section
+first: Global, Feed, Sidebar, Post Detail, Image Viewer, Clipboard & Links, Sort &
+Range, Text Input, Bookmarks, Local Filters, Source Health, Command Palette and
+Mouse. Use `j/k` or `PageUp/PageDown` to scroll, `/` to search shortcuts and
+`Esc` to clear the search.
 
 Full reference: [`docs/KEYBINDINGS.md`](docs/KEYBINDINGS.md).
 
@@ -183,6 +191,10 @@ domain:example.com
 
 - Hide-read is a local toggle. Filters apply to loaded feed pages and refetch
   the current feed when changed; a fully filtered page continues paginating.
+- Quick mute: `M` subreddit, `A` author, `D` domain. `u` undoes the last quick
+  mute. The palette also accepts `mute sub politics`, `mute author name`,
+  `mute domain example.com`, `unmute ...`, `filter add keyword:ai` and
+  `filter clear`.
 
 Data lives in `library.toml` beside the config. It is plain TOML, provider
 independent and never uploaded to Reddit.
@@ -207,7 +219,7 @@ Example:
 favorites = []
 
 [general]
-theme = "dark"              # dark | light | latte | frappe | macchiato | mocha
+theme = "dark"              # dark | light | latte | frappe | macchiato | mocha | high-contrast | mono
 default_feed = "home"
 default_sort = "hot"
 show_sidebar = true
@@ -222,6 +234,10 @@ show_nsfw = false
 hide_spoilers = true
 default_post_limit = 25
 
+[ui]
+relative_time = true
+reduce_motion = false
+
 [provider]
 type = "redlib"
 
@@ -231,8 +247,9 @@ allow_network = true
 ```
 
 Settings → Change config replaces only provider settings and rebuilds the
-provider in-process. Favorites, recents, theme, bookmarks, read state and filters
-are preserved.
+provider in-process. Favorites, recents, theme, bookmarks, read state, filters
+and the last feed/sort are preserved. Settings also exposes image protocol,
+relative/absolute timestamps, reduced motion, source health and local filters.
 
 ## Ready-made configs
 
@@ -292,7 +309,33 @@ In the viewer:
 - `+` / `-` zoom between 100%, 150%, 200%, 300% and 400%.
 - `Shift + arrow keys` pan; `0` resets.
 - Thumbnails under the image are clickable; `Home`/`End` jump to the first/last.
-- `y`/`i` copy the image URL, `o` opens it externally.
+- `y`/`i` copy the image URL, `I` opens community info, `o` opens externally.
+- The next image and visible thumbnails are prefetched; zoom/pan crops reuse a
+  bounded raw-image cache instead of re-downloading the file.
+
+## Command palette
+
+Open with `:` or `Ctrl+P`. Besides filtering the action list, it accepts short
+commands:
+
+```text
+sort new
+theme mocha
+source
+bookmarks
+filter add keyword:ai
+mute sub politics
+mute author someone
+mute domain example.com
+images halfblocks
+open comments
+copy url
+info
+settings
+```
+
+Recent actions appear first when the palette opens. Invalid commands keep the
+palette open and show an inline error.
 
 ## CI and releases
 

@@ -20,16 +20,22 @@ pub enum ThemeMode {
     Macchiato,
     #[serde(alias = "catppuccin-mocha", alias = "catppuccin_mocha")]
     Mocha,
+    #[serde(alias = "high-contrast", alias = "high_contrast")]
+    HighContrast,
+    #[serde(alias = "mono", alias = "monochrome")]
+    Mono,
 }
 
 impl ThemeMode {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 8] = [
         Self::Dark,
         Self::Light,
         Self::Latte,
         Self::Frappe,
         Self::Macchiato,
         Self::Mocha,
+        Self::HighContrast,
+        Self::Mono,
     ];
 
     pub fn label(self) -> &'static str {
@@ -40,10 +46,12 @@ impl ThemeMode {
             Self::Frappe => "Catppuccin Frappe",
             Self::Macchiato => "Catppuccin Macchiato",
             Self::Mocha => "Catppuccin Mocha",
+            Self::HighContrast => "High contrast",
+            Self::Mono => "Monochrome",
         }
     }
 
-    /// Cycle themes with `T`: dark, light, Latte, Frappé, Macchiato, Mocha.
+    /// Cycle themes with `T`: dark, light, Catppuccin, high contrast, mono.
     pub fn next(self) -> Self {
         let index = Self::ALL
             .iter()
@@ -169,6 +177,7 @@ pub struct UiSettings {
     pub mouse_enabled: bool,
     pub show_right_panel: bool,
     pub relative_time: bool,
+    pub reduce_motion: bool,
     pub sidebar_width: u16,
 }
 
@@ -178,6 +187,7 @@ impl Default for UiSettings {
             mouse_enabled: true,
             show_right_panel: true,
             relative_time: true,
+            reduce_motion: false,
             sidebar_width: 24,
         }
     }
@@ -1075,7 +1085,8 @@ theme = "light"
     fn theme_cycles_through_light_and_catppuccin() {
         assert_eq!(ThemeMode::Dark.toggle(), ThemeMode::Light);
         assert_eq!(ThemeMode::Light.next(), ThemeMode::Latte);
-        assert_eq!(ThemeMode::Mocha.next(), ThemeMode::Dark);
+        assert_eq!(ThemeMode::Mocha.next(), ThemeMode::HighContrast);
+        assert_eq!(ThemeMode::Mono.next(), ThemeMode::Dark);
         assert_eq!(ThemeMode::Latte.label(), "Catppuccin Latte");
         #[derive(serde::Deserialize)]
         struct Holder {

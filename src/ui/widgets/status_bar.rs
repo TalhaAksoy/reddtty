@@ -72,6 +72,13 @@ pub fn render(
                 ("d", "Remove"),
                 ("Esc", "Back"),
             ],
+            Some(Modal::Info(_)) => vec![("Esc/i", "Close")],
+            Some(Modal::ImagePicker(_)) => {
+                vec![("j/k", "Move"), ("Enter", "Apply"), ("Esc", "Back")]
+            }
+            Some(Modal::Appearance(_)) => {
+                vec![("j/k", "Move"), ("Enter", "Toggle"), ("Esc", "Back")]
+            }
             Some(Modal::CommandPalette(_)) => vec![
                 ("type", "Filter"),
                 ("↑/↓", "Move"),

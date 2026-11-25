@@ -24,17 +24,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let spinner = spinner_char(app.spinner);
     let spinner_index = app.spinner;
 
-    let (title, loading) = match app.nav.last() {
-        Some(View::Feed(feed)) => (
-            feed.spec.short_title(),
-            feed.loading_initial || feed.loading_more || feed.refreshing,
-        ),
-        Some(View::Post(post)) => (
-            format!("r/{} · Post", post.post.subreddit),
-            post.post_loading || post.comments_loading,
-        ),
-        Some(View::Gallery(gallery)) => (format!("r/{} · Image", gallery.post.subreddit), false),
-        None => ("Home".to_string(), false),
+    let title = app.breadcrumb();
+    let loading = match app.nav.last() {
+        Some(View::Feed(feed)) => feed.loading_initial || feed.loading_more || feed.refreshing,
+        Some(View::Post(post)) => post.post_loading || post.comments_loading,
+        _ => false,
     };
 
     if root.top.height > 0 {
@@ -148,6 +142,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             frame.area(),
             modal,
             &app.library,
+            &app.settings,
             &app.health,
             &app.provider_label,
             app.demo,

@@ -36,7 +36,13 @@
     "docs/verification/26-command-theme.txt",
     "docs/verification/27-config-picker.txt",
     "docs/verification/28-provider-switch.txt",
-    "docs/verification/29-features-after-quit.txt",
+    "docs/verification/29-info-drawer.txt",
+    "docs/verification/30-help-search.txt",
+    "docs/verification/31-image-protocol.txt",
+    "docs/verification/32-appearance.txt",
+    "docs/verification/33-quick-mute.txt",
+    "docs/verification/34-filter-undo.txt",
+    "docs/verification/35-features-after-quit.txt",
     "docs/verification/size-60x20.txt",
     "docs/verification/detail-60x20.txt",
     "docs/verification/help-60x20.txt",
@@ -125,6 +131,11 @@
     {
       "name": "post detail sort",
       "needle": "Sort: Best",
+      "ok": true
+    },
+    {
+      "name": "post breadcrumb",
+      "needle": "Home \u203a",
       "ok": true
     },
     {
@@ -355,6 +366,46 @@
     {
       "name": "provider still demo",
       "needle": "DEMO",
+      "ok": true
+    },
+    {
+      "name": "info drawer about",
+      "needle": "ABOUT",
+      "ok": true
+    },
+    {
+      "name": "info drawer related",
+      "needle": "SUGGESTED COMMUNITIES",
+      "ok": true
+    },
+    {
+      "name": "help search result",
+      "needle": "Zoom in / out",
+      "ok": true
+    },
+    {
+      "name": "help search filters feed",
+      "needle": "NOT Next / previous post",
+      "ok": true
+    },
+    {
+      "name": "image protocol menu",
+      "needle": "Halfblocks",
+      "ok": true
+    },
+    {
+      "name": "appearance timestamps",
+      "needle": "Timestamps",
+      "ok": true
+    },
+    {
+      "name": "quick mute",
+      "needle": "Muting r/",
+      "ok": true
+    },
+    {
+      "name": "filter undo",
+      "needle": "Removed subreddit filter",
       "ok": true
     },
     {

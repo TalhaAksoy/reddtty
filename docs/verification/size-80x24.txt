@@ -2,7 +2,7 @@
  NAVIGATION        │ Home                                        25 posts · more
 ┃ Home             │  Best   Hot   New   Top   Rising   Controversial
   Popular          │ ╭────────────────────────────────────────────────────────╮┃
-                   │ │ r/rust  •  u/ferris_fan  •  2h ago                     │┃
+                   │ │ r/rust  •  u/ferris_fan  •  2h ago            ● unread │┃
  COMMUNITIES       │ │                                                        ││
   r/rust           │ │ Why I love building CLI applications with Rust         ││
   r/linux          │ │ I have been writing command-line tools for a decade,…  ││

@@ -7,12 +7,12 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Wrap};
 
 use crate::app::health::{SourceHealth, format_age, format_duration};
-use crate::app::help::{HELP_SECTIONS, HelpModal, columns_for_width, modal_height, total_rows};
+use crate::app::help::{HelpModal, columns_for_width, modal_height};
 use crate::app::hit::{HitMap, HitTarget};
 use crate::app::modal::{
-    BookmarksModal, CommandPaletteModal, ConfigPickerModal, ConfirmModal, FiltersModal, Modal,
-    SearchScopeChoice, SettingsModal, SortChoice, SortContext, SourceModal, TextKind, TextModal,
-    ThemePickerModal,
+    AppearanceModal, BookmarksModal, CommandPaletteModal, ConfigPickerModal, ConfirmModal,
+    FiltersModal, ImageProtocolModal, InfoModal, Modal, SearchScopeChoice, SettingsModal,
+    SortChoice, SortContext, SourceModal, TextKind, TextModal, ThemePickerModal,
 };
 use crate::app::{NoticeKind, Notification};
 use crate::config::presets;
@@ -27,6 +27,7 @@ pub fn render_modal(
     area: Rect,
     modal: &Modal,
     library: &crate::library::Library,
+    settings: &crate::config::Settings,
     health: &SourceHealth,
     provider_label: &str,
     demo: bool,
@@ -40,7 +41,7 @@ pub fn render_modal(
         Modal::Range(range) => render_range(frame, area, range.selected, theme, hit_map),
         Modal::Text(text) => render_text(frame, area, text, theme, hit_map),
         Modal::Confirm(confirm) => render_confirm(frame, area, confirm, theme, hit_map),
-        Modal::Settings(settings) => render_settings(frame, area, settings, theme, hit_map),
+        Modal::Settings(modal) => render_settings(frame, area, modal, settings, theme, hit_map),
         Modal::ConfigPicker(picker) => render_config_picker(frame, area, picker, theme, hit_map),
         Modal::ThemePicker(picker) => render_theme_picker(frame, area, picker, theme, hit_map),
         Modal::Bookmarks(modal) => render_bookmarks(frame, area, modal, library, theme, hit_map),
@@ -56,6 +57,11 @@ pub fn render_modal(
             hit_map,
         ),
         Modal::Filters(modal) => render_filters(frame, area, modal, library, theme, hit_map),
+        Modal::Info(modal) => render_info(frame, area, modal, theme, hit_map),
+        Modal::ImagePicker(modal) => {
+            render_image_picker(frame, area, modal, settings, theme, hit_map)
+        }
+        Modal::Appearance(modal) => render_appearance(frame, area, modal, settings, theme, hit_map),
         Modal::CommandPalette(modal) => render_command_palette(frame, area, modal, theme, hit_map),
     }
 }
@@ -108,18 +114,19 @@ fn render_help(
     hit_map.push(inner, HitTarget::ModalBody);
 
     let columns = columns_for_width(inner.width);
-    let total = total_rows(columns);
+    let total = help.total_rows(columns);
     let visible = inner.height.saturating_sub(1) as usize;
     let offset = help.clamped(area.width, area.height);
     let end = (offset + visible).min(total);
     let col_width = (inner.width / columns.max(1) as u16).max(1);
+    let sections = help.visible_sections();
 
     let mut row = 0usize;
-    for section in HELP_SECTIONS {
+    for view in &sections {
         if row >= offset && row < end {
             let y = inner.y + (row - offset) as u16;
             frame.render_widget(
-                Paragraph::new(section.title).style(
+                Paragraph::new(view.section.title).style(
                     Style::default()
                         .fg(theme.accent)
                         .bg(theme.elevated)
@@ -130,7 +137,7 @@ fn render_help(
         }
         row += 1;
 
-        for chunk in section.entries.chunks(columns.max(1)) {
+        for chunk in view.entries.chunks(columns.max(1)) {
             if row >= offset && row < end {
                 let y = inner.y + (row - offset) as u16;
                 for (column, entry) in chunk.iter().enumerate() {
@@ -153,16 +160,36 @@ fn render_help(
         row += 1;
     }
 
+    if sections.is_empty() {
+        frame.render_widget(
+            Paragraph::new("No matching shortcuts.")
+                .style(Style::default().fg(theme.muted).bg(theme.elevated))
+                .alignment(Alignment::Center),
+            Rect::new(inner.x, inner.y + inner.height / 2, inner.width, 1),
+        );
+    }
+
     let hidden = total.saturating_sub(visible);
     let footer_y = inner.bottom().saturating_sub(1);
+    let left = if help.searching {
+        format!("Search: {}▏", help.query)
+    } else if !help.query.is_empty() {
+        format!("Search: {}  ·  / edit · Esc clear", help.query)
+    } else {
+        "j/k scroll · PgUp/PgDn page · / search".to_string()
+    };
     if inner.width >= 54 {
         frame.render_widget(
-            Paragraph::new("j/k scroll · PgUp/PgDn page · Home/End")
+            Paragraph::new(ellipsize(&left, (inner.width / 2) as usize))
                 .style(Style::default().fg(theme.muted).bg(theme.elevated))
                 .alignment(Alignment::Left),
             Rect::new(inner.x, footer_y, inner.width / 2, 1),
         );
-        let right = format!("{end}/{total} · {hidden} more · Esc close");
+        let right = if help.searching {
+            "Esc clear · ↑/↓ scroll".to_string()
+        } else {
+            format!("{end}/{total} · {hidden} more · Esc close")
+        };
         frame.render_widget(
             Paragraph::new(right)
                 .style(Style::default().fg(theme.muted).bg(theme.elevated))
@@ -170,7 +197,11 @@ fn render_help(
             Rect::new(inner.x + inner.width / 2, footer_y, inner.width / 2, 1),
         );
     } else {
-        let right = format!("{hidden} more · Esc close");
+        let right = if help.searching {
+            "Esc clear".to_string()
+        } else {
+            format!("{hidden} more · Esc close")
+        };
         frame.render_widget(
             Paragraph::new(right)
                 .style(Style::default().fg(theme.muted).bg(theme.elevated))
@@ -204,11 +235,12 @@ fn shortcut_line(
 fn render_settings(
     frame: &mut Frame,
     area: Rect,
-    settings: &SettingsModal,
+    modal: &SettingsModal,
+    settings: &crate::config::Settings,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
-    let rect = layout::centered(area, area.width.min(52), 13);
+    let rect = layout::centered(area, area.width.min(54), 15);
     modal_frame(frame, rect, "Settings", theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
@@ -218,8 +250,35 @@ fn render_settings(
             "switch source now (no restart)".to_string(),
         ),
         (
-            format!("Theme: {}", settings.theme.label()),
-            "preview light, dark and Catppuccin".to_string(),
+            format!("Theme: {}", modal.theme.label()),
+            "preview light, dark, Catppuccin, contrast".to_string(),
+        ),
+        (
+            format!(
+                "Images: {}",
+                if settings.images.enabled {
+                    settings.images.protocol.label()
+                } else {
+                    "disabled"
+                }
+            ),
+            "protocol, enable/disable".to_string(),
+        ),
+        (
+            "Appearance".to_string(),
+            format!(
+                "{} time · {} motion",
+                if settings.ui.relative_time {
+                    "relative"
+                } else {
+                    "absolute"
+                },
+                if settings.ui.reduce_motion {
+                    "reduced"
+                } else {
+                    "full"
+                }
+            ),
         ),
         (
             "Source health".to_string(),
@@ -235,7 +294,7 @@ fn render_settings(
         if y >= inner.bottom().saturating_sub(1) {
             break;
         }
-        let selected = index == settings.selected;
+        let selected = index == modal.selected;
         let bg = if selected {
             theme.selected_bg
         } else {
@@ -503,6 +562,161 @@ fn render_bookmarks(
     );
 }
 
+fn render_image_picker(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &ImageProtocolModal,
+    settings: &crate::config::Settings,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(64);
+    let height = (crate::config::ImageProtocolSetting::ALL.len() as u16 * 2 + 5)
+        .min(area.height.saturating_sub(2))
+        .max(10);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Image protocol", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+    for (index, setting) in crate::config::ImageProtocolSetting::ALL.iter().enumerate() {
+        let y = inner.y.saturating_add(index as u16 * 2);
+        if y >= inner.bottom().saturating_sub(1) {
+            break;
+        }
+        let selected = index == modal.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        let description = match setting {
+            crate::config::ImageProtocolSetting::Auto => {
+                if settings.images.enabled {
+                    "detected at startup"
+                } else {
+                    "detected; images currently disabled"
+                }
+            }
+            crate::config::ImageProtocolSetting::Kitty => "pixel graphics (Kitty/Ghostty)",
+            crate::config::ImageProtocolSetting::Iterm2 => "iTerm2 inline images",
+            crate::config::ImageProtocolSetting::Sixel => "sixel graphics",
+            crate::config::ImageProtocolSetting::Halfblocks => "reliable Unicode blocks",
+            crate::config::ImageProtocolSetting::Disabled => "turn image rendering off",
+        };
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{}", setting.label())).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        frame.render_widget(
+            Paragraph::new(format!("    {description}"))
+                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 2),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k move · Enter apply · Esc back")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_appearance(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &AppearanceModal,
+    settings: &crate::config::Settings,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let rect = layout::centered(area, area.width.min(54), 9);
+    modal_frame(frame, rect, "Appearance", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+    for (index, (title, description)) in [
+        (
+            format!(
+                "Timestamps: {}",
+                if settings.ui.relative_time {
+                    "relative"
+                } else {
+                    "absolute"
+                }
+            ),
+            "relative times such as “2h ago” or fixed dates".to_string(),
+        ),
+        (
+            format!(
+                "Motion: {}",
+                if settings.ui.reduce_motion {
+                    "reduced"
+                } else {
+                    "full"
+                }
+            ),
+            "stop spinner animation when reduced".to_string(),
+        ),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let y = inner.y.saturating_add(index as u16 * 2);
+        let selected = index == modal.selected;
+        let bg = if selected {
+            theme.selected_bg
+        } else {
+            theme.elevated
+        };
+        let fg = if selected {
+            theme.selected_fg
+        } else {
+            theme.text
+        };
+        let marker = if selected { " ▸ " } else { "   " };
+        frame.render_widget(
+            Paragraph::new(format!("{marker}{title}")).style(
+                Style::default().fg(fg).bg(bg).add_modifier(if selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
+            ),
+            Rect::new(inner.x, y, inner.width, 1),
+        );
+        frame.render_widget(
+            Paragraph::new(format!("    {description}"))
+                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
+            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+        );
+        hit_map.push(
+            Rect::new(inner.x, y, inner.width, 2),
+            HitTarget::ModalItem(index),
+        );
+    }
+    frame.render_widget(
+        Paragraph::new("j/k move · Enter toggle · Esc back")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
 fn render_command_palette(
     frame: &mut Frame,
     area: Rect,
@@ -524,8 +738,16 @@ fn render_command_palette(
         Rect::new(inner.x, inner.y, inner.width, 1),
     );
 
+    if let Some(error) = &modal.error {
+        frame.render_widget(
+            Paragraph::new(ellipsize(error, inner.width as usize))
+                .style(Style::default().fg(theme.danger).bg(theme.elevated)),
+            Rect::new(inner.x, inner.y + 1, inner.width, 1),
+        );
+    }
     let commands = modal.filtered();
-    let rows = inner.height.saturating_sub(3) as usize;
+    let list_y = if modal.error.is_some() { 3 } else { 2 };
+    let rows = inner.height.saturating_sub(list_y as u16 + 1) as usize;
     let offset = if modal.selected >= rows {
         modal.selected + 1 - rows
     } else {
@@ -535,7 +757,7 @@ fn render_command_palette(
         frame.render_widget(
             Paragraph::new("No matching command.")
                 .style(Style::default().fg(theme.muted).bg(theme.elevated)),
-            Rect::new(inner.x, inner.y + 2, inner.width, 1),
+            Rect::new(inner.x, inner.y + list_y as u16, inner.width, 1),
         );
     }
     for (slot, index) in (offset..commands.len()).take(rows).enumerate() {
@@ -551,7 +773,7 @@ fn render_command_palette(
             theme.text_dim
         };
         let marker = if selected { " ▸ " } else { "   " };
-        let y = inner.y + 2 + slot as u16;
+        let y = inner.y + list_y as u16 + slot as u16;
         frame.render_widget(
             Paragraph::new(format!("{marker}{}", commands[index].label())).style(
                 Style::default().fg(fg).bg(bg).add_modifier(if selected {
@@ -568,7 +790,137 @@ fn render_command_palette(
         );
     }
     frame.render_widget(
-        Paragraph::new("type to filter · ↑/↓ move · Enter run · Esc close")
+        Paragraph::new("type or run commands like sort new · ↑/↓ move · Enter · Esc")
+            .style(Style::default().fg(theme.muted).bg(theme.elevated))
+            .alignment(Alignment::Right),
+        Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
+    );
+}
+
+fn render_info(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &InfoModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let info = &modal.info;
+    let width = area.width.saturating_sub(4).min(78);
+    let height = area.height.saturating_sub(2).clamp(10, 30);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Info", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+
+    let heading = |text: &'static str| {
+        Line::from(Span::styled(
+            text,
+            Style::default()
+                .fg(theme.muted)
+                .add_modifier(Modifier::BOLD),
+        ))
+    };
+    let mut lines = vec![
+        heading("ABOUT"),
+        Line::from(Span::styled(
+            crate::utils::text::sanitize(&info.title),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        )),
+    ];
+    if let Some(subtitle) = &info.subtitle {
+        lines.push(Line::from(Span::styled(
+            crate::utils::text::sanitize(subtitle),
+            Style::default().fg(theme.text_dim),
+        )));
+    }
+    if let Some((members, online)) = info.members {
+        lines.push(Line::from(Span::styled(
+            format!(
+                "{} members  ·  {} online",
+                crate::utils::text::format_count(members as i64),
+                crate::utils::text::format_count(online as i64)
+            ),
+            Style::default().fg(theme.text_dim),
+        )));
+    }
+    if info.loading {
+        lines.push(Line::from(Span::styled(
+            "loading community…",
+            Style::default().fg(theme.muted),
+        )));
+    }
+    if let Some(error) = &info.error {
+        lines.push(Line::from(Span::styled(
+            crate::utils::text::ellipsize(
+                &crate::utils::text::sanitize(error),
+                inner.width.saturating_sub(2) as usize,
+            ),
+            Style::default().fg(theme.danger),
+        )));
+    }
+    if let Some(description) = &info.description {
+        lines.push(Line::from(""));
+        for wrapped in crate::utils::text::wrap_text(
+            &crate::utils::text::sanitize(description),
+            inner.width.saturating_sub(2) as usize,
+        )
+        .into_iter()
+        .take(8)
+        {
+            lines.push(Line::from(Span::styled(
+                wrapped,
+                Style::default().fg(theme.text_dim),
+            )));
+        }
+    }
+    if !info.post_lines.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(heading("DETAILS"));
+        for line in &info.post_lines {
+            lines.push(Line::from(Span::styled(
+                crate::utils::text::sanitize(line),
+                Style::default().fg(theme.text_dim),
+            )));
+        }
+    }
+    lines.push(Line::from(""));
+    lines.push(heading("SUGGESTED COMMUNITIES"));
+    for name in crate::app::sidebar::SUGGESTED.iter().take(6) {
+        lines.push(Line::from(vec![
+            Span::styled("▸ ", Style::default().fg(theme.accent)),
+            Span::styled(format!("r/{name}"), Style::default().fg(theme.text_dim)),
+        ]));
+    }
+    if !info.actions.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(heading("ACTIONS"));
+        for (key, description) in &info.actions {
+            lines.push(Line::from(vec![
+                Span::styled(format!("{key:<5}"), Style::default().fg(theme.accent)),
+                Span::styled(
+                    crate::utils::text::sanitize(description),
+                    Style::default().fg(theme.text_dim),
+                ),
+            ]));
+        }
+    }
+    let visible = inner.height.saturating_sub(1) as usize;
+    lines.truncate(visible);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .style(Style::default().bg(theme.elevated))
+            .wrap(Wrap { trim: false }),
+        Rect::new(
+            inner.x,
+            inner.y,
+            inner.width,
+            inner.height.saturating_sub(1),
+        ),
+    );
+    frame.render_widget(
+        Paragraph::new("Esc or i to close")
             .style(Style::default().fg(theme.muted).bg(theme.elevated))
             .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),

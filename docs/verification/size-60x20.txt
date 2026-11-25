@@ -2,7 +2,7 @@
 Home                                         25 posts · more
  Best   Hot   New   Top   Rising   Controversial
 ╭─────────────────────────────────────────────────────────╮┃
-│ r/rust  •  u/ferris_fan  •  2h ago                      ││
+│ r/rust  •  u/ferris_fan  •  2h ago             ● unread ││
 │                                                         ││
 │ Why I love building CLI applications with Rust          ││
 │ I have been writing command-line tools for a decade,…   ││

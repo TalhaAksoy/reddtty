@@ -1,15 +1,6 @@
  REDDTTY   ›  Home                                              ● DEMO   ? Help
 
   ╭ Keyboard Shortcuts ──────────────────────────────────────────────────────╮
-  │ GLOBAL                                                                   │
-  │ ?           Open this help                                               │
-  │ S           Settings                                                     │
-  │ : / Ctrl+P  Command palette                                              │
-  │ T           Cycle theme                                                  │
-  │ Esc         Back / close modal                                           │
-  │ Ctrl+C      Quit immediately                                             │
-  │ q           Quit (not in text input)                                     │
-  │                                                                          │
   │ FEED                                                                     │
   │ j / k       Next / previous post                                         │
   │ ↑ / ↓       Same as j / k                                                │
@@ -18,7 +9,16 @@
   │ PgUp / PgDn Move by half a viewport                                      │
   │ Home / End  First / last loaded post                                     │
   │ Enter       Open selected post                                           │
-  │ j/k scroll · PgUp/PgDn page · Home/E       17/161 · 144 more · Esc close │
+  │ s           Feed sort menu                                               │
+  │ t           Top time range                                               │
+  │ g           Go to subreddit                                              │
+  │ /           Search posts                                                 │
+  │ r           Refresh first page                                           │
+  │ o           Open post/link in browser                                    │
+  │ v           Open image / gallery                                         │
+  │ x           Reveal NSFW or spoiler                                       │
+  │ f           Favorite subreddit                                           │
+  │ j/k scroll · PgUp/PgDn page · / sea…       17/168 · 151 more · Esc close │
   ╰──────────────────────────────────────────────────────────────────────────╯
 
 j/k Scroll · PgUp/PgDn Page · Esc/? Close

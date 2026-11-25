@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::Post;
+use crate::models::{FeedSort, FeedSpec, Post};
 
 /// A post saved together with the snapshot that was visible when it was saved.
 /// The snapshot is what makes the bookmark readable when the source is down.
@@ -221,6 +221,9 @@ pub struct Library {
     pub read_posts: BTreeSet<String>,
     pub read_comments: BTreeSet<String>,
     pub filters: LocalFilters,
+    /// Last user-chosen feed/sort, restored on the next launch.
+    pub last_feed: Option<FeedSpec>,
+    pub last_sort: Option<FeedSort>,
 }
 
 impl Library {
@@ -388,7 +391,7 @@ impl Library {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Post, PostContent};
+    use crate::models::{FeedSort, FeedSpec, Post, PostContent, SearchScope};
 
     fn post(id: &str) -> Post {
         Post {
@@ -442,6 +445,25 @@ mod tests {
         assert_eq!(loaded.bookmarks[0].post.body, "snapshot body");
         assert!(loaded.is_post_read("p1"));
         assert_eq!(loaded.filters.keywords, vec!["memory"]);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn last_feed_and_sort_roundtrip() {
+        let path = temp_path("last-view");
+        let library = Library {
+            last_feed: Some(FeedSpec::Search {
+                query: "rust async".into(),
+                scope: SearchScope::Subreddit("rust".into()),
+            }),
+            last_sort: Some(FeedSort::New),
+            ..Library::default()
+        };
+        library.save(&path).unwrap();
+        let (loaded, warnings) = Library::load(&path);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(loaded.last_feed, library.last_feed);
+        assert_eq!(loaded.last_sort, Some(FeedSort::New));
         let _ = fs::remove_file(&path);
     }
 

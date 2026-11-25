@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+
+
+
+
+
+
+
+
+
+                                      ╭ Image protocol ──────────────────────────────────────────────╮
+                                      │  ▸ Auto                                                      │
+                                      │     detected at startup                                      │
+                                      │    Kitty                                                     │
+                                      │     pixel graphics (Kitty/Ghostty)                           │
+                                      │    iTerm2                                                    │
+                                      │     iTerm2 inline images                                     │
+                                      │    Sixel                                                     │
+                                      │     sixel graphics                                           │
+                                      │    Halfblocks                                                │
+                                      │     reliable Unicode blocks                                  │
+                                      │    Disabled                                                  │
+                                      │     turn image rendering off                                 │
+                                      │                                                              │
+                                      │                                                              │
+                                      │                            j/k move · Enter apply · Esc back │
+                                      ╰──────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+j/k Move · Enter Apply · Esc Back

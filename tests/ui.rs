@@ -245,9 +245,13 @@ async fn help_is_categorised_and_scrolls_to_later_sections() {
     app.open_help();
     let terminal = draw(&mut app, 140, 40);
     let text = screen(&terminal);
-    for section in ["GLOBAL", "FEED", "SIDEBAR", "POST DETAIL"] {
+    for section in ["FEED", "GLOBAL", "SIDEBAR"] {
         assert!(text.contains(section), "missing {section}: {text}");
     }
+    assert!(
+        text.find("FEED") < text.find("GLOBAL"),
+        "the current screen's section should come first: {text}"
+    );
     assert!(text.contains("Command palette"), "{text}");
     assert!(text.contains("Feed sort menu"), "{text}");
     assert!(
@@ -268,6 +272,33 @@ async fn help_is_categorised_and_scrolls_to_later_sections() {
         );
     }
     assert!(text.contains("Esc close"), "{text}");
+}
+
+#[tokio::test]
+async fn help_search_filters_shortcuts() {
+    let (mut app, _provider, _posts) = app_with_posts(120, 36).await;
+    app.open_help();
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('/'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    for c in "zoom".chars() {
+        app.handle_key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char(c),
+            crossterm::event::KeyModifiers::NONE,
+        ));
+    }
+    let terminal = draw(&mut app, 120, 36);
+    let text = screen(&terminal);
+    assert!(text.contains("Zoom in / out"), "{text}");
+    assert!(!text.contains("Next / previous post"), "{text}");
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Esc,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 120, 36);
+    let text = screen(&terminal);
+    assert!(text.contains("Next / previous post"), "{text}");
 }
 
 #[tokio::test]
@@ -1095,6 +1126,21 @@ async fn bookmarks_and_read_markers_are_visible() {
 }
 
 #[tokio::test]
+async fn info_drawer_works_without_the_wide_right_panel() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('i'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    assert!(matches!(app.modal, Some(reddtty::app::Modal::Info(_))));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("ABOUT"), "{text}");
+    assert!(text.contains("SUGGESTED COMMUNITIES"), "{text}");
+    assert!(text.contains("ACTIONS"), "{text}");
+}
+
+#[tokio::test]
 async fn post_detail_shows_community_sidebar_on_wide_layout() {
     let (mut app, _provider, _posts) = app_with_posts(160, 45).await;
     let subreddit = Subreddit {
@@ -1128,13 +1174,13 @@ async fn post_detail_shows_community_sidebar_on_wide_layout() {
 #[tokio::test]
 async fn source_health_screen_shows_current_source_and_actions() {
     let (mut app, _provider, _posts) = app_with_posts(110, 34).await;
-    for key in ['S', 'j', 'j', 'j'] {
+    for key in ['S', 'j', 'j', 'j', 'j', 'j'] {
         app.handle_key(crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char(key),
             crossterm::event::KeyModifiers::NONE,
         ));
     }
-    // The Settings screen has four rows; three j presses reach Source health.
+    // The Settings screen has six rows; five j presses reach Source health.
     app.handle_key(crossterm::event::KeyEvent::new(
         crossterm::event::KeyCode::Char('k'),
         crossterm::event::KeyModifiers::NONE,
@@ -1158,7 +1204,7 @@ async fn filters_screen_lists_local_rules() {
     let (mut app, _provider, _posts) = app_with_posts(110, 34).await;
     app.library.filters.add_expression("keyword:ai").unwrap();
     app.library.filters.hide_read = true;
-    for key in ['S', 'j', 'j', 'j', 'j'] {
+    for key in ['S', 'j', 'j', 'j', 'j', 'j'] {
         app.handle_key(crossterm::event::KeyEvent::new(
             crossterm::event::KeyCode::Char(key),
             crossterm::event::KeyModifiers::NONE,
@@ -1238,6 +1284,8 @@ async fn theme_picker_lists_all_themes() {
         "Catppuccin Frappe",
         "Catppuccin Macchiato",
         "Catppuccin Mocha",
+        "High contrast",
+        "Monochrome",
     ] {
         assert!(text.contains(label), "missing {label}: {text}");
     }

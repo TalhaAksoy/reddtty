@@ -54,7 +54,10 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("B", "Open bookmarks"),
             entry("m", "Toggle read / unread"),
             entry("y", "Copy post permalink"),
-            entry("i", "Copy image preview URL"),
+            entry("i", "Community info drawer"),
+            entry("I", "Copy image preview URL"),
+            entry("M / A / D", "Mute subreddit / author / domain"),
+            entry("u", "Undo the last quick mute"),
             entry("Y", "Open comments in browser"),
             entry("G", "Open subreddit in browser"),
             entry("h", "Show / hide sidebar"),
@@ -92,7 +95,10 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("O", "Only original poster's comments"),
             entry("n", "Next unread comment"),
             entry("y", "Copy comment permalink"),
-            entry("i", "Copy post image URL"),
+            entry("i", "Community info drawer"),
+            entry("I", "Copy post image URL"),
+            entry("M / A / D", "Mute subreddit / author / domain"),
+            entry("u", "Undo the last quick mute"),
             entry("Y", "Open permalink in browser"),
             entry("G", "Open subreddit in browser"),
             entry("s", "Comment sort menu"),
@@ -112,6 +118,7 @@ pub const HELP_SECTIONS: &[HelpSection] = &[
             entry("→ / l", "Next image"),
             entry("o", "Open image externally"),
             entry("y / i", "Copy image URL"),
+            entry("I", "Community info drawer"),
             entry("Y", "Open comments in browser"),
             entry("G", "Open subreddit in browser"),
             entry("+ / -", "Zoom in / out"),
@@ -260,15 +267,79 @@ pub fn max_offset(width: u16, height: u16) -> usize {
     total_rows(columns).saturating_sub(visible_rows(height).max(1))
 }
 
+pub struct HelpView {
+    pub section: &'static HelpSection,
+    pub entries: Vec<&'static HelpEntry>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct HelpModal {
     /// First visible row; rendered content clamps this again defensively.
     pub offset: usize,
+    pub query: String,
+    pub searching: bool,
+    /// Section title to put first when opened from a specific screen.
+    pub context: Option<&'static str>,
 }
 
 impl HelpModal {
+    pub fn visible_sections(&self) -> Vec<HelpView> {
+        let query = self.query.trim().to_ascii_lowercase();
+        let mut ordered: Vec<&'static HelpSection> = Vec::new();
+        if query.is_empty() {
+            if let Some(context) = self.context
+                && let Some(section) = HELP_SECTIONS
+                    .iter()
+                    .find(|section| section.title == context)
+            {
+                ordered.push(section);
+            }
+            for section in HELP_SECTIONS {
+                if !ordered
+                    .iter()
+                    .any(|existing| existing.title == section.title)
+                {
+                    ordered.push(section);
+                }
+            }
+        } else {
+            ordered.extend(HELP_SECTIONS);
+        }
+
+        let mut views = Vec::new();
+        for section in ordered {
+            let section_matches = section.title.to_ascii_lowercase().contains(&query);
+            let entries: Vec<&'static HelpEntry> = if query.is_empty() {
+                section.entries.iter().collect()
+            } else {
+                section
+                    .entries
+                    .iter()
+                    .filter(|entry| {
+                        section_matches
+                            || entry.keys.to_ascii_lowercase().contains(&query)
+                            || entry.desc.to_ascii_lowercase().contains(&query)
+                    })
+                    .collect()
+            };
+            if !entries.is_empty() {
+                views.push(HelpView { section, entries });
+            }
+        }
+        views
+    }
+
+    pub fn total_rows(&self, columns: usize) -> usize {
+        let columns = columns.max(1);
+        self.visible_sections()
+            .iter()
+            .map(|view| 1 + view.entries.len().div_ceil(columns) + 1)
+            .sum::<usize>()
+            .saturating_sub(1)
+    }
+
     pub fn scroll_by(&mut self, delta: isize, width: u16, height: u16) {
-        let max = max_offset(width, height) as i64;
+        let max = self.max_offset(width, height) as i64;
         self.offset = (self.offset as i64 + delta as i64).clamp(0, max) as usize;
     }
 
@@ -282,11 +353,38 @@ impl HelpModal {
     }
 
     pub fn end(&mut self, width: u16, height: u16) {
-        self.offset = max_offset(width, height);
+        self.offset = self.max_offset(width, height);
     }
 
     pub fn clamped(&self, width: u16, height: u16) -> usize {
-        self.offset.min(max_offset(width, height))
+        self.offset.min(self.max_offset(width, height))
+    }
+
+    pub fn max_offset(&self, width: u16, height: u16) -> usize {
+        let rect_width = width.saturating_sub(4).min(120);
+        let inner_width = rect_width.saturating_sub(4);
+        let columns = columns_for_width(inner_width);
+        self.total_rows(columns)
+            .saturating_sub(visible_rows(height).max(1))
+    }
+
+    pub fn push_char(&mut self, c: char) {
+        if c.is_control() || self.query.chars().count() >= 60 {
+            return;
+        }
+        self.query.push(c);
+        self.offset = 0;
+    }
+
+    pub fn backspace(&mut self) {
+        self.query.pop();
+        self.offset = 0;
+    }
+
+    pub fn clear_query(&mut self) {
+        self.query.clear();
+        self.offset = 0;
+        self.searching = false;
     }
 }
 
@@ -332,6 +430,38 @@ mod tests {
         assert_eq!(modal.offset, 0);
         modal.page(true, 120, 30);
         assert!(modal.offset > 0);
+    }
+
+    #[test]
+    fn context_section_is_first_when_help_opens() {
+        let modal = HelpModal {
+            context: Some("POST DETAIL"),
+            ..HelpModal::default()
+        };
+        let views = modal.visible_sections();
+        assert_eq!(views[0].section.title, "POST DETAIL");
+    }
+
+    #[test]
+    fn search_filters_entries_and_sections() {
+        let modal = HelpModal {
+            query: "zoom".into(),
+            ..HelpModal::default()
+        };
+        let views = modal.visible_sections();
+        assert!(
+            views
+                .iter()
+                .any(|view| view.section.title == "IMAGE VIEWER")
+        );
+        assert!(
+            views
+                .iter()
+                .flat_map(|view| &view.entries)
+                .any(|entry| entry.desc.contains("Zoom"))
+        );
+        assert!(!views.iter().any(|view| view.section.title == "FEED"));
+        assert!(modal.total_rows(1) < total_rows(1));
     }
 
     #[test]

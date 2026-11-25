@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use ratatui::layout::Size;
-use ratatui_image::picker::Picker;
+use ratatui_image::picker::{Picker, ProtocolType};
 use ratatui_image::protocol::Protocol;
 use ratatui_image::{FilterType, Resize};
 use tokio::sync::Semaphore;
@@ -34,6 +34,8 @@ pub struct ImageManager {
     tx: UnboundedSender<AppEvent>,
     http: reqwest::Client,
     enabled: bool,
+    client_ok: bool,
+    auto_protocol: ProtocolType,
     max_bytes: usize,
     local_root: Option<PathBuf>,
     source_cache: Arc<Mutex<SourceCache>>,
@@ -67,6 +69,7 @@ impl ImageManager {
             }
         };
         let enabled = enabled && client_ok;
+        let auto_protocol = picker.protocol_type();
         let protocol_label = format!("{:?}", picker.protocol_type());
         Self {
             picker,
@@ -76,6 +79,8 @@ impl ImageManager {
             tx,
             http,
             enabled,
+            client_ok,
+            auto_protocol,
             max_bytes: (settings.images.max_download_mb as usize) * 1024 * 1024,
             local_root: Some(Settings::cache_dir()),
             source_cache: Arc::new(Mutex::new(SourceCache::new(64 * 1024 * 1024))),
@@ -94,6 +99,41 @@ impl ImageManager {
 
     pub fn enabled(&self) -> bool {
         self.enabled
+    }
+
+    /// Switch protocol at runtime. Cached protocols are cleared because they
+    /// were encoded for the previous terminal protocol.
+    pub fn set_protocol(
+        &mut self,
+        setting: ImageProtocolSetting,
+        images_enabled: bool,
+    ) -> Result<(), String> {
+        let protocol = match setting {
+            ImageProtocolSetting::Auto => self.auto_protocol,
+            ImageProtocolSetting::Kitty => ProtocolType::Kitty,
+            ImageProtocolSetting::Iterm2 => ProtocolType::Iterm2,
+            ImageProtocolSetting::Sixel => ProtocolType::Sixel,
+            ImageProtocolSetting::Halfblocks => ProtocolType::Halfblocks,
+            ImageProtocolSetting::Disabled => {
+                self.enabled = false;
+                self.cache.clear();
+                self.pending.clear();
+                self.failures.clear();
+                self.protocol_label = "Disabled".into();
+                return Ok(());
+            }
+        };
+        self.picker.set_protocol_type(protocol);
+        self.cache.clear();
+        self.pending.clear();
+        self.failures.clear();
+        self.enabled = images_enabled && self.client_ok;
+        if !images_enabled {
+            self.protocol_label = "Disabled".into();
+        } else {
+            self.protocol_label = format!("{protocol:?}");
+        }
+        Ok(())
     }
 
     pub fn protocol_label(&self) -> &str {
@@ -231,7 +271,11 @@ impl ImageManager {
     }
 
     pub fn on_result(&mut self, key: ImageKey, result: Result<Protocol, String>) {
-        self.pending.remove(&key);
+        // A protocol switch clears pending work; late results from the previous
+        // protocol must not enter the new cache.
+        if !self.pending.remove(&key) {
+            return;
+        }
         match result {
             Ok(protocol) => {
                 self.failures.remove(&key);

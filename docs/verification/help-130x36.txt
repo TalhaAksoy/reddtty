@@ -1,12 +1,6 @@
  REDDTTY   ›  Home                                                                                                ● DEMO   ? Help
 
      ╭ Keyboard Shortcuts ──────────────────────────────────────────────────────────────────────────────────────────────────╮
-     │ GLOBAL                                                                                                               │
-     │ ?           Open this help                                S           Settings                                       │
-     │ : / Ctrl+P  Command palette                               T           Cycle theme                                    │
-     │ Esc         Back / close modal                            Ctrl+C      Quit immediately                               │
-     │ q           Quit (not in text input)                                                                                 │
-     │                                                                                                                      │
      │ FEED                                                                                                                 │
      │ j / k       Next / previous post                          ↑ / ↓       Same as j / k                                  │
      │ ←           Focus sidebar (shows it if wide)              →           Return focus from sidebar to feed              │
@@ -18,9 +12,16 @@
      │ x           Reveal NSFW or spoiler                        f           Favorite subreddit                             │
      │ b           Bookmark selected post                        B           Open bookmarks                                 │
      │ m           Toggle read / unread                          y           Copy post permalink                            │
-     │ i           Copy image preview URL                        Y           Open comments in browser                       │
-     │ G           Open subreddit in browser                     h           Show / hide sidebar                            │
-     │ Tab         Focus sidebar / feed                                                                                     │
+     │ i           Community info drawer                         I           Copy image preview URL                         │
+     │ M / A / D   Mute subreddit / author / domain              u           Undo the last quick mute                       │
+     │ Y           Open comments in browser                      G           Open subreddit in browser                      │
+     │ h           Show / hide sidebar                           Tab         Focus sidebar / feed                           │
+     │                                                                                                                      │
+     │ GLOBAL                                                                                                               │
+     │ ?           Open this help                                S           Settings                                       │
+     │ : / Ctrl+P  Command palette                               T           Cycle theme                                    │
+     │ Esc         Back / close modal                            Ctrl+C      Quit immediately                               │
+     │ q           Quit (not in text input)                                                                                 │
      │                                                                                                                      │
      │ SIDEBAR                                                                                                              │
      │ j / k       Move between entries                          Enter       Open selected entry                            │
@@ -29,8 +30,7 @@
      │ h           Hide sidebar                                  G           Open selected subreddit                        │
      │ s, t, g, /  Same feed actions                             r, o, v, x  Same feed actions                              │
      │                                                                                                                      │
-     │ POST DETAIL                                                                                                          │
-     │ j/k scroll · PgUp/PgDn page · Home/End                                                   29/96 · 67 more · Esc close │
+     │ j/k scroll · PgUp/PgDn page · / search                                                  29/100 · 71 more · Esc close │
      ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 j/k Scroll · PgUp/PgDn Page · Esc/? Close

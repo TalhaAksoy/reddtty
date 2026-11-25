@@ -190,6 +190,66 @@ impl Theme {
             ThemeMode::Frappe => Self::catppuccin(CATPPUCCIN_FRAPPE, true),
             ThemeMode::Macchiato => Self::catppuccin(CATPPUCCIN_MACCHIATO, true),
             ThemeMode::Mocha => Self::catppuccin(CATPPUCCIN_MOCHA, true),
+            ThemeMode::HighContrast => Self::high_contrast(),
+            ThemeMode::Mono => Self::mono(),
+        }
+    }
+
+    /// Maximum-contrast palette for low-vision terminals.
+    pub fn high_contrast() -> Self {
+        Self {
+            bg: Color::Rgb(0, 0, 0),
+            surface: Color::Rgb(0, 0, 0),
+            surface_alt: Color::Rgb(0, 0, 0),
+            elevated: Color::Rgb(0, 0, 0),
+            text: Color::Rgb(255, 255, 255),
+            text_dim: Color::Rgb(235, 235, 235),
+            muted: Color::Rgb(180, 180, 180),
+            accent: Color::Rgb(255, 255, 0),
+            accent_soft: Color::Rgb(70, 70, 0),
+            on_accent: Color::Rgb(0, 0, 0),
+            success: Color::Rgb(0, 255, 128),
+            warning: Color::Rgb(255, 255, 0),
+            danger: Color::Rgb(255, 80, 80),
+            info: Color::Rgb(0, 220, 255),
+            border: Color::Rgb(255, 255, 255),
+            border_active: Color::Rgb(255, 255, 0),
+            selected_bg: Color::Rgb(255, 255, 255),
+            selected_fg: Color::Rgb(0, 0, 0),
+            badge_bg: Color::Rgb(255, 255, 255),
+            badge_fg: Color::Rgb(0, 0, 0),
+            code_bg: Color::Rgb(0, 0, 0),
+            scroll_track: Color::Rgb(50, 50, 50),
+            scroll_thumb: Color::Rgb(255, 255, 255),
+        }
+    }
+
+    /// Strict monochrome palette, also used for `NO_COLOR`.
+    pub fn mono() -> Self {
+        Self {
+            bg: Color::Rgb(18, 18, 18),
+            surface: Color::Rgb(18, 18, 18),
+            surface_alt: Color::Rgb(18, 18, 18),
+            elevated: Color::Rgb(28, 28, 28),
+            text: Color::Rgb(255, 255, 255),
+            text_dim: Color::Rgb(220, 220, 220),
+            muted: Color::Rgb(150, 150, 150),
+            accent: Color::Rgb(255, 255, 255),
+            accent_soft: Color::Rgb(60, 60, 60),
+            on_accent: Color::Rgb(0, 0, 0),
+            success: Color::Rgb(255, 255, 255),
+            warning: Color::Rgb(255, 255, 255),
+            danger: Color::Rgb(255, 255, 255),
+            info: Color::Rgb(255, 255, 255),
+            border: Color::Rgb(130, 130, 130),
+            border_active: Color::Rgb(255, 255, 255),
+            selected_bg: Color::Rgb(255, 255, 255),
+            selected_fg: Color::Rgb(0, 0, 0),
+            badge_bg: Color::Rgb(255, 255, 255),
+            badge_fg: Color::Rgb(0, 0, 0),
+            code_bg: Color::Rgb(28, 28, 28),
+            scroll_track: Color::Rgb(50, 50, 50),
+            scroll_thumb: Color::Rgb(255, 255, 255),
         }
     }
 

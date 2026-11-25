@@ -3,7 +3,7 @@
 ┃ Home                 │  Best   Hot   New   Top   Rising   Controversial                                                           │Home
   Popular              │ Your front page · choose a sort or open a community from the sidebar.                                      │Demo mode: synthetic posts
                        │ ╭───────────────────────────────────────────────────────────────────────────────────────────────────────╮┃ │and comments, stored
- COMMUNITIES           │ │ r/rust  •  u/ferris_fan  •  2h ago                                                                    │┃ │locally.
+ COMMUNITIES           │ │ r/rust  •  u/ferris_fan  •  2h ago                                                           ● unread │┃ │locally.
   r/rust               │ │                                                                                                       │┃ │
   r/linux              │ │ Why I love building CLI applications with Rust                                                        │┃ │SUGGESTED COMMUNITIES
   r/programming        │ │                                                                                                       │┃ │▸ r/rust

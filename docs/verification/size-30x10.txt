@@ -2,7 +2,7 @@
 Home           25 posts · more
  Best   Hot   New   Top
 ╭───────────────────────────╮┃
-│ r/rust  •  u/ferris_fan   ││
+│ r/rust  •  u/ferr● unread ││
 │                           ││
 │ Why I love building CLI   ││
 │ applications with Rust    ││

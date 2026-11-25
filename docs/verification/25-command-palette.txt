@@ -27,7 +27,7 @@
                                     │    Copy permalink                                                │
                                     │    Copy image URL                                                │
                                     │    Open comments in browser                                      │
-                                    │                type to filter · ↑/↓ move · Enter run · Esc close │
+                                    │      type or run commands like sort new · ↑/↓ move · Enter · Esc │
                                     ╰──────────────────────────────────────────────────────────────────╯
 
 
