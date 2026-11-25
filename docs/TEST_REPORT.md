@@ -20,7 +20,7 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 281 passed, 0 failed, 0 ignored
+cargo test                                 # 282 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
 python3 scripts/pty_verify.py              # 58 captures, 97 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
@@ -32,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 214 | 214 | 0 | 0 |
+| Library unit tests (`src/**`) | 215 | 215 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
 | UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 43 | 43 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **281** | **281** | **0** | **0** |
+| **Total** | **282** | **282** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -184,6 +184,11 @@ cargo build --release --example stress
   its Retry/Change-source actions are app- and render-tested.
 - The command palette filters by label and keywords, moves selection, runs
   actions, tolerates typing `q` without quitting, and toggles with `Ctrl+P`.
+- Image protocol `Auto` now detects iTerm2 from `TERM_PROGRAM`,
+  `LC_TERMINAL` or `ITERM_SESSION_ID` and selects iTerm2's native inline-image
+  protocol instead of the Kitty query result. The helper is unit-tested; a live
+  iTerm2 launch logged `protocol=Iterm2`. `--diagnostics` reports the effective
+  protocol. A forced-iTerm2 protocol probe emits a valid OSC 1337 image stream.
 - Redlib live-feed media markup (`div.post_media_content` /
   `a.post_media_image`) is parsed as an image, and `video.post_media_video`
   contributes a video URL plus its poster image. This was the missing selector
@@ -299,8 +304,10 @@ image. The script and raw scan are in `scripts/` and
 
 - **Ghostty 1.4.0**: launched with the release binary; log reports
   `terminal image capabilities probed protocol=Kitty`.
-- **iTerm2 3.7.7**: launched with the release binary; log also reports
-  `protocol=Kitty`. iTerm2 documents Kitty graphics support since 3.5.5.
+- **iTerm2 3.7.7**: launched with the release binary. `Auto` detects iTerm2
+  from the environment and selects its native OSC 1337 protocol; the log now
+  reports `protocol=Iterm2` instead of the Kitty placeholder path. This was
+  added after Kitty placeholders rendered as blank cells in iTerm2.
 - No window/display screenshot could be captured because macOS Screen Recording
   permission is unavailable to this environment (`screencapture` returned
   “could not create image from window/display”). Therefore **pixel rendering in
@@ -311,9 +318,9 @@ image. The script and raw scan are in `scripts/` and
 
 | Terminal | Evidence | Status |
 |---|---|---|
-| tmux + half-blocks | Real PTY, 36 captures, visual inspection | **Verified** |
+| tmux + half-blocks | Real PTY, 58 captures, visual inspection | **Verified** |
 | Ghostty 1.4.0 | Detection only (Kitty), no screenshot | Detection verified; pixels **unverified** |
-| iTerm2 3.7.7 | Detection only (Kitty), no screenshot | Detection verified; pixels **unverified** |
+| iTerm2 3.7.7 | Auto selects native iTerm2 OSC 1337; log verified, no screenshot | Detection/protocol verified; pixels **unverified** |
 | Kitty | Encoder bytes only; binary absent | Encoder verified; terminal **unverified** |
 | WezTerm | Encoder bytes only; binary absent | Encoder verified; terminal **unverified** |
 | foot / Konsole / Alacritty / xterm-like | Not run | **Unverified** |
@@ -431,8 +438,10 @@ feed/sort/comment check.
 
 1. Live Reddit mode is not verified against Reddit; new public access is closed
    and remaining access expires in March 2027. Mock-server behaviour is verified.
-2. Kitty/iTerm2/Sixel pixel output is unverified. Only detection and encoded
-   sequences are proven; half-blocks are visually verified.
+2. Pixel output in Kitty/iTerm2/Sixel is still not screenshot-verified in this
+   environment (Screen Recording permission is unavailable). Detection and
+   encoded sequences are proven; half-blocks are visually verified. `Auto`
+   avoids the Kitty placeholder path on iTerm2 because it blanked there.
 3. Third-party Redlib instances can see requests and IP addresses; ReddTTY
    does not rotate instances or verify their policies.
 4. Sixel residue may persist after closing the viewer in some terminals.

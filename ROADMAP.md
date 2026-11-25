@@ -16,7 +16,7 @@ ReddTTY'nin okuyucu tarafı artık olgun:
 - Favorites, recents, config preset'leri, first-run setup, Settings
 - Dark/light + 4 Catppuccin tema
 - Demo, Reddit OAuth, Old Reddit HTML, Redlib HTML
-- 281 test, PTY doğrulaması, stress harness
+- 282 test, PTY doğrulaması, stress harness
 
 **Asıl darboğaz artık özellik eksikliği değil, canlı kaynak güvenilirliği.** Reddit'in
 public API'si kapanıyor; Redlib instance'ları sık sık 403/429/CAPTCHA/502 veriyor.
