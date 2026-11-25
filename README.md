@@ -17,6 +17,7 @@ galleries, inline images, search, sorting and multiple content sources.
 
 - Feed, post detail, recursive comments, gallery and image viewer
 - Responsive post detail: content-sized post pane and a community/about sidebar on wide terminals
+- Image viewer with zoom/pan, thumbnail strip and next-image preloading
 - Vim-style navigation, mouse support, responsive three-pane layout
 - Demo data offline; Reddit OAuth; opt-in Old Reddit and Redlib HTML providers
 - Local bookmarks with offline snapshots and read/unread state
@@ -117,6 +118,9 @@ reddtty --diagnostics
 | `S` | Settings: config, theme, source health, filters |
 | `T` | Cycle themes |
 | `v` | Image viewer / gallery |
+| `+` / `-` | Zoom image in / out in the viewer |
+| `Shift+←/→/↑/↓` | Pan a zoomed image |
+| `0` | Reset image zoom and pan |
 | `o` | Open in browser |
 | `?` | Help |
 | `q` | Quit |

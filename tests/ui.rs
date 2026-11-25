@@ -626,6 +626,81 @@ async fn mouse_gallery_arrows_change_image() {
 }
 
 #[tokio::test]
+async fn gallery_zoom_pan_and_thumbnail_strip_work() {
+    let (_provider, posts) = demo().await;
+    let post = posts
+        .iter()
+        .find(|p| p.has_gallery() && p.images().len() > 2)
+        .cloned()
+        .expect("multi-image gallery");
+    let (tx, _rx) = unbounded_channel();
+    let settings = settings();
+    let images = ImageManager::new(Picker::halfblocks(), &settings, tx.clone());
+    let mut app = App::new(
+        Arc::new(DemoProvider::new(&Settings::cache_dir())),
+        settings,
+        test_config_path(),
+        images,
+        tx,
+        None,
+        None,
+        Vec::new(),
+    );
+    app.nav
+        .push(View::Gallery(GalleryView::new(ViewId(501), post).unwrap()));
+    app.set_size(120, 40);
+    app.prepare();
+    let terminal = draw(&mut app, 120, 40);
+    let text = screen(&terminal);
+    assert!(text.contains("thumbnails"), "{text}");
+
+    let thumb = app
+        .hit_map
+        .iter()
+        .find(|area| area.target == reddtty::app::hit::HitTarget::GalleryThumb(1))
+        .map(|area| area.rect)
+        .expect("thumbnail hitbox");
+    app.handle_mouse(crossterm::event::MouseEvent {
+        kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+        column: thumb.x + 1,
+        row: thumb.y + 1,
+        modifiers: crossterm::event::KeyModifiers::NONE,
+    });
+    assert_eq!(app.current_gallery().unwrap().index, 1);
+
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('+'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('+'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    assert_eq!(app.current_gallery().unwrap().view.zoom, 200);
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Right,
+        crossterm::event::KeyModifiers::SHIFT,
+    ));
+    assert_eq!(app.current_gallery().unwrap().view.pan_x, 10);
+    let terminal = draw(&mut app, 120, 40);
+    let text = screen(&terminal);
+    assert!(text.contains("Zoom 200%"), "{text}");
+    assert!(text.contains("x+10"), "{text}");
+
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('0'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    assert!(app.current_gallery().unwrap().view.is_base());
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::End,
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let last = app.current_gallery().unwrap().images.len() - 1;
+    assert_eq!(app.current_gallery().unwrap().index, last);
+}
+
+#[tokio::test]
 async fn keyboard_goto_subreddit_opens_feed() {
     let (mut app, _provider, _posts) = app_with_posts(120, 36).await;
     app.open_goto_modal();

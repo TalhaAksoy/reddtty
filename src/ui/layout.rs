@@ -262,18 +262,30 @@ pub fn detail(area: Rect, params: DetailParams) -> DetailRects {
 pub struct GalleryRects {
     pub header: Rect,
     pub image: Rect,
+    pub thumbs: Option<Rect>,
     pub footer: Rect,
 }
 
-pub fn gallery(area: Rect) -> GalleryRects {
+pub fn gallery(area: Rect, show_thumbs: bool) -> GalleryRects {
     let header = Rect::new(area.x, area.y, area.width, area.height.min(1));
     let footer_h = area.height.min(1);
-    let image = Rect::new(
-        area.x,
-        area.y + header.height,
-        area.width,
-        area.height.saturating_sub(header.height + footer_h),
-    );
+    let thumb_h = if show_thumbs && area.height >= 18 && area.width >= 24 {
+        5
+    } else {
+        0
+    };
+    let image_h = area
+        .height
+        .saturating_sub(header.height + footer_h + thumb_h);
+    let image = Rect::new(area.x, area.y + header.height, area.width, image_h);
+    let thumbs = (thumb_h > 0).then(|| {
+        Rect::new(
+            area.x,
+            area.y + header.height + image_h,
+            area.width,
+            thumb_h,
+        )
+    });
     let footer = Rect::new(
         area.x,
         area.y + area.height.saturating_sub(footer_h),
@@ -283,8 +295,43 @@ pub fn gallery(area: Rect) -> GalleryRects {
     GalleryRects {
         header,
         image,
+        thumbs,
         footer,
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ThumbCell {
+    pub index: usize,
+    pub area: Rect,
+    pub image: Rect,
+}
+
+/// Lay out the visible slice of a gallery thumbnail strip. The selected image
+/// stays roughly centered; callers use the same geometry for fetching and
+/// rendering so cache keys match.
+pub fn gallery_thumbnails(area: Rect, count: usize, selected: usize) -> Vec<ThumbCell> {
+    if count == 0 || area.height < 5 || area.width < 12 {
+        return Vec::new();
+    }
+    let cell_w = 10u16.min((area.width.saturating_sub(2) / count as u16).max(6));
+    let stride = cell_w.saturating_add(1);
+    let visible = (area.width.saturating_sub(2) / stride).max(1) as usize;
+    let mut start = selected.saturating_sub(visible / 2);
+    if start + visible > count {
+        start = count.saturating_sub(visible);
+    }
+    let mut cells = Vec::new();
+    for (slot, index) in (start..count).take(visible).enumerate() {
+        let x = area.x + 1 + slot as u16 * stride;
+        let image = Rect::new(x + 1, area.y + 1, cell_w.saturating_sub(2), 3);
+        cells.push(ThumbCell {
+            index,
+            area: Rect::new(x, area.y, cell_w, area.height),
+            image,
+        });
+    }
+    cells
 }
 
 pub fn centered(area: Rect, width: u16, height: u16) -> Rect {
@@ -350,7 +397,7 @@ mod tests {
         );
         assert!(d.post_pane.height <= 4);
         let _ = feed_list(Rect::new(0, 0, 20, 4));
-        let _ = gallery(Rect::new(0, 0, 20, 4));
+        let _ = gallery(Rect::new(0, 0, 20, 4), true);
     }
 
     #[test]
@@ -428,6 +475,19 @@ mod tests {
         let medium = post(Rect::new(0, 0, 100, 30), &settings);
         assert!(medium.right.is_none());
         assert_eq!(medium.main.width, 100);
+    }
+
+    #[test]
+    fn gallery_reserves_a_thumbnail_strip_only_when_useful() {
+        let wide = gallery(Rect::new(0, 0, 100, 30), true);
+        let thumbs = wide.thumbs.expect("thumbnail strip");
+        assert!(thumbs.height >= 5);
+        assert!(wide.image.height < 30);
+        let cells = gallery_thumbnails(thumbs, 12, 6);
+        assert!(!cells.is_empty());
+        assert!(cells.iter().any(|cell| cell.index == 6));
+        let tiny = gallery(Rect::new(0, 0, 100, 14), true);
+        assert!(tiny.thumbs.is_none());
     }
 
     #[test]

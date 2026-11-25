@@ -2,7 +2,7 @@ pub mod cache;
 pub mod downloader;
 pub mod renderer;
 
-pub use cache::{ImageCache, ImageKey};
+pub use cache::{ImageCache, ImageKey, ImageView};
 pub use renderer::{ImageManager, ImageStatus};
 
 /// Detect iTerm2 independently of the image-protocol query. iTerm2 answers the

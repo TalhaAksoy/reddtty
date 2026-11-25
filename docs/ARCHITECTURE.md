@@ -115,7 +115,9 @@ the same metrics are updated without a separate probe.
   carrying request identity.
 - **Image work**: downloads are async; decode/resize/protocol encoding happen in
   `spawn_blocking` so the UI thread never blocks. At most three image jobs run
-  concurrently.
+  concurrently. The gallery requests the next image and visible thumbnails ahead
+  of time; zoom/pan is implemented as a cached crop keyed by
+  `(url, cells, zoom, pan)` before protocol encoding.
 - The terminal image-protocol query runs **after** entering the alternate screen
   but **before** the input thread starts, so query responses cannot be stolen by
   the event reader. A splash is drawn first; the query is capped at 300 ms per

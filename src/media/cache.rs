@@ -1,12 +1,38 @@
 use lru::LruCache;
 use ratatui_image::protocol::Protocol;
 
-/// Cache key: a URL plus the cell budget it was encoded for.
+/// A cropped/zoomed view of an image. `zoom` is a percentage where 100 means
+/// the whole image fitted to the target; 200 shows half the width/height.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ImageView {
+    pub zoom: u16,
+    pub pan_x: i16,
+    pub pan_y: i16,
+}
+
+impl Default for ImageView {
+    fn default() -> Self {
+        Self {
+            zoom: 100,
+            pan_x: 0,
+            pan_y: 0,
+        }
+    }
+}
+
+impl ImageView {
+    pub fn is_base(self) -> bool {
+        self.zoom <= 100 && self.pan_x == 0 && self.pan_y == 0
+    }
+}
+
+/// Cache key: a URL plus the cell budget and crop it was encoded for.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ImageKey {
     pub url: String,
     pub width: u16,
     pub height: u16,
+    pub view: ImageView,
 }
 
 impl ImageKey {
@@ -15,6 +41,16 @@ impl ImageKey {
             url: url.into(),
             width,
             height,
+            view: ImageView::default(),
+        }
+    }
+
+    pub fn with_view(url: impl Into<String>, width: u16, height: u16, view: ImageView) -> Self {
+        Self {
+            url: url.into(),
+            width,
+            height,
+            view,
         }
     }
 }
@@ -138,6 +174,35 @@ mod tests {
         assert!(cache.len() < 400);
         assert!(cache.used_bytes() <= cache.max_bytes());
         assert!(!cache.contains(&ImageKey::new("img0", 64, 32)));
+    }
+
+    #[test]
+    fn zoom_and_pan_views_use_distinct_cache_keys() {
+        let base = ImageKey::new("img", 20, 10);
+        let zoom = ImageKey::with_view(
+            "img",
+            20,
+            10,
+            ImageView {
+                zoom: 200,
+                pan_x: 0,
+                pan_y: 0,
+            },
+        );
+        let pan = ImageKey::with_view(
+            "img",
+            20,
+            10,
+            ImageView {
+                zoom: 200,
+                pan_x: 10,
+                pan_y: 0,
+            },
+        );
+        assert_ne!(base, zoom);
+        assert_ne!(zoom, pan);
+        assert!(base.view.is_base());
+        assert!(!zoom.view.is_base());
     }
 
     #[test]

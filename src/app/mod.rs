@@ -2063,12 +2063,34 @@ impl App {
                 }
             }
             Some(View::Gallery(g)) => {
-                let rects = layout::gallery(root.body);
+                let show_thumbs = g.images.len() > 1;
+                let rects = layout::gallery(root.body, show_thumbs);
                 let width = rects.image.width.saturating_sub(2).max(1);
                 let height = rects.image.height.saturating_sub(2).max(1);
                 if let Some(image) = g.current() {
                     let fetch = self.provider.resolve_media_url(&image.url);
+                    self.images
+                        .request_view(&image.url, &fetch, width, height, g.view);
+                }
+                // Warm the next full-size image at the default view so image
+                // changes are instant. Zoom/pan still requests on demand.
+                if g.images.len() > 1 {
+                    let next = (g.index + 1) % g.images.len();
+                    let image = &g.images[next];
+                    let fetch = self.provider.resolve_media_url(&image.url);
                     self.images.request(&image.url, &fetch, width, height);
+                }
+                if let Some(thumbs) = rects.thumbs {
+                    for cell in layout::gallery_thumbnails(thumbs, g.images.len(), g.index) {
+                        let image = &g.images[cell.index];
+                        let fetch = self.provider.resolve_media_url(&image.url);
+                        self.images.request(
+                            &image.url,
+                            &fetch,
+                            cell.image.width.max(1),
+                            cell.image.height.max(1),
+                        );
+                    }
                 }
             }
             None => {}
@@ -2600,9 +2622,55 @@ impl App {
         }
     }
 
+    fn gallery_select(&mut self, index: usize) {
+        if let Some(gallery) = self.current_gallery_mut() {
+            gallery.select(index);
+            self.force_clear = true;
+            self.dirty = true;
+        }
+    }
+
+    fn gallery_zoom(&mut self, direction: i8) {
+        if let Some(gallery) = self.current_gallery_mut() {
+            if direction > 0 {
+                gallery.zoom_in();
+            } else {
+                gallery.zoom_out();
+            }
+            self.force_clear = true;
+            self.dirty = true;
+        }
+    }
+
+    fn gallery_reset_zoom(&mut self) {
+        if let Some(gallery) = self.current_gallery_mut() {
+            gallery.reset_view();
+            self.force_clear = true;
+            self.dirty = true;
+        }
+    }
+
+    fn gallery_pan(&mut self, dx: i16, dy: i16) {
+        if let Some(gallery) = self.current_gallery_mut() {
+            gallery.pan(dx, dy);
+            self.force_clear = true;
+            self.dirty = true;
+        }
+    }
+
     fn handle_gallery_key(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Char('q') {
             self.should_quit = true;
+            return;
+        }
+        if key.modifiers.contains(KeyModifiers::SHIFT) {
+            match key.code {
+                KeyCode::Left => self.gallery_pan(-10, 0),
+                KeyCode::Right => self.gallery_pan(10, 0),
+                KeyCode::Up => self.gallery_pan(0, -10),
+                KeyCode::Down => self.gallery_pan(0, 10),
+                _ => {}
+            }
             return;
         }
         match key.code {
@@ -2611,6 +2679,17 @@ impl App {
             KeyCode::Char(':') => self.open_command_palette(),
             KeyCode::Left | KeyCode::Char('h') => self.gallery_step(false),
             KeyCode::Right | KeyCode::Char('l') => self.gallery_step(true),
+            KeyCode::PageUp => self.gallery_step(false),
+            KeyCode::PageDown => self.gallery_step(true),
+            KeyCode::Home => self.gallery_select(0),
+            KeyCode::End => {
+                if let Some(gallery) = self.current_gallery() {
+                    self.gallery_select(gallery.images.len().saturating_sub(1));
+                }
+            }
+            KeyCode::Char('+') | KeyCode::Char('=') => self.gallery_zoom(1),
+            KeyCode::Char('-') | KeyCode::Char('_') => self.gallery_zoom(-1),
+            KeyCode::Char('0') => self.gallery_reset_zoom(),
             KeyCode::Char('o') => self.open_url(),
             KeyCode::Char('y') | KeyCode::Char('i') => self.copy_image_url(),
             KeyCode::Char('Y') => self.open_comments(),
@@ -2922,6 +3001,7 @@ impl App {
             }
             HitTarget::GalleryPrev => self.gallery_step(false),
             HitTarget::GalleryNext => self.gallery_step(true),
+            HitTarget::GalleryThumb(index) => self.gallery_select(index),
             HitTarget::GalleryOpen => self.open_url(),
             HitTarget::CommentSort => self.open_sort_modal(),
             HitTarget::OpenImage => self.open_gallery(),

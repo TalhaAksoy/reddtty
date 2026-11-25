@@ -13,6 +13,8 @@
     "docs/verification/06b-gallery-post-selected.txt",
     "docs/verification/07-gallery.txt",
     "docs/verification/08-gallery-next.txt",
+    "docs/verification/08a-gallery-zoom.txt",
+    "docs/verification/08aa-gallery-pan.txt",
     "docs/verification/08b-image-url-demo.txt",
     "docs/verification/09-sort-menu.txt",
     "docs/verification/10-subreddit-rust.txt",
@@ -186,8 +188,23 @@
       "ok": true
     },
     {
+      "name": "gallery thumbnail strip",
+      "needle": "thumbnails",
+      "ok": true
+    },
+    {
       "name": "gallery next position",
       "needle": "2 / 2",
+      "ok": true
+    },
+    {
+      "name": "gallery zoom",
+      "needle": "Zoom 150%",
+      "ok": true
+    },
+    {
+      "name": "gallery pan",
+      "needle": "x+10",
       "ok": true
     },
     {

@@ -148,6 +148,9 @@ pub fn render(
             ],
             Some(View::Gallery(_)) => vec![
                 ("←/→", "Image"),
+                ("+/-", "Zoom"),
+                ("Shift+←", "Pan"),
+                ("0", "Fit"),
                 ("o", "Open"),
                 ("y", "URL"),
                 ("Y", "Comments"),
@@ -259,6 +262,7 @@ fn medium_pairs(
         ],
         Some(View::Gallery(_)) => vec![
             ("←/→", "Image"),
+            ("+/-", "Zoom"),
             ("o", "Open"),
             ("Esc", "Close"),
             ("?", "Help"),

@@ -5,6 +5,6 @@
   │ S           Settings   │
   │ : / Ctrl+P  Command …  │
   │ T           Cycle th…  │
-  │   151 more · Esc close │
+  │   156 more · Esc close │
   ╰────────────────────────╯
 j/k Scroll · Esc/? Close

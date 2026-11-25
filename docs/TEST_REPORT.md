@@ -20,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 282 passed, 0 failed, 0 ignored
+cargo test                                 # 288 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 58 captures, 97 assertions, all pass
+python3 scripts/pty_verify.py              # 60 captures, 100 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 215 | 215 | 0 | 0 |
+| Library unit tests (`src/**`) | 220 | 220 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 43 | 43 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 44 | 44 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **282** | **282** | **0** | **0** |
+| **Total** | **288** | **288** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -195,6 +195,12 @@ cargo build --release --example stress
   contributes a video URL plus its poster image. This was the missing selector
   behind blank image cards on Redlib feeds; a dedicated regression test covers
   the real markup shape.
+- Gallery zoom/pan is covered by gallery-state unit tests and a UI test:
+  100/150/200/300/400% steps, clamped pan, reset, navigation resets the view,
+  thumbnail clicks, and the cached crop key. The image pipeline tests crop
+  geometry and the bounded raw-source byte cache (so panning does not re-download
+  the same image), and the viewer requests the next image and visible thumbnails
+  ahead of time. The PTY run verifies the thumbnail strip, zoom and pan on screen.
 - Post detail layout is unit-tested for content-sized panes (short bodies give
   more room to comments), the 60% cap, the minimum-height path and the optional
   wide-screen community panel. A UI test renders the community name, title,
@@ -248,7 +254,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 58, "assertions": 97}
+{"ok": true, "captures": 60, "assertions": 100}
 ```
 
 Captures and the machine-readable summary are in
@@ -266,8 +272,9 @@ against the compiled terminal application and its alternate-screen output.
 | 4 | `c` collapses a comment; `▶` marker and hidden-reply count appear | **Pass** |
 | 5 | `c` expands again; hidden marker disappears | **Pass** |
 | 6 | `Esc` returns to the feed with the prior context | **Pass** |
-| 7 | Gallery post opens; `1 / 2` and controls visible | **Pass** |
+| 7 | Gallery post opens; `1 / 2`, controls and the thumbnail strip are visible | **Pass** |
 | 8 | `→` advances to `2 / 2` | **Pass** |
+| 8a | `+` zooms to 150%, `Shift+→` pans to `x+10`, and the header/footer report both | **Pass** |
 | 8b | Gallery `i` explains that demo images are local fixtures instead of copying a fake external URL | **Pass** |
 | 9 | Sort menu opens and shows the Top time-range row | **Pass** |
 | 10 | `g` → `rust` opens r/rust with the expected title/metadata | **Pass** |

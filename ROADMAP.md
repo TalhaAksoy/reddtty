@@ -16,7 +16,7 @@ ReddTTY'nin okuyucu tarafı artık olgun:
 - Favorites, recents, config preset'leri, first-run setup, Settings
 - Dark/light + 4 Catppuccin tema
 - Demo, Reddit OAuth, Old Reddit HTML, Redlib HTML
-- 282 test, PTY doğrulaması, stress harness
+- 288 test, PTY doğrulaması, stress harness
 
 **Asıl darboğaz artık özellik eksikliği değil, canlı kaynak güvenilirliği.** Reddit'in
 public API'si kapanıyor; Redlib instance'ları sık sık 403/429/CAPTCHA/502 veriyor.
@@ -208,7 +208,7 @@ veya `Ctrl+P` ile aranabilir aksiyon listesi.
 - Efor: **Orta**
 - Not: Protokol desteği iddiası ancak gerçek terminal ekran görüntüsüyle doğrulanmalı.
 
-- [ ] Görsel görüntüleyici iyileştirmeleri
+- [x] Görsel görüntüleyici iyileştirmeleri — tamamlandı (2026-11-25): zoom/pan, thumbnail şeridi, sonraki görseli önceden yükleme; harici açma ve URL kopyalama zaten vardı. Gerçek GUI pixel/Sixel residue doğrulaması ortam kısıtı olarak açık.
 
 ---
 
@@ -318,7 +318,7 @@ Bundan sonra:
 6. [ ] Kalıcı cache / offline mod
 7. [ ] Multifeed ve kaydedilmiş aramalar
 8. [x] Komut paleti — tamamlandı.
-9. [ ] Görsel viewer iyileştirmeleri
+9. [x] Görsel viewer iyileştirmeleri — tamamlandı.
 10. [ ] Reddit export import / yerel arşiv
 
 ## Sonuç

@@ -28,6 +28,7 @@ pub enum HitTarget {
     ModalSubmit,
     GalleryPrev,
     GalleryNext,
+    GalleryThumb(usize),
     GalleryOpen,
     Retry,
 }

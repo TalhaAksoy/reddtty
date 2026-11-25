@@ -115,8 +115,14 @@ Removed posts hide their comments with an explanatory placeholder.
 
 | Key | Action |
 |---|---|
-| `←` / `h` | Previous image |
-| `→` / `l` | Next image |
+| `←` / `h`, `PageUp` | Previous image |
+| `→` / `l`, `PageDown` | Next image |
+| `Home` / `End` | First / last image |
+| `+` / `=` | Zoom in (100% → 150% → 200% → 300% → 400%) |
+| `-` | Zoom out |
+| `Shift+←/→/↑/↓` | Pan a zoomed image |
+| `0` | Reset zoom and pan |
+| Click a thumbnail | Jump to that image |
 | `Esc` | Close viewer (returns to feed or detail) |
 | `o` | Open the current image externally |
 | `y` / `i` | Copy the current image URL |

@@ -1,4 +1,5 @@
 use crate::event::ViewId;
+use crate::media::ImageView;
 use crate::models::{MediaItem, Post};
 
 #[derive(Clone, Debug)]
@@ -7,6 +8,8 @@ pub struct GalleryView {
     pub post: Post,
     pub images: Vec<MediaItem>,
     pub index: usize,
+    /// Zoom/pan for the current image. Reset when navigating.
+    pub view: ImageView,
 }
 
 impl GalleryView {
@@ -20,18 +23,78 @@ impl GalleryView {
             post,
             images,
             index: 0,
+            view: ImageView::default(),
         })
     }
 
     pub fn next(&mut self) {
         if !self.images.is_empty() {
             self.index = (self.index + 1) % self.images.len();
+            self.reset_view();
         }
     }
 
     pub fn prev(&mut self) {
         if !self.images.is_empty() {
             self.index = (self.index + self.images.len() - 1) % self.images.len();
+            self.reset_view();
+        }
+    }
+
+    pub fn select(&mut self, index: usize) {
+        if index < self.images.len() {
+            self.index = index;
+            self.reset_view();
+        }
+    }
+
+    pub const ZOOM_STEPS: [u16; 5] = [100, 150, 200, 300, 400];
+
+    pub fn zoom_in(&mut self) {
+        let index = Self::ZOOM_STEPS
+            .iter()
+            .position(|zoom| *zoom == self.view.zoom)
+            .unwrap_or(0);
+        self.view.zoom = Self::ZOOM_STEPS[(index + 1).min(Self::ZOOM_STEPS.len() - 1)];
+    }
+
+    pub fn zoom_out(&mut self) {
+        let index = Self::ZOOM_STEPS
+            .iter()
+            .position(|zoom| *zoom == self.view.zoom)
+            .unwrap_or(0);
+        self.view.zoom = Self::ZOOM_STEPS[index.saturating_sub(1)];
+        if self.view.zoom <= 100 {
+            self.view.pan_x = 0;
+            self.view.pan_y = 0;
+        }
+    }
+
+    pub fn reset_view(&mut self) {
+        self.view = ImageView::default();
+    }
+
+    pub fn pan(&mut self, dx: i16, dy: i16) {
+        if self.view.zoom <= 100 {
+            return;
+        }
+        self.view.pan_x = (self.view.pan_x + dx).clamp(-100, 100);
+        self.view.pan_y = (self.view.pan_y + dy).clamp(-100, 100);
+        if self.view.zoom >= 100 {
+            // Panning is only meaningful while zoomed in.
+            self.view.zoom = self.view.zoom.max(150);
+        }
+    }
+
+    pub fn zoom_label(&self) -> String {
+        format!("{}%", self.view.zoom)
+    }
+
+    pub fn pan_label(&self) -> String {
+        if self.view.zoom <= 100 {
+            "fit".into()
+        } else {
+            format!("x{:+} y{:+}", self.view.pan_x, self.view.pan_y)
         }
     }
 
@@ -92,6 +155,29 @@ mod tests {
         g.next();
         assert_eq!(g.current().unwrap().url, "a");
         assert_eq!(g.position_label(), "1 / 3");
+    }
+
+    #[test]
+    fn zoom_pan_and_navigation_reset_the_view() {
+        let mut g = GalleryView::new(ViewId(1), post()).unwrap();
+        g.zoom_in();
+        assert_eq!(g.view.zoom, 150);
+        g.zoom_in();
+        assert_eq!(g.view.zoom, 200);
+        g.pan(20, -10);
+        assert_eq!(g.view.pan_x, 20);
+        assert_eq!(g.view.pan_y, -10);
+        g.next();
+        assert_eq!(g.index, 1);
+        assert!(g.view.is_base());
+        g.zoom_in();
+        g.zoom_out();
+        assert_eq!(g.view.zoom, 100);
+        assert_eq!(g.view.pan_x, 0);
+        g.zoom_in();
+        g.select(2);
+        assert!(g.view.is_base());
+        assert_eq!(g.index, 2);
     }
 
     #[test]
