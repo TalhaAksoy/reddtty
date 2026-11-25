@@ -187,7 +187,8 @@ cargo build --release
 
 - GitHub Actions builds and tests on Ubuntu and macOS, and uploads
 `reddtty-<os>-<arch>.tar.gz` artifacts (with SHA-256 sums) on every push, pull
-request and manual run.
+request and manual run. Pushing a `v*` tag publishes the same archives as GitHub
+Release assets; GitHub Packages is not used for raw binaries.
 
 Real-terminal verification: [`scripts/pty_verify.py`](scripts/pty_verify.py)
 - Architecture and internals: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
