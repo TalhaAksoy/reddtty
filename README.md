@@ -36,7 +36,9 @@ galleries, inline images, search, sorting and multiple content sources.
 
 ## Install
 
-Build from source:
+Prebuilt archives are on the [Releases](https://github.com/TalhaAksoy/reddtty/releases)
+page (`Linux x86_64` and `macOS arm64`), each with a SHA-256 checksum. Build from
+source:
 
 ```bash
 git clone https://github.com/TalhaAksoy/reddtty.git
