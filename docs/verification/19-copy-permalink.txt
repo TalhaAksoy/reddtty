@@ -28,11 +28,11 @@
   u/firefox_fox   ▲ 1.3k   2h ago                                                                            ┃  │G    open subreddit
   The examples are great, but I would add a warning about running this as root.                              ┃  │Y    open comments
                                                                                                              │  │b    bookmark
-  ├─ u/null_pointer   ▲ 738   2h ago                                                                         │  │Esc  back to feed
-  │    I have been using this approach in production for a year. One caveat: watch the memory usage.         │  │
-                                                                                                             │  │
-  u/quiet_signal   ▲ 1k   2h ago                                               ✓ Comment permalink copied to clipboard.
-  Does this work with older terminals? I spend a lot of time on servers over S ℹ Showing all comments.       │  │
-                                                                               ℹ Showing only comments by u/ferris_fan.
-  ├─ u/[deleted]   2h ago                                                                                    │  │
+  ├─ u/null_pointer   ▲ 738   2h ago                                                                         │  │m    read / unread
+  │    I have been using this approach in production for a year. One caveat: watch the memory usage.         │  │i    community info
+                                                                                                             │  │r    refresh
+  u/quiet_signal   ▲ 1k   2h ago                                               ✓ Comment permalink copied to clipboard.pen browser
+  Does this work with older terminals? I spend a lot of time on servers over S ℹ Showing all comments.       │  │v    image viewer
+                                                                               ℹ Showing only comments by u/ferris_fan.eveal hidden
+  ├─ u/[deleted]   2h ago                                                                                    │  │Esc  back to feed
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

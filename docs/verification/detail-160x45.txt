@@ -28,13 +28,13 @@
  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  │G    open subreddit
  ▌u/byte_wanderer   ▲ 1.3k   2h ago                                                                                              ┃  │Y    open comments
  ▌The part about documentation is underrated. Half of my bookmarks are just good READMEs.                                        ┃  │b    bookmark
- ▌                                                                                                                               ┃  │Esc  back to feed
-  u/firefox_fox   ▲ 1.3k   2h ago                                                                                                ┃  │
-  The examples are great, but I would add a warning about running this as root.                                                  ┃  │
-                                                                                                                                 ┃  │
-  ├─ u/null_pointer   ▲ 738   2h ago                                                                                             ┃  │
-  │    I have been using this approach in production for a year. One caveat: watch the memory usage.                             ┃  │
-                                                                                                                                 │  │
+ ▌                                                                                                                               ┃  │m    read / unread
+  u/firefox_fox   ▲ 1.3k   2h ago                                                                                                ┃  │i    community info
+  The examples are great, but I would add a warning about running this as root.                                                  ┃  │r    refresh
+                                                                                                                                 ┃  │o    open browser
+  ├─ u/null_pointer   ▲ 738   2h ago                                                                                             ┃  │v    image viewer
+  │    I have been using this approach in production for a year. One caveat: watch the memory usage.                             ┃  │x    reveal hidden
+                                                                                                                                 │  │Esc  back to feed
   u/quiet_signal   ▲ 1k   2h ago                                                                                                 │  │
   Does this work with older terminals? I spend a lot of time on servers over SSH.                                                │  │
                                                                                                                                  │  │

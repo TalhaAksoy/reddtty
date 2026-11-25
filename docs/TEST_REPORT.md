@@ -20,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 300 passed, 0 failed, 0 ignored
+cargo test                                 # 302 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 66 captures, 109 assertions, all pass
+python3 scripts/pty_verify.py              # 67 captures, 113 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,12 +32,12 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 230 | 230 | 0 | 0 |
+| Library unit tests (`src/**`) | 231 | 231 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 46 | 46 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 47 | 47 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **300** | **300** | **0** | **0** |
+| **Total** | **302** | **302** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -206,6 +206,11 @@ cargo build --release --example stress
   wide-screen community panel. A UI test renders the community name, title,
   description, suggested communities and actions. The post watch state receives
   subreddit updates through the same `SubredditLoaded` event as feeds.
+- Monochrome/high-contrast selected rows use a dark selection background with
+  white foreground; a theme test prevents the unreadable white-on-white state.
+- Palette Enter prefers the highlighted action when a text alias is incomplete
+  (`theme`, `theme Ma`), while complete aliases (`theme mocha`) still execute.
+  The wide feed right panel lists refresh/browser/image/reveal shortcuts.
 - The info drawer snapshots community/member/post data and renders on narrow
   layouts. Settings image-protocol and appearance actions are app-tested; image
   protocol changes clear pending encoded work. Help search/context ordering,
@@ -259,7 +264,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 66, "assertions": 109}
+{"ok": true, "captures": 67, "assertions": 113}
 ```
 
 Captures and the machine-readable summary are in
@@ -298,6 +303,7 @@ against the compiled terminal application and its alternate-screen output.
 | 23 | Settings → Images lists the protocol picker including `Halfblocks` | **Pass** |
 | 24 | Settings → Appearance shows relative timestamps and motion controls | **Pass** |
 | 25 | `M` mutes the selected subreddit and `u` undoes it with visible toasts | **Pass** |
+| 26b | Palette query `theme Ma` with the Macchiato row highlighted runs the highlighted action instead of the incomplete alias | **Pass** |
 
 Visual inspection of the captures (not only assertions) found and drove the
 fixes listed in [`UX_REVIEW.md`](UX_REVIEW.md).

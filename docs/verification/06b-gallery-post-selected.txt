@@ -17,17 +17,17 @@
                        │ │                                                                                   ││ │j/k   navigate
  FAVORITES             │ │ ▲ 1.8k   ◍ 143   Link  Article                                                    ││ │Enter open post
   f to add             │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │s     sort
-                       │                                                                                      │ │g     subreddit
-                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │/     search
-                       │ │ r/askscience  •  u/event_horizon  •  2d ago                              ● unread ││ │v     image
-                       │ │                                                                                   ││ │?     help
-                       │ │ Visualising a black hole merger                                                   ││ │
-                       │ │                                                                                   ││ │
-                       │ │ Four frames from a simulation, plus the article that explains the colours.        ││ │
-                       │ │                                                                                   ││ │
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
+                       │                                                                                      │ │t     top range
+                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │g     subreddit
+                       │ │ r/askscience  •  u/event_horizon  •  2d ago                              ● unread ││ │/     search
+                       │ │                                                                                   ││ │r     refresh
+                       │ │ Visualising a black hole merger                                                   ││ │o     open browser
+                       │ │                                                                                   ││ │v     image viewer
+                       │ │ Four frames from a simulation, plus the article that explains the colours.        ││ │x     reveal hidden
+                       │ │                                                                                   ││ │b     bookmark
+                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │m     read / unread
+                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │i     community info
+                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │?     help
                        │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
                        │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
                        │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │

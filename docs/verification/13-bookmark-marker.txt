@@ -17,17 +17,17 @@
                        │ │                                                                                   ││ │j/k   navigate
  FAVORITES             │ │ I switched my entire workflow to Linux                                            ││ │Enter open post
   f to add             │ │                                                                                   ││ │s     sort
-                       │ │ After using another OS for years, I moved my whole workflow over a long weekend.  ││ │g     subreddit
-                       │ │ The surprises were smaller than I expected.                                       ││ │/     search
-                       │ │                                                                                   ││ │v     image
-                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │?     help
-                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │
-                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄                                ││ │
-                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │
-                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │
-                       │ │                                   ▀▀▀▀▀      ▀▀▀▀▀                                ││ │
-                       │ │                                                                                   ││ │
-                       │ │ ▲ 2.4k   ◍ 187   Image  Story                                                     ││ │
+                       │ │ After using another OS for years, I moved my whole workflow over a long weekend.  ││ │t     top range
+                       │ │ The surprises were smaller than I expected.                                       ││ │g     subreddit
+                       │ │                                                                                   ││ │/     search
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │r     refresh
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │o     open browser
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄                                ││ │v     image viewer
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │x     reveal hidden
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │b     bookmark
+                       │ │                                   ▀▀▀▀▀      ▀▀▀▀▀                                ││ │m     read / unread
+                       │ │                                                                                   ││ │i     community info
+                       │ │ ▲ 2.4k   ◍ 187   Image  Story                                                     ││ │?     help
                        │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                                      │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │

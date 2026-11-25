@@ -34,6 +34,7 @@
     "docs/verification/24-filtered-feed.txt",
     "docs/verification/25-command-palette.txt",
     "docs/verification/26-command-theme.txt",
+    "docs/verification/26b-command-selected.txt",
     "docs/verification/27-config-picker.txt",
     "docs/verification/28-provider-switch.txt",
     "docs/verification/29-info-drawer.txt",
@@ -91,6 +92,21 @@
     {
       "name": "feed sort tabs",
       "needle": "Controversial",
+      "ok": true
+    },
+    {
+      "name": "feed shortcut refresh",
+      "needle": "refresh",
+      "ok": true
+    },
+    {
+      "name": "feed shortcut browser",
+      "needle": "open browser",
+      "ok": true
+    },
+    {
+      "name": "feed shortcut hidden",
+      "needle": "reveal hidden",
       "ok": true
     },
     {
@@ -351,6 +367,11 @@
     {
       "name": "command theme applied",
       "needle": "Theme: Catppuccin Mocha",
+      "ok": true
+    },
+    {
+      "name": "selected palette command runs",
+      "needle": "Theme: Catppuccin Macchiato",
       "ok": true
     },
     {

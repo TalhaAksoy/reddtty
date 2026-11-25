@@ -2082,12 +2082,20 @@ impl App {
                                 }
                             }
                             Err(error) => {
-                                self.modal = Some(Modal::CommandPalette(CommandPaletteModal {
-                                    query,
-                                    selected: palette.selected,
-                                    recent,
-                                    error: Some(error),
-                                }));
+                                // Filtered actions and text aliases overlap
+                                // (`theme` vs `Theme: …`). If an action is
+                                // highlighted, Enter runs it; otherwise show
+                                // the alias error so the user can correct it.
+                                if let Some(command) = selected {
+                                    self.execute_command(command);
+                                } else {
+                                    self.modal = Some(Modal::CommandPalette(CommandPaletteModal {
+                                        query,
+                                        selected: palette.selected,
+                                        recent,
+                                        error: Some(error),
+                                    }));
+                                }
                             }
                         }
                     } else if let Some(command) = selected {

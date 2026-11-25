@@ -28,11 +28,11 @@
                                                                                                                 │G    open subreddit
                                                                                                                 │Y    open comments
                                                                                                                 │b    bookmark
+                                                                                                                │m    read / unread
+                                                                                                                │i    community info
+                                                                                                                │r    refresh
+                                                                               ℹ Showing only comments by u/ferris_fan.pen browser
+                                                                               ℹ Jumped to the next unread comment.   image viewer
+                                                                               ℹ Expanded all comment threads.  │x    reveal hidden
                                                                                                                 │Esc  back to feed
-                                                                                                                │
-                                                                                                                │
-                                                                               ℹ Showing only comments by u/ferris_fan.
-                                                                               ℹ Jumped to the next unread comment.
-                                                                               ℹ Expanded all comment threads.  │
-                                                                                                                │
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

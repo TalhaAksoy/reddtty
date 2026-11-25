@@ -28,11 +28,11 @@
   ▶ u/firefox_fox   ▲ 1.3k   2h ago   (1 replies hidden)                                                     ┃  │G    open subreddit
                                                                                                              ┃  │Y    open comments
   ▶ u/quiet_signal   ▲ 1k   2h ago   (1 replies hidden)                                                      ┃  │b    bookmark
-                                                                                                             ┃  │Esc  back to feed
-  ▶ u/firefox_fox   ▲ 972   2h ago   (1 replies hidden)                                                      ┃  │
-                                                                                                             ┃  │
-  ▶ u/coffee_compiler   ▲ 815   2h ago   (4 replies hidden)                    ℹ Collapsed all comment threads. │
-                                                                               ℹ Marked as read.             ┃  │
+                                                                                                             ┃  │m    read / unread
+  ▶ u/firefox_fox   ▲ 972   2h ago   (1 replies hidden)                                                      ┃  │i    community info
+                                                                                                             ┃  │r    refresh
+  ▶ u/coffee_compiler   ▲ 815   2h ago   (4 replies hidden)                    ℹ Collapsed all comment threads. │o    open browser
+                                                                               ℹ Marked as read.             ┃  │v    image viewer
                                                                                ✓ Saved “Why I love building CLI applications with Rust” wi…
-                                                                                                             ┃  │
+                                                                                                             ┃  │Esc  back to feed
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

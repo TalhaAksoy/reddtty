@@ -28,11 +28,11 @@
   u/firefox_fox   ▲ 1.3k   2h ago                                                                            ┃  │G    open subreddit
   The examples are great, but I would add a warning about running this as root.                              ┃  │Y    open comments
                                                                                                              │  │b    bookmark
-  ├─ u/null_pointer   ▲ 738   2h ago                                                                         │  │Esc  back to feed
-  │    I have been using this approach in production for a year. One caveat: watch the memory usage.         │  │
-                                                                                                             │  │
-  u/quiet_signal   ▲ 1k   2h ago                                                                             │  │
-  Does this work with older terminals? I spend a lot of time on servers over SSH.                            │  │
-                                                                                                             │  │
-  ├─ u/[deleted]   2h ago                                                                                    │  │
+  ├─ u/null_pointer   ▲ 738   2h ago                                                                         │  │m    read / unread
+  │    I have been using this approach in production for a year. One caveat: watch the memory usage.         │  │i    community info
+                                                                                                             │  │r    refresh
+  u/quiet_signal   ▲ 1k   2h ago                                                                             │  │o    open browser
+  Does this work with older terminals? I spend a lot of time on servers over SSH.                            │  │v    image viewer
+                                                                                                             │  │x    reveal hidden
+  ├─ u/[deleted]   2h ago                                                                                    │  │Esc  back to feed
 j/k Scroll · →/Tab Comments · v Image · o Browser · x Reveal · Esc Back · ? Help · q Quit

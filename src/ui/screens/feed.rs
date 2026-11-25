@@ -497,9 +497,16 @@ fn render_right_panel(
         ("j/k", "navigate"),
         ("Enter", "open post"),
         ("s", "sort"),
+        ("t", "top range"),
         ("g", "subreddit"),
         ("/", "search"),
-        ("v", "image"),
+        ("r", "refresh"),
+        ("o", "open browser"),
+        ("v", "image viewer"),
+        ("x", "reveal hidden"),
+        ("b", "bookmark"),
+        ("m", "read / unread"),
+        ("i", "community info"),
         ("?", "help"),
     ] {
         lines.push(Line::from(vec![

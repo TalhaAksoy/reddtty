@@ -28,9 +28,9 @@
   The examples are great, but I would add a warning about running this as root.                    │  │G    open subreddit
                                                                                                    │  │Y    open comments
   ├─ u/null_pointer   ▲ 738   2h ago                                                               │  │b    bookmark
-  │    I have been using this approach in production for a year. One caveat: watch the memory      │  │Esc  back to feed
-  │    usage.                                                                                      │  │
-                                                                                                   │  │
-  u/quiet_signal   ▲ 1k   2h ago                                                                   │  │
-  Does this work with older terminals? I spend a lot of time on servers over SSH.                  │  │
+  │    I have been using this approach in production for a year. One caveat: watch the memory      │  │m    read / unread
+  │    usage.                                                                                      │  │i    community info
+                                                                                                   │  │r    refresh
+  u/quiet_signal   ▲ 1k   2h ago                                                                   │  │o    open browser
+  Does this work with older terminals? I spend a lot of time on servers over SSH.                  │  │v    image viewer
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

@@ -110,6 +110,9 @@ def main() -> int:
         assert_seen("demo label", feed, "DEMO")
         assert_seen("feed cards", feed, "▲")
         assert_seen("feed sort tabs", feed, "Controversial")
+        assert_seen("feed shortcut refresh", feed, "refresh")
+        assert_seen("feed shortcut browser", feed, "open browser")
+        assert_seen("feed shortcut hidden", feed, "reveal hidden")
         assert_not_seen("feed not stuck loading", feed, "Loading posts…")
 
         # Left/Right move between the sidebar and the feed without Tab.
@@ -334,6 +337,14 @@ def main() -> int:
         themed = wait_for(session, "Theme: Catppuccin Mocha")
         save("26-command-theme", themed)
         assert_seen("command theme applied", themed, "Theme: Catppuccin Mocha")
+
+        send(session, ":", literal=True)
+        wait_for(session, "Commands")
+        send(session, "theme Ma", literal=True)
+        send(session, "Enter")
+        selected_theme = wait_for(session, "Theme: Catppuccin Macchiato")
+        save("26b-command-selected", selected_theme)
+        assert_seen("selected palette command runs", selected_theme, "Theme: Catppuccin Macchiato")
 
         send(session, "S")
         wait_for(session, "Settings")

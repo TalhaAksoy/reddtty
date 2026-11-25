@@ -17,17 +17,17 @@
                        │ │                                                                                   │┃ │j/k   navigate
  FAVORITES             │ │ ▲ 290   ◍ 14   Image  Screenshot                                                  │┃ │Enter open post
   f to add             │ ╰───────────────────────────────────────────────────────────────────────────────────╯┃ │s     sort
-                       │                                                                                      │ │g     subreddit
- RECENT                │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │/     search
-  r/rust               │ │ r/rust  •  u/ferris_fan  •  2h ago                                                ││ │v     image
-                       │ │                                                                                   ││ │?     help
-                       │ │ Why I love building CLI applications with Rust                                    ││ │
-                       │ │                                                                                   ││ │
-                       │ │ I have been writing command-line tools for a decade, and Rust is the first        ││ │
-                       │ │ language where shipping feels this good.…                                         ││ │
-                       │ │                                                                                   ││ │
-                       │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                                 ││ │
-                       │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+                       │                                                                                      │ │t     top range
+ RECENT                │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │g     subreddit
+  r/rust               │ │ r/rust  •  u/ferris_fan  •  2h ago                                                ││ │/     search
+                       │ │                                                                                   ││ │r     refresh
+                       │ │ Why I love building CLI applications with Rust                                    ││ │o     open browser
+                       │ │                                                                                   ││ │v     image viewer
+                       │ │ I have been writing command-line tools for a decade, and Rust is the first        ││ │x     reveal hidden
+                       │ │ language where shipping feels this good.…                                         ││ │b     bookmark
+                       │ │                                                                                   ││ │m     read / unread
+                       │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                                 ││ │i     community info
+                       │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │?     help
                        │                                                                                      │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
                        │ │ r/technology  •  u/packet_garden  •  23h ago                             ● unread ││ │

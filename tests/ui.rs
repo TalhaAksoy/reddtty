@@ -1126,6 +1126,22 @@ async fn bookmarks_and_read_markers_are_visible() {
 }
 
 #[tokio::test]
+async fn wide_feed_right_panel_explains_common_keys() {
+    let (mut app, _provider, _posts) = app_with_posts(160, 45).await;
+    let terminal = draw(&mut app, 160, 45);
+    let text = screen(&terminal);
+    for label in [
+        "refresh",
+        "open browser",
+        "image viewer",
+        "reveal hidden",
+        "community info",
+    ] {
+        assert!(text.contains(label), "missing {label}: {text}");
+    }
+}
+
+#[tokio::test]
 async fn info_drawer_works_without_the_wide_right_panel() {
     let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
     app.handle_key(crossterm::event::KeyEvent::new(

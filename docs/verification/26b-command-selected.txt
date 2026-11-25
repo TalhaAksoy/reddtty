@@ -1,0 +1,38 @@
+ REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
+ NAVIGATION            │ Home                                                                   24 posts · more │ABOUT
+┃ Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │Home
+  Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │Demo mode: synthetic posts
+                       │ │ r/rust  •  u/ferris_fan  •  2h ago                                        ★ saved │┃ │and comments, stored
+ COMMUNITIES           │ │                                                                                   │┃ │locally.
+  r/rust               │ │ Why I love building CLI applications with Rust                                    │┃ │
+  r/linux              │ │                                                                                   ││ │SUGGESTED COMMUNITIES
+  r/programming        │ │ I have been writing command-line tools for a decade, and Rust is the first        ││ │▸ r/rust
+  r/technology         │ │ language where shipping feels this good.…                                         ││ │▸ r/linux
+  r/opensource         │ │                                                                                   ││ │▸ r/programming
+  r/unixporn           │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                                 ││ │▸ r/technology
+  r/webdev             │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │▸ r/opensource
+  r/machinelearning    │                                                                                      │ │▸ r/unixporn
+  r/askscience         │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
+  r/gaming             │ │ r/linux  •  u/quiet_daemon  •  8h ago                                    ● unread ││ │SHORTCUTS
+                       │ │                                                                                   ││ │j/k   navigate
+ FAVORITES             │ │ I switched my entire workflow to Linux                                            ││ │Enter open post
+  f to add             │ │                                                                                   ││ │s     sort
+                       │ │ After using another OS for years, I moved my whole workflow over a long weekend.  ││ │t     top range
+                       │ │ The surprises were smaller than I expected.                                       ││ │g     subreddit
+                       │ │                                                                                   ││ │/     search
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │r     refresh
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │o     open browser
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄                                ││ │v     image viewer
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │x     reveal hidden
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │b     bookmark
+                       │ │                                   ▀▀▀▀▀      ▀▀▀▀▀                                ││ │m     read / unread
+                       │ │                                                                                   ││ │i     community info
+                       │ │ ▲ 2.4k   ◍ 187   Image  Story                                                     ││ │?     help
+                       │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+                       │                                                                                      │ │
+                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
+                       │ │ r/askscience  •  u/orb ℹ Theme: Catppuccin Macchiato                     ● unread ││ │
+                       │ │                        ℹ Theme: Catppuccin Mocha                                  ││ │
+                       │ │ A new image of a plane ℹ 1 post(s) hidden by local filters.                       ││ │
+ h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

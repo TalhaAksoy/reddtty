@@ -214,8 +214,8 @@ impl Theme {
             info: Color::Rgb(0, 220, 255),
             border: Color::Rgb(255, 255, 255),
             border_active: Color::Rgb(255, 255, 0),
-            selected_bg: Color::Rgb(255, 255, 255),
-            selected_fg: Color::Rgb(0, 0, 0),
+            selected_bg: Color::Rgb(45, 45, 45),
+            selected_fg: Color::Rgb(255, 255, 255),
             badge_bg: Color::Rgb(255, 255, 255),
             badge_fg: Color::Rgb(0, 0, 0),
             code_bg: Color::Rgb(0, 0, 0),
@@ -243,8 +243,8 @@ impl Theme {
             info: Color::Rgb(255, 255, 255),
             border: Color::Rgb(130, 130, 130),
             border_active: Color::Rgb(255, 255, 255),
-            selected_bg: Color::Rgb(255, 255, 255),
-            selected_fg: Color::Rgb(0, 0, 0),
+            selected_bg: Color::Rgb(45, 45, 45),
+            selected_fg: Color::Rgb(255, 255, 255),
             badge_bg: Color::Rgb(255, 255, 255),
             badge_fg: Color::Rgb(0, 0, 0),
             code_bg: Color::Rgb(28, 28, 28),
@@ -417,6 +417,16 @@ mod tests {
                 "{mode:?} duplicates a background"
             );
             seen.push(background);
+        }
+    }
+
+    #[test]
+    fn mono_and_high_contrast_selected_rows_stay_readable() {
+        for mode in [ThemeMode::Mono, ThemeMode::HighContrast] {
+            let theme = Theme::from_mode(mode);
+            assert_eq!(theme.selected_fg, Color::Rgb(255, 255, 255));
+            assert_eq!(theme.selected_bg, Color::Rgb(45, 45, 45));
+            assert_ne!(theme.selected_bg, theme.text_dim);
         }
     }
 

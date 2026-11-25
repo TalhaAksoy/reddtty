@@ -28,11 +28,11 @@
  ▌▶ u/firefox_fox   ▲ 1.3k   2h ago   (1 replies hidden)                                                     ┃  │G    open subreddit
  ▌                                                                                                           ┃  │Y    open comments
   u/quiet_signal   ▲ 1k   2h ago                                                                             ┃  │b    bookmark
-  Does this work with older terminals? I spend a lot of time on servers over SSH.                            │  │Esc  back to feed
-                                                                                                             │  │
-  ├─ u/[deleted]   2h ago                                                                                    │  │
-  │    [deleted]                                                                                             │  │
-                                                                                                             │  │
-  u/firefox_fox   ▲ 972   2h ago                                                                             │  │
-  This is why I love small tools. One job, done well, composable with everything else.                       │  │
+  Does this work with older terminals? I spend a lot of time on servers over SSH.                            │  │m    read / unread
+                                                                                                             │  │i    community info
+  ├─ u/[deleted]   2h ago                                                                                    │  │r    refresh
+  │    [deleted]                                                                                             │  │o    open browser
+                                                                                                             │  │v    image viewer
+  u/firefox_fox   ▲ 972   2h ago                                                                             │  │x    reveal hidden
+  This is why I love small tools. One job, done well, composable with everything else.                       │  │Esc  back to feed
 j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit

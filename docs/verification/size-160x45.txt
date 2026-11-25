@@ -17,17 +17,17 @@
                        │ │ r/linux  •  u/quiet_daemon  •  8h ago                                                        ● unread ││ │j/k   navigate
  FAVORITES             │ │                                                                                                       ││ │Enter open post
   f to add             │ │ I switched my entire workflow to Linux                                                                ││ │s     sort
-                       │ │                                                                                                       ││ │g     subreddit
- RECENT                │ │ After using another OS for years, I moved my whole workflow over a long weekend. The surprises were   ││ │/     search
-  r/rust               │ │ smaller than I expected.                                                                              ││ │v     image
-                       │ │                                                                                                       ││ │?     help
-                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                       ││ │
-                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                       ││ │
-                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄▄▄                                       ││ │
-                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                       ││ │
-                       │ │                                      ▄▄▄▀▀▀▀▀▀▄▄▄▀▀▀▀▀▀▄▄▄▀▀▀▀▀                                       ││ │
-                       │ │                                      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                       ││ │
-                       │ │                                      ▀ ▀▀▀▀▀▀▀▀▀▀▀▀▀ ▀▀▀▀▀▀▀▀▀▀                                       ││ │
+                       │ │                                                                                                       ││ │t     top range
+ RECENT                │ │ After using another OS for years, I moved my whole workflow over a long weekend. The surprises were   ││ │g     subreddit
+  r/rust               │ │ smaller than I expected.                                                                              ││ │/     search
+                       │ │                                                                                                       ││ │r     refresh
+                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                       ││ │o     open browser
+                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                       ││ │v     image viewer
+                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄▄▄                                       ││ │x     reveal hidden
+                       │ │                                      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                       ││ │b     bookmark
+                       │ │                                      ▄▄▄▀▀▀▀▀▀▄▄▄▀▀▀▀▀▀▄▄▄▀▀▀▀▀                                       ││ │m     read / unread
+                       │ │                                      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                       ││ │i     community info
+                       │ │                                      ▀ ▀▀▀▀▀▀▀▀▀▀▀▀▀ ▀▀▀▀▀▀▀▀▀▀                                       ││ │?     help
                        │ │                                             ▀ ▀            ▀▀                                         ││ │
                        │ │                                                                                                       ││ │
                        │ │ ▲ 2.4k   ◍ 187   Image  Story                                                                         ││ │

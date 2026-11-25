@@ -302,6 +302,12 @@ fn render_community_panel(
         ("G", "open subreddit"),
         ("Y", "open comments"),
         ("b", "bookmark"),
+        ("m", "read / unread"),
+        ("i", "community info"),
+        ("r", "refresh"),
+        ("o", "open browser"),
+        ("v", "image viewer"),
+        ("x", "reveal hidden"),
         ("Esc", "back to feed"),
     ] {
         lines.push(Line::from(vec![
