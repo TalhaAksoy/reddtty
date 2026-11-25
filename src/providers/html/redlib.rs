@@ -338,9 +338,13 @@ fn parse_post(element: ElementRef<'_>, page: &Url, now: i64) -> Option<Post> {
         .unwrap_or_default();
     let thumbnail = first_in(
         element,
-        "img.post_thumbnail, a.post_thumbnail img, img.thumbnail",
+        "img.post_thumbnail, a.post_thumbnail img, img.thumbnail, a.post_media_image img, div.post_media_content img",
     )
     .and_then(|node| attr(node, "src"))
+    .or_else(|| {
+        first_in(element, "video.post_media_video")
+            .and_then(|node| attr(node, "poster"))
+    })
     .and_then(|src| absolute_url(page, src))
     .filter(|url| is_image_url(url));
     let nsfw = has_any_class(element, &["nsfw", "over18"])
@@ -397,6 +401,18 @@ fn infer_content(
     thumbnail: Option<&str>,
     body: &str,
 ) -> PostContent {
+    if let Some(video) = first_in(element, "video.post_media_video")
+        && let Some(src) = attr(video, "src").and_then(|src| absolute_url(page, src))
+    {
+        let poster = attr(video, "poster")
+            .and_then(|poster| absolute_url(page, poster))
+            .filter(|url| is_image_url(url));
+        return PostContent::Video {
+            url: src,
+            thumbnail: poster,
+            duration: None,
+        };
+    }
     let gallery = gallery_items(element, page);
     if gallery.len() > 1 {
         return PostContent::Gallery { items: gallery };
@@ -443,7 +459,7 @@ fn gallery_items(element: ElementRef<'_>, page: &Url) -> Vec<MediaItem> {
     let mut seen = HashSet::new();
     for image in all_in(
         element,
-        "div.gallery img, div.media-gallery img, a.post_thumbnail img, img.post_image",
+        "div.gallery img, div.media-gallery img, a.post_thumbnail img, a.post_media_image img, div.post_media_content img, img.post_image",
     ) {
         let Some(src) = attr(image, "src") else {
             continue;
@@ -628,6 +644,74 @@ mod tests {
             next_page_url(&doc, &page()).as_deref(),
             Some("https://redlib.example/r/rust/?sort=hot&t=&after=t3_next")
         );
+    }
+
+    #[test]
+    fn parses_live_media_markup_from_redlib() {
+        let html = r#"
+        <main><div class="posts">
+          <div class="post" id="post_img1">
+            <a class="post_subreddit" href="/r/pics">r/pics</a>
+            <a class="post_author" href="/u/alice">u/alice</a>
+            <span class="created" title="2024-01-01T00:00:00Z">1h ago</span>
+            <h2 class="post_title"><a href="/r/pics/comments/img1/photo/">A photo</a></h2>
+            <div class="post_score" title="5">5</div>
+            <a class="post_comments" title="2" href="/r/pics/comments/img1/photo/">2 comments</a>
+            <div class="post_media_content">
+              <a href="/img/photo.jpeg" class="post_media_image short">
+                <img width="100%" height="100%" alt="Post image" src="/img/photo.jpeg"/>
+              </a>
+            </div>
+          </div>
+          <div class="post" id="post_vid1">
+            <a class="post_subreddit" href="/r/videos">r/videos</a>
+            <a class="post_author" href="/u/bob">u/bob</a>
+            <span class="created" title="2024-01-02T00:00:00Z">2h ago</span>
+            <h2 class="post_title"><a href="/r/videos/comments/vid1/clip/">A clip</a></h2>
+            <div class="post_score" title="7">7</div>
+            <a class="post_comments" title="1" href="/r/videos/comments/vid1/clip/">1 comment</a>
+            <div class="post_media_content">
+              <video class="post_media_video short" src="/packaged/vid1/muxed-high.mp4?m=DASHPlaylist.mpd"
+                     poster="/preview/external-pre/poster.png?format=pjpg" preload="none" controls></video>
+            </div>
+          </div>
+        </div></main>
+        "#;
+        let doc = Html::parse_document(html);
+        let provider = RedlibProvider::new(HtmlClientConfig::new(
+            "https://redlib.example",
+            "reddtty/test",
+        ))
+        .unwrap();
+        let posts = provider.parse_feed(&doc, &page(), 1_700_000_000).unwrap();
+        assert_eq!(posts.len(), 2);
+        match &posts[0].content {
+            PostContent::Image { url } => {
+                assert!(url.ends_with("/img/photo.jpeg"), "{url}");
+            }
+            other => panic!("expected image, got {other:?}"),
+        }
+        assert!(
+            posts[0]
+                .thumbnail
+                .as_deref()
+                .is_some_and(|url| url.ends_with("/img/photo.jpeg"))
+        );
+        match &posts[1].content {
+            PostContent::Video { url, thumbnail, .. } => {
+                assert!(
+                    url.ends_with("/packaged/vid1/muxed-high.mp4?m=DASHPlaylist.mpd"),
+                    "{url}"
+                );
+                assert!(
+                    thumbnail
+                        .as_deref()
+                        .is_some_and(|url| url.contains("/preview/external-pre/poster.png")),
+                    "{thumbnail:?}"
+                );
+            }
+            other => panic!("expected video, got {other:?}"),
+        }
     }
 
     #[test]
