@@ -410,7 +410,18 @@ impl Library {
             },
             None => Library::default(),
         };
-        let merged = self.merge_with(disk);
+        // If the file disappeared or was truncated while this process holds
+        // user data, a delta merge against an empty disk would erase every
+        // unchanged entry. Preserve this session's full state instead.
+        let disk_lost =
+            !disk.has_user_data() && self.baseline.as_deref().is_some_and(Library::has_user_data);
+        let merged = if disk_lost {
+            let mut full = self.clone();
+            full.baseline = None;
+            full
+        } else {
+            self.merge_with(disk)
+        };
         let text = toml::to_string_pretty(&merged)
             .map_err(|error| format!("Could not serialise library: {error}"))?;
         persistence::write_private(path, text.as_bytes()).map_err(|error| error.to_string())?;
@@ -479,6 +490,13 @@ impl Library {
         merged.last_selected_post = self.last_selected_post.clone();
         merged.normalize();
         merged
+    }
+
+    fn has_user_data(&self) -> bool {
+        !self.bookmarks.is_empty()
+            || !self.read_posts.is_empty()
+            || !self.read_comments.is_empty()
+            || self.filters.is_active()
     }
 
     pub fn normalize(&mut self) {
@@ -817,5 +835,83 @@ mod tests {
         assert_eq!(fs::read(&recovery).unwrap(), b"bookmarks = [oops");
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(&recovery);
+    }
+}
+
+#[cfg(test)]
+mod lost_disk_tests {
+    use super::*;
+    use crate::models::PostContent;
+    use std::fs;
+
+    fn post(id: &str) -> Post {
+        Post {
+            id: id.into(),
+            subreddit: "rust".into(),
+            author: "a".into(),
+            title: "t".into(),
+            body: String::new(),
+            created_utc: 0,
+            score: 0,
+            num_comments: 0,
+            permalink: "/r/rust/x".into(),
+            content: PostContent::Text,
+            flair: None,
+            nsfw: false,
+            spoiler: false,
+            stickied: false,
+            locked: false,
+            removed: false,
+            is_self: true,
+            domain: None,
+            thumbnail: None,
+        }
+    }
+
+    #[test]
+    fn missing_library_does_not_erase_unchanged_session_data() {
+        let path = std::env::temp_dir().join(format!(
+            "reddtty-lost-disk-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let mut seed = Library::default();
+        seed.toggle_bookmark(&post("keep"));
+        seed.save(&path).unwrap();
+        let mut library = Library::load(&path).0;
+        fs::remove_file(&path).unwrap();
+        library.toggle_bookmark(&post("new"));
+        library.save_merged(&path).unwrap();
+        let (disk, _) = Library::load(&path);
+        assert!(disk.is_bookmarked("keep"));
+        assert!(disk.is_bookmarked("new"));
+        assert!(library.is_bookmarked("keep"));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn truncated_library_does_not_erase_unchanged_session_data() {
+        let path = std::env::temp_dir().join(format!(
+            "reddtty-truncated-disk-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let mut seed = Library::default();
+        seed.toggle_bookmark(&post("keep"));
+        seed.save(&path).unwrap();
+        let mut library = Library::load(&path).0;
+        fs::write(&path, b"").unwrap();
+        library.toggle_bookmark(&post("new"));
+        library.save_merged(&path).unwrap();
+        let (disk, _) = Library::load(&path);
+        assert!(disk.is_bookmarked("keep"));
+        assert!(disk.is_bookmarked("new"));
+        let _ = fs::remove_file(&path);
     }
 }

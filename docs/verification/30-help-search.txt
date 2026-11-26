@@ -31,8 +31,8 @@
           │                                                                                                                      │
           │                                                                                                                      │
           │                                                                                                                      │
-          │ Search: zoom▏                                                      ℹ 1 post(s) hidden by local filters. · ↑/↓ scroll │
-          ╰─────────────────────────────────────────────────────────────────── ✓ Switched to Demo (offline). Probe returned 10 posts in 1 …
-                                                                               ✓ Switched source to DEMO.
+          │ Search: zoom▏                                                                                 Esc clear · ↑/↓ scroll │
+          ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-j/k Scroll · PgUp/PgDn Page · Esc/? Close
+
+j/k Scroll · PgUp/PgDn Page · Esc/? Close                                      ℹ 1 post(s) hidden by local filters.

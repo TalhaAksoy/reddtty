@@ -31,8 +31,8 @@
                        │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                                      │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
-                       │ │ r/askscience  •  u/orb ℹ 1 post(s) hidden by local filters.              ● unread ││ │
-                       │ │                        ✓ Switched to Demo (offline). Probe returned 10 posts in 1 …│ │
-                       │ │ A new image of a plane ✓ Switched source to DEMO.                                 ││ │
- h hide · Tab focus    │ │                                                                                   ││ │
+                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                 ● unread ││ │
+                       │ │                        ℹ 1 post(s) hidden by local filters.                       ││ │
+                       │ │ A new image of a plane ✓ Switched to Demo (offline). Probe returned 10 posts in 1 …│ │
+ h hide · Tab focus    │ │                        ✓ Switched source to DEMO.                                 ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

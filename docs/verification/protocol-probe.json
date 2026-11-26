@@ -2,25 +2,25 @@
   {
     "protocol": "kitty",
     "ok": true,
-    "detail": "kitty_sequences=33",
-    "bytes": 162945
+    "detail": "kitty_sequences=65",
+    "bytes": 296786
   },
   {
     "protocol": "iterm2",
     "ok": true,
-    "detail": "iterm2_sequences=1",
-    "bytes": 52036
+    "detail": "iterm2_sequences=2",
+    "bytes": 83808
   },
   {
     "protocol": "sixel",
     "ok": true,
-    "detail": "sixel_sequences=1",
-    "bytes": 42974
+    "detail": "sixel_sequences=2",
+    "bytes": 74485
   },
   {
     "protocol": "halfblocks",
     "ok": true,
-    "detail": "halfblock_cells=130",
-    "bytes": 36964
+    "detail": "halfblock_cells=131",
+    "bytes": 36868
   }
 ]

@@ -1,6 +1,6 @@
 [package]
 name = "reddtty"
-version = "0.1.1"
+version = "0.2.0-beta.1"
 edition = "2024"
 description = "A modern, image-capable Reddit reader for the terminal"
 license = "MIT"

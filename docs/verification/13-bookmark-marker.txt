@@ -33,6 +33,6 @@
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
                        │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                 ● unread ││ │
                        │ │                                                                                   ││ │
-                       │ │ A new image of a plane ✓ Saved “Why I love building CLI applications with Rust” wi…│ │
- h hide · Tab focus    │ │                                                                                   ││ │
+                       │ │ A new image of a planet-forming disk                                              ││ │
+ h hide · Tab focus    │ │                        ✓ Saved “Why I love building CLI applications with Rust” wi…│ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

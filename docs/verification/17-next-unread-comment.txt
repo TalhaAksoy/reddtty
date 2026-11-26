@@ -31,8 +31,8 @@
   ├─ u/null_pointer   ▲ 738   2h ago                                                                         │  │m    read / unread
   │    I have been using this approach in production for a year. One caveat: watch the memory usage.         │  │i    community info
                                                                                                              │  │r    refresh
-  u/quiet_signal   ▲ 1k   2h ago                                               ℹ Jumped to the next unread comment.   open browser
-  Does this work with older terminals? I spend a lot of time on servers over S ℹ Expanded all comment threads.  │v    image viewer
-                                                                               ℹ Collapsed all comment threads. │x    reveal hidden
-  ├─ u/[deleted]   2h ago                                                                                    │  │Esc  back to feed
+  u/quiet_signal   ▲ 1k   2h ago                                                                             │  │o    open browser
+  Does this work with older terminals? I spend a lot of time on servers over S ℹ Jumped to the next unread comment.   image viewer
+                                                                               ℹ Expanded all comment threads.  │x    reveal hidden
+  ├─ u/[deleted]   2h ago                                                      ℹ Collapsed all comment threads. │Esc  back to feed
 j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

@@ -31,8 +31,8 @@
 
 
 
-                                                                               ℹ Theme: Catppuccin Macchiato
-                                                                               ℹ Theme: Catppuccin Mocha
-                                                                               ℹ 1 post(s) hidden by local filters.
 
-j/k Move · Enter Install · Esc Back
+
+
+
+j/k Move · Enter Install · Esc Back                                            ℹ Theme: Catppuccin Macchiato

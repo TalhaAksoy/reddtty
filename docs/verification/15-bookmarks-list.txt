@@ -32,7 +32,7 @@
                                ╰────────────────────────────────────────────────────────────────────────────╯
 
 
-                                                                               ℹ Marked as read.
-                                                                               ✓ Saved “Why I love building CLI applications with Rust” wi…
 
-j/k Move · Enter Open · d Remove · Esc Close
+
+
+j/k Move · Enter Open · d Remove · Esc Close                                   ℹ Marked as read.

@@ -31,8 +31,8 @@
                        │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                ││ │
                        │ │                               ▀▀▀▀   ▀▀▀▀▀   ▀▀▀▀                                 ││ │
                        │ │                                                                                   ││ │
-                       │ │ ▲ 2k   ◍ 102   Link  S ℹ 3 post(s) hidden by local filters.                       ││ │
-                       │ ╰─────────────────────── ℹ Press u to undo the last filter.─────────────────────────╯│ │
-                       │                          ℹ Muting r/rust locally.                                    │ │
- h hide · Tab focus    │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
+                       │ │ ▲ 2k   ◍ 102   Link  Space                                                        ││ │
+                       │ ╰─────────────────────── ℹ 3 post(s) hidden by local filters.───────────────────────╯│ │
+                       │                          ℹ Press u to undo the last filter.                          │ │
+ h hide · Tab focus    │ ╭─────────────────────── ℹ Muting r/rust locally.───────────────────────────────────╮│ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

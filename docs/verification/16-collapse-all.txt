@@ -31,8 +31,8 @@
                                                                                                              ┃  │m    read / unread
   ▶ u/firefox_fox   ▲ 972   2h ago   (1 replies hidden)                                                      ┃  │i    community info
                                                                                                              ┃  │r    refresh
-  ▶ u/coffee_compiler   ▲ 815   2h ago   (4 replies hidden)                    ℹ Collapsed all comment threads. │o    open browser
-                                                                               ℹ Marked as read.             ┃  │v    image viewer
+  ▶ u/coffee_compiler   ▲ 815   2h ago   (4 replies hidden)                                                  ┃  │o    open browser
+                                                                               ℹ Collapsed all comment threads. │v    image viewer
+                                                                               ℹ Marked as read.             ┃  │x    reveal hidden
                                                                                ✓ Saved “Why I love building CLI applications with Rust” wi…
-                                                                                                             ┃  │Esc  back to feed
 j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

@@ -179,9 +179,13 @@ pub fn render(
             lists.list.bottom().saturating_sub(1)
         };
         if y >= lists.list.y {
+            let hint = feed
+                .retry_wait_secs()
+                .map(|seconds| format!("rate limited · retry in {seconds}s"))
+                .unwrap_or_else(|| "press R to retry".into());
             let text = ellipsize(
                 &format!(
-                    "Could not load more: {}  ·  press R to retry",
+                    "Could not load more: {}  ·  {hint}",
                     crate::utils::text::sanitize(error)
                 ),
                 cards_area.width as usize,

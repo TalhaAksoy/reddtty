@@ -31,8 +31,8 @@
                                                                                                                 │m    read / unread
                                                                                                                 │i    community info
                                                                                                                 │r    refresh
-                                                                               ℹ Showing only comments by u/ferris_fan.pen browser
-                                                                               ℹ Jumped to the next unread comment.   image viewer
-                                                                               ℹ Expanded all comment threads.  │x    reveal hidden
-                                                                                                                │Esc  back to feed
+                                                                                                                │o    open browser
+                                                                               ℹ Showing only comments by u/ferris_fan.mage viewer
+                                                                               ℹ Jumped to the next unread comment.   reveal hidden
+                                                                               ℹ Expanded all comment threads.  │Esc  back to feed
 j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

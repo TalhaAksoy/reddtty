@@ -5,7 +5,7 @@ BINDIR ?= $(PREFIX)/bin
 BINARY := reddtty
 TARGET := target/release/$(BINARY)
 
-.PHONY: build run test verify configs configs-list install uninstall clean help
+.PHONY: build run test verify verify-e2e configs configs-list install uninstall clean help
 
 # Optional non-interactive selection:
 #   make configs CONFIG=redlib-zanity.toml
@@ -19,6 +19,7 @@ help:
 		'  make run                   Run the release binary' \
 		'  make test                  Run cargo test' \
 		'  make verify                Format, Clippy, tests and release build' \
+		'  make verify-e2e            PTY, multi-process, recovery and protocol checks' \
 		'  make install               Install reddtty to $(BINDIR)' \
 		'  make uninstall             Remove only the installed binary' \
 		'  make configs               Interactively install a config from configs/' \
@@ -41,6 +42,12 @@ verify:
 	cargo clippy --all-targets --all-features -- -D warnings
 	cargo test --locked
 	cargo build --release --locked
+
+verify-e2e: build
+	python3 scripts/process_verify.py
+	python3 scripts/recovery_verify.py
+	python3 scripts/pty_verify.py
+	python3 scripts/protocol_probe.py
 
 install: build
 	install -d "$(DESTDIR)$(BINDIR)"

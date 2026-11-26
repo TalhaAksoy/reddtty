@@ -31,8 +31,8 @@
                                │                                                                            │
                                │                                                                            │
                                │                   j/k scroll · actions run immediately · Esc or i to close │
-                               ╰────────────────────────────────────────────── ℹ 1 post(s) hidden by local filters.
-                                                                               ✓ Switched to Demo (offline). Probe returned 10 posts in 1 …
-                                                                               ✓ Switched source to DEMO.
+                               ╰────────────────────────────────────────────────────────────────────────────╯
 
-Esc/i Close
+
+
+Esc/i Close                                                                    ℹ 1 post(s) hidden by local filters.

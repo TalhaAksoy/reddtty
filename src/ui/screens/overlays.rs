@@ -1718,12 +1718,12 @@ pub fn render_notifications(
     notifications: &VecDeque<Notification>,
     theme: &Theme,
 ) {
-    if notifications.is_empty() || area.width < 12 || area.height < 2 {
+    if notifications.is_empty() || area.width < 12 || area.height == 0 {
         return;
     }
-    let count = notifications.len().min(3);
+    let count = notifications.len().min(3).min(area.height as usize);
     let width = area.width.saturating_sub(2).min(62);
-    let start_y = area.bottom().saturating_sub(1).saturating_sub(count as u16);
+    let start_y = area.bottom().saturating_sub(count as u16);
     for (i, notification) in notifications.iter().rev().take(count).enumerate() {
         let y = start_y + i as u16;
         if y >= area.bottom() {

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::Instant;
 
 use crate::config::Settings;
 use crate::event::ViewId;
@@ -26,6 +27,8 @@ pub struct FeedView {
     /// so a broken source cannot trigger a request storm; the user can retry
     /// deliberately without losing the existing feed or cursor.
     pub more_error: Option<String>,
+    /// Cooldown from a provider's Retry-After header.
+    pub retry_after_until: Option<Instant>,
     pub loading_initial: bool,
     pub loading_more: bool,
     pub refreshing: bool,
@@ -56,6 +59,7 @@ impl FeedView {
             after: None,
             has_more: false,
             more_error: None,
+            retry_after_until: None,
             loading_initial: true,
             loading_more: false,
             refreshing: false,
@@ -92,6 +96,7 @@ impl FeedView {
         self.after = None;
         self.has_more = false;
         self.more_error = None;
+        self.retry_after_until = None;
         self.loading_initial = true;
         self.loading_more = false;
         self.refreshing = false;
@@ -340,6 +345,7 @@ impl FeedView {
         self.refreshing = false;
         self.error = None;
         self.more_error = None;
+        self.retry_after_until = None;
 
         if append {
             let mut seen: HashSet<String> = self.posts.iter().map(|p| p.id.clone()).collect();
@@ -394,6 +400,18 @@ impl FeedView {
     pub fn set_more_error(&mut self, error: String) {
         self.loading_more = false;
         self.more_error = Some(error);
+    }
+
+    pub fn set_retry_after(&mut self, seconds: Option<u64>) {
+        self.retry_after_until = seconds
+            .map(|seconds| Instant::now() + std::time::Duration::from_secs(seconds.min(86_400)));
+    }
+
+    pub fn retry_wait_secs(&self) -> Option<u64> {
+        self.retry_after_until.and_then(|until| {
+            let now = Instant::now();
+            (until > now).then(|| (until - now).as_secs().max(1))
+        })
     }
 
     #[cfg(test)]

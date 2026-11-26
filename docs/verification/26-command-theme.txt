@@ -31,8 +31,8 @@
                        │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
                        │                                                                                      │ │
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
-                       │ │ r/askscience  •  u/orb ℹ Theme: Catppuccin Mocha                         ● unread ││ │
-                       │ │                        ℹ 1 post(s) hidden by local filters.                       ││ │
-                       │ │ A new image of a plane ℹ Blocking posts containing “black hole”.                  ││ │
- h hide · Tab focus    │ │                                                                                   ││ │
+                       │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                 ● unread ││ │
+                       │ │                        ℹ Theme: Catppuccin Mocha                                  ││ │
+                       │ │ A new image of a plane ℹ 1 post(s) hidden by local filters.                       ││ │
+ h hide · Tab focus    │ │                        ℹ Blocking posts containing “black hole”.                  ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

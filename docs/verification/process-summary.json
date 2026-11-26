@@ -1,0 +1,86 @@
+{
+  "ok": true,
+  "assertions": [
+    {
+      "name": "two processes add different bookmarks",
+      "ok": true,
+      "detail": "{'demo003', 'demo001'}"
+    },
+    {
+      "name": "restart keeps both bookmarks",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "seed produced two bookmarks",
+      "ok": true,
+      "detail": "{'demo003', 'demo001'}"
+    },
+    {
+      "name": "removal survives concurrent add",
+      "ok": true,
+      "detail": "{'demo015', 'demo001'}"
+    },
+    {
+      "name": "deleted bookmark is not resurrected",
+      "ok": true,
+      "detail": "{'demo015', 'demo001'}"
+    },
+    {
+      "name": "concurrent read state merged",
+      "ok": true,
+      "detail": "{'demo003', 'demo001'}"
+    },
+    {
+      "name": "concurrent filters merged",
+      "ok": true,
+      "detail": "['alpha', 'beta']"
+    },
+    {
+      "name": "config exists after concurrent writes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "config remains valid TOML",
+      "ok": true,
+      "detail": "{'theme': 'light', 'default_feed': 'home', 'default_sort': 'best', 'show_sidebar': True}"
+    },
+    {
+      "name": "config revision advanced",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "lock timeout is visible",
+      "ok": true,
+      "detail": "\u2502 \u2502 r/linux  \u2022  u/old_hardware  \u2022  4d ago                                    \u25cf unread \u2502\u2502 \u2502\n                       \u2502 \u2502                                                                                   \u2502\u2502 \u2502\n h hide \u00b7 Tab focus    \u2502 \u2502 Linux on a 2009 laptop \u2715 Could not save local library: Timed out waiting for anoth\u2026\u2502 \u2502\nj/k Navigate \u00b7 Enter Open \u00b7 s Sort \u00b7 g Go \u00b7 / Search \u00b7 v Image \u00b7 ? Help \u00b7 q Quit\n"
+    },
+    {
+      "name": "lock timeout leaves persisted data intact",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "saving resumes after lock release",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "lock holder started",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "OS releases a crashed process lock",
+      "ok": true,
+      "detail": "{'demo003', 'demo001'}"
+    }
+  ],
+  "captures": [
+    "docs/verification/process-restart.txt",
+    "docs/verification/process-config-conflict-c1.txt",
+    "docs/verification/process-config-conflict-c2.txt",
+    "docs/verification/process-lock-timeout.txt"
+  ]
+}

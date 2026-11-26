@@ -1,0 +1,30 @@
+ REDDTTY   ›  Home                                                                  ● DEMO   ? Help
+ NAVIGATION        │ Home                                                            25 posts · more
+┃ Home             │  Best   Hot   New   Top   Rising   Controversial
+  Popular          │ ╭────────────────────────────────────────────────────────────────────────────╮┃
+                   │ │ r/rust  •  u/ferris_fan  •  2h ago                                ● unread │┃
+ COMMUNITIES       │ │                                                                            │┃
+  r/rust           │ │ Why I love building CLI applications with Rust                             ││
+  r/linux          │ │                                                                            ││
+  r/programming    │ │ I have been writing command-line tools for a decade, and Rust is the first ││
+  r/technology     │ │ language where shipping feels this good.…                                  ││
+  r/opensource     │ │                                                                            ││
+  r/unixporn       │ │ ▲ 3.2k   ◍ 248   Text  Discussion                                          ││
+  r/webdev         │ ╰────────────────────────────────────────────────────────────────────────────╯│
+  r/machinelearni… │                                                                               │
+  r/askscience     │ ╭────────────────────────────────────────────────────────────────────────────╮│
+  r/gaming         │ │ r/linux  •  u/quiet_daemon  •  8h ago                             ● unread ││
+                   │ │                                                                            ││
+ FAVORITES         │ │ I switched my entire workflow to Linux                                     ││
+  f to add         │ │                                                                            ││
+                   │ │ After using another OS for years, I moved my whole workflow over a long    ││
+                   │ │ weekend. The surprises were smaller than I expected.                       ││
+                   │ │                                                                            ││
+                   │ │ ▲ 2.4k   ◍ 187   Image  Story                                              ││
+                   │ ╰────────────────────────────────────────────────────────────────────────────╯│
+                   │                                                                               │
+                   │ ╭────────────────────────────────────────────────────────────────────────────╮│
+                   │ │ r/askscience  •  u/orbit_nerd  •  3d ago                          ● unread ││
+                   │ │                                                                            ││
+ h hide · Tab focus│ │ A new image of  ✕ Could not save local library: Could not open lock file /v…│
+j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

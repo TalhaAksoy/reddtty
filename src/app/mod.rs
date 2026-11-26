@@ -1237,8 +1237,16 @@ impl App {
             self.notify(NoticeKind::Info, "No failed page to retry.");
             return;
         }
+        if let Some(wait) = view.retry_wait_secs() {
+            self.notify(
+                NoticeKind::Info,
+                format!("Rate limited by the source; retry available in {wait}s."),
+            );
+            return;
+        }
         if let Some(view) = self.current_feed_mut() {
             view.more_error = None;
+            view.retry_after_until = None;
         }
         self.request_more_with(true);
     }
@@ -4592,7 +4600,12 @@ impl App {
                         // Keep has_more and the cursor: a failed append must be
                         // retryable, but automatic requests stay paused until
                         // the user explicitly asks for another page.
+                        let retry_after = match &error {
+                            ProviderError::RateLimited { retry_after } => *retry_after,
+                            _ => None,
+                        };
                         view.set_more_error(error.to_string());
+                        view.set_retry_after(retry_after);
                         error_toast = Some(error);
                     }
                 }

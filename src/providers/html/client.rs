@@ -138,7 +138,7 @@ impl HtmlClient {
                 .headers()
                 .get(RETRY_AFTER)
                 .and_then(|value| value.to_str().ok())
-                .and_then(|value| value.parse::<u64>().ok());
+                .and_then(parse_retry_after);
             let raw_body = String::from_utf8_lossy(
                 &read_bounded(response, MAX_ERROR_BYTES)
                     .await
@@ -249,6 +249,20 @@ async fn read_bounded(
     Ok(bytes)
 }
 
+/// Parse `Retry-After` as either delay-seconds or an HTTP-date. Malformed
+/// values are ignored rather than treated as an indefinite wait.
+fn parse_retry_after(value: &str) -> Option<u64> {
+    let value = value.trim();
+    if let Ok(seconds) = value.parse::<u64>() {
+        return Some(seconds.min(86_400));
+    }
+    let date = chrono::DateTime::parse_from_rfc2822(value).ok()?;
+    let seconds = (date.with_timezone(&chrono::Utc) - chrono::Utc::now())
+        .num_seconds()
+        .max(0) as u64;
+    Some(seconds.min(86_400))
+}
+
 fn map_reqwest_error(error: reqwest::Error) -> ProviderError {
     if error.is_timeout() {
         ProviderError::Timeout(20)
@@ -258,5 +272,25 @@ fn map_reqwest_error(error: reqwest::Error) -> ProviderError {
         ProviderError::Network("the source redirected outside its configured origin".into())
     } else {
         ProviderError::Network(error.to_string())
+    }
+}
+
+#[cfg(test)]
+mod retry_after_tests {
+    use super::parse_retry_after;
+
+    #[test]
+    fn parses_seconds_and_http_dates() {
+        assert_eq!(parse_retry_after("17"), Some(17));
+        assert_eq!(parse_retry_after(" 0 "), Some(0));
+        let future = (chrono::Utc::now() + chrono::Duration::seconds(30)).to_rfc2822();
+        let parsed = parse_retry_after(&future).expect("http date");
+        assert!((25..=31).contains(&parsed), "{parsed}");
+    }
+
+    #[test]
+    fn malformed_values_are_ignored_and_delays_are_bounded() {
+        assert_eq!(parse_retry_after("not-a-date"), None);
+        assert_eq!(parse_retry_after("999999999"), Some(86_400));
     }
 }

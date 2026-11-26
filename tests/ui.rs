@@ -1500,3 +1500,58 @@ async fn confirm_modal_exposes_yes_and_no_hitboxes() {
         .find(|area| matches!(area.target, reddtty::app::hit::HitTarget::ConfirmYes));
     assert!(yes.is_some(), "confirm yes hitbox missing");
 }
+
+#[tokio::test]
+async fn modal_footer_survives_a_visible_notification() {
+    let (mut app, _provider, _posts) = app_with_posts(80, 24).await;
+    app.open_bookmarks();
+    app.notify(
+        reddtty::app::NoticeKind::Error,
+        "Could not save settings: disk full",
+    );
+    let terminal = draw(&mut app, 80, 24);
+    let text = screen(&terminal);
+    assert!(text.contains("Could not save settings"), "{text}");
+    assert!(
+        text.contains("Esc close"),
+        "modal footer was covered:\n{text}"
+    );
+}
+
+#[tokio::test]
+async fn real_long_image_post_card_exceeds_a_short_viewport_and_scrolls() {
+    let (mut app, _provider, mut posts) = app_with_posts(80, 12).await;
+    let mut post = posts.remove(0);
+    post.title =
+        "A deliberately long title with wide 漢字 and enough words to wrap across lines".into();
+    post.body = "Paragraph one with **Markdown**, `code`, and wide 漢字. ".repeat(30);
+    post.content = reddtty::models::PostContent::Image {
+        url: "demo://img/aurora.png".into(),
+    };
+    app.settings.images.enabled = true;
+    if let Some(feed) = app.current_feed_mut() {
+        feed.posts = vec![post];
+        feed.heights_dirty = true;
+        feed.has_more = false;
+        feed.loading_initial = false;
+    }
+    app.prepare();
+    let viewport = app.current_feed().unwrap().last_viewport;
+    let height = app.current_feed().unwrap().heights[0];
+    assert!(
+        height > viewport,
+        "real card height {height} did not exceed viewport {viewport}"
+    );
+    for _ in 0..height {
+        app.handle_key(crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char('J'),
+            crossterm::event::KeyModifiers::NONE,
+        ));
+    }
+    let terminal = draw(&mut app, 80, 12);
+    let text = screen(&terminal);
+    assert!(
+        !text.contains("╭─") || text.contains("╰"),
+        "scrolled card lost its bottom border\n{text}"
+    );
+}

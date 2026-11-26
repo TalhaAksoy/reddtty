@@ -326,10 +326,14 @@ fn copy_new_private(source: &Path, destination: &Path) -> Result<bool, String> {
     match options.open(destination) {
         Ok(mut file) => {
             use std::io::Write;
-            file.write_all(&bytes)
-                .map_err(|error| format!("could not write {}: {error}", destination.display()))?;
-            file.flush()
-                .map_err(|error| format!("could not flush {}: {error}", destination.display()))?;
+            if let Err(error) = file.write_all(&bytes).and_then(|()| file.flush()) {
+                drop(file);
+                let _ = std::fs::remove_file(destination);
+                return Err(format!(
+                    "could not write {}: {error}",
+                    destination.display()
+                ));
+            }
             Ok(true)
         }
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),

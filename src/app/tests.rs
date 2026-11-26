@@ -1947,3 +1947,32 @@ fn custom_redlib_has_no_false_active_preset() {
     let picker = ConfigPickerModal::for_settings(&app.settings);
     assert_eq!(picker.active, None);
 }
+
+#[test]
+fn retry_after_blocks_manual_retry_until_the_cooldown_expires() {
+    let mut app = App::test_with_posts((0..3).map(|i| post(&format!("p{i}"))).collect());
+    let id = app.current_id().unwrap();
+    {
+        let feed = app.current_feed_mut().unwrap();
+        feed.has_more = true;
+        feed.after = Some("d:3".into());
+        feed.more_request = Some(31);
+    }
+    app.handle_event(AppEvent::FeedLoaded {
+        view: id,
+        request: 31,
+        append: true,
+        result: Err(ProviderError::RateLimited {
+            retry_after: Some(30),
+        }),
+    });
+    let wait = app.current_feed().unwrap().retry_wait_secs().unwrap();
+    assert!((29..=30).contains(&wait), "{wait}");
+    app.retry_more();
+    assert!(app.current_feed().unwrap().more_request.is_none());
+    assert!(
+        app.notifications
+            .iter()
+            .any(|n| n.text.contains("retry available in"))
+    );
+}

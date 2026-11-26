@@ -1,0 +1,30 @@
+ REDDTTY   ›  Home                                                                  ● DEMO   ? Help
+
+
+
+
+
+              ╭ Configuration recovery ──────────────────────────────────────────────╮
+              │ Your existing configuration could not be loaded.                     │
+              │ The original file was preserved. Saves are blocked until you choose  │
+              │ an action.                                                           │
+              │                                                                      │
+              │  ▸ Continue temporarily with defaults                                │
+              │    Restore newest backup                                             │
+              │    Create a new configuration                                        │
+              │    Quit                                                              │
+              │                                                                      │
+              │ j/k move · Enter select · Esc close                                  │
+              │                                                                      │
+              │                                                                      │
+              │                                                                      │
+              │                                                                      │
+              │                                                                      │
+              ╰──────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+j/k Move · Enter Select · Esc Close    ! Invalid config (/var/folders/ch/7smf0c210kn_vkd889sr20wm0…

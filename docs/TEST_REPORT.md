@@ -20,9 +20,11 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 368 passed, 0 failed, 0 ignored
+cargo test                                 # 375 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
 python3 scripts/pty_verify.py              # 68 captures, 114 assertions, all pass
+python3 scripts/process_verify.py          # 15 real-process assertions, all pass
+python3 scripts/recovery_verify.py         # 25 executable recovery assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,13 +34,13 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 284 | 284 | 0 | 0 |
+| Library unit tests (`src/**`) | 289 | 289 | 0 | 0 |
 | Binary unit tests (`src/setup.rs`) | 2 | 2 | 0 | 0 |
 | HTML provider integration (`tests/html_providers.rs`) | 14 | 14 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 55 | 55 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 57 | 57 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **368** | **368** | **0** | **0** |
+| **Total** | **375** | **375** | **0** | **0** |
 
 ### What the unit tests cover
 

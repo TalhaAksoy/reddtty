@@ -162,7 +162,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // "Test now", filter changes and image-protocol switches need visible
     // success/error feedback.
     let notification_area = if app.modal.is_some() {
-        root.body
+        // Keep modal footer controls visible: modal feedback shares the
+        // status-bar row instead of painting over the modal body.
+        root.status
     } else {
         match app.nav.last() {
             Some(View::Feed(_)) => layout::feed(root.body, &app.settings, true).feed,
