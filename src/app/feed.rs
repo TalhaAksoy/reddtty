@@ -29,6 +29,8 @@ pub struct FeedView {
     pub more_error: Option<String>,
     /// Cooldown from a provider's Retry-After header.
     pub retry_after_until: Option<Instant>,
+    /// Consecutive append pages that contained no new post IDs.
+    pub duplicate_pages: u32,
     pub loading_initial: bool,
     pub loading_more: bool,
     pub refreshing: bool,
@@ -60,6 +62,7 @@ impl FeedView {
             has_more: false,
             more_error: None,
             retry_after_until: None,
+            duplicate_pages: 0,
             loading_initial: true,
             loading_more: false,
             refreshing: false,
@@ -97,6 +100,7 @@ impl FeedView {
         self.has_more = false;
         self.more_error = None;
         self.retry_after_until = None;
+        self.duplicate_pages = 0;
         self.loading_initial = true;
         self.loading_more = false;
         self.refreshing = false;
@@ -314,7 +318,12 @@ impl FeedView {
     }
 
     pub fn wants_more(&self, viewport: u16) -> bool {
-        if self.more_error.is_some() {
+        if self.more_error.is_some()
+            || self.refreshing
+            || self.request.is_some()
+            || self.error.is_some()
+            || self.retry_wait_secs().is_some()
+        {
             return false;
         }
         if !self.has_more
@@ -350,20 +359,32 @@ impl FeedView {
         if append {
             let mut seen: HashSet<String> = self.posts.iter().map(|p| p.id.clone()).collect();
             let old_after = self.after.clone();
+            let mut added = 0usize;
             for post in page.posts {
                 if seen.insert(post.id.clone()) {
                     self.posts.push(post);
+                    added += 1;
                 }
             }
             let same_cursor = old_after.is_some() && old_after == page.after;
-            // A duplicate-only page with a *fresh* cursor is progress: keep
-            // going so pagination can skip past repeated IDs. A repeated
-            // cursor, or an exhausted page, stops.
-            self.has_more = page.has_more && !same_cursor;
+            if added == 0 {
+                self.duplicate_pages = self.duplicate_pages.saturating_add(1);
+            } else {
+                self.duplicate_pages = 0;
+            }
+            // A duplicate-only page with a fresh cursor is progress for a
+            // short while, but a two-cursor cycle or a permanently repeated
+            // listing must not create an infinite request loop.
+            self.has_more = page.has_more && !same_cursor && self.duplicate_pages < 3;
             self.after = if self.has_more { page.after } else { None };
+            if self.duplicate_pages >= 3 {
+                self.more_error =
+                    Some("the source returned only duplicate posts; refresh the feed".into());
+            }
             self.heights_dirty = true;
             return;
         }
+        self.duplicate_pages = 0;
 
         let pending = self.pending_selected_id.take();
         let keep_position = pending.is_some();
@@ -394,6 +415,7 @@ impl FeedView {
         self.loading_more = false;
         self.refreshing = false;
         self.more_error = None;
+        self.retry_after_until = None;
         self.error = Some(error);
     }
 
@@ -685,5 +707,73 @@ mod duplicate_page_tests {
         );
         assert!(!view.has_more);
         assert!(view.after.is_none());
+    }
+}
+
+#[cfg(test)]
+mod pagination_cycle_tests {
+    use super::*;
+
+    fn post(id: &str) -> Post {
+        Post {
+            id: id.into(),
+            subreddit: "rust".into(),
+            author: "a".into(),
+            title: "t".into(),
+            body: String::new(),
+            created_utc: 0,
+            score: 0,
+            num_comments: 0,
+            permalink: "/r/rust/x".into(),
+            content: crate::models::PostContent::Text,
+            flair: None,
+            nsfw: false,
+            spoiler: false,
+            stickied: false,
+            locked: false,
+            removed: false,
+            is_self: true,
+            domain: None,
+            thumbnail: None,
+        }
+    }
+
+    #[test]
+    fn a_two_cursor_duplicate_cycle_stops_after_three_pages() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a"), post("b")]);
+        view.after = Some("cursor-1".into());
+        view.has_more = true;
+        for (index, cursor) in ["cursor-2", "cursor-1", "cursor-2"].iter().enumerate() {
+            view.apply_page(
+                FeedPage {
+                    posts: vec![post("a"), post("b")],
+                    after: Some((*cursor).into()),
+                    has_more: true,
+                },
+                true,
+                false,
+            );
+            if index < 2 {
+                assert!(view.has_more, "page {index}");
+            }
+        }
+        assert!(!view.has_more);
+        assert!(view.after.is_none());
+        assert!(view.more_error.is_some());
+    }
+
+    #[test]
+    fn refresh_or_rate_limit_blocks_automatic_append() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a")]);
+        view.after = Some("cursor".into());
+        view.has_more = true;
+        view.refreshing = true;
+        assert!(!view.wants_more(10));
+        view.refreshing = false;
+        view.set_retry_after(Some(30));
+        assert!(!view.wants_more(10));
+        view.retry_after_until = None;
+        view.error = Some("refresh failed".into());
+        assert!(!view.wants_more(10));
     }
 }

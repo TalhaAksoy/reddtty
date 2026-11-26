@@ -511,6 +511,18 @@ async fn redlib_block_error_page_is_clean_access_denied() {
 }
 
 #[tokio::test]
+async fn redlib_access_denied_page_is_not_an_empty_feed() {
+    let server = spawn_server(|_path, _index| {
+        Reply::html(
+            "<!doctype html><html><body><main><h1>Access denied</h1><p>verify you are human</p></main></body></html>",
+        )
+    });
+    let provider = redlib_provider(&server, true);
+    let error = provider.get_feed(home(FeedSort::New)).await.unwrap_err();
+    assert!(matches!(error, ProviderError::Forbidden(_)), "{error:?}");
+}
+
+#[tokio::test]
 async fn unexpected_content_type_is_rejected() {
     let server = spawn_server(|_path, _index| Reply::json("{\"not\":\"html\"}"));
     let provider = old_provider(&server, true);

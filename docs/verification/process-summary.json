@@ -4,7 +4,7 @@
     {
       "name": "two processes add different bookmarks",
       "ok": true,
-      "detail": "{'demo003', 'demo001'}"
+      "detail": "{'demo001', 'demo003'}"
     },
     {
       "name": "restart keeps both bookmarks",
@@ -14,22 +14,22 @@
     {
       "name": "seed produced two bookmarks",
       "ok": true,
-      "detail": "{'demo003', 'demo001'}"
+      "detail": "{'demo001', 'demo003'}"
     },
     {
       "name": "removal survives concurrent add",
       "ok": true,
-      "detail": "{'demo015', 'demo001'}"
+      "detail": "{'demo001', 'demo015'}"
     },
     {
       "name": "deleted bookmark is not resurrected",
       "ok": true,
-      "detail": "{'demo015', 'demo001'}"
+      "detail": "{'demo001', 'demo015'}"
     },
     {
       "name": "concurrent read state merged",
       "ok": true,
-      "detail": "{'demo003', 'demo001'}"
+      "detail": "{'demo001', 'demo003'}"
     },
     {
       "name": "concurrent filters merged",
@@ -74,7 +74,7 @@
     {
       "name": "OS releases a crashed process lock",
       "ok": true,
-      "detail": "{'demo003', 'demo001'}"
+      "detail": "{'demo001', 'demo003'}"
     }
   ],
   "captures": [

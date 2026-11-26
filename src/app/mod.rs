@@ -4296,6 +4296,26 @@ impl App {
                 if let Some(Modal::ThemePicker(picker)) = &self.modal {
                     self.apply_theme_preview(picker.original);
                 }
+                if matches!(self.modal, Some(Modal::ConfigPicker(_)))
+                    && let Some(pending) = self.pending_switch.take()
+                {
+                    self.request_starts.remove(&pending.request);
+                    self.notify(
+                        NoticeKind::Info,
+                        "Source test cancelled; the current source was kept.",
+                    );
+                }
+                if matches!(self.modal, Some(Modal::Source(_)))
+                    && let Some(request) = self.probe_request.take()
+                {
+                    self.request_starts.remove(&request);
+                }
+                if matches!(self.modal, Some(Modal::Confirm(_))) {
+                    self.handle_modal_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+                    return;
+                }
+                self.bookmark_delete_return = None;
+                self.custom_redlib_return = None;
                 self.modal = None;
             }
             Some(HitTarget::ModalBody) => {}

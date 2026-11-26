@@ -67,6 +67,18 @@ impl RedlibProvider {
             }
         }
         let _ = main;
+        if posts.is_empty() {
+            if let Some(gate) = detect_gate(doc) {
+                return Err(gate);
+            }
+            // Only a real listing container may be legitimately empty.
+            if doc.select(&selector("div.posts")).next().is_none() {
+                return Err(structure_error(
+                    "Redlib",
+                    "the listing container contained no recognizable posts",
+                ));
+            }
+        }
         Ok(posts)
     }
 

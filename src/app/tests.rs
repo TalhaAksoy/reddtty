@@ -1976,3 +1976,26 @@ fn retry_after_blocks_manual_retry_until_the_cooldown_expires() {
             .any(|n| n.text.contains("retry available in"))
     );
 }
+
+#[test]
+fn clicking_outside_the_source_picker_cancels_the_candidate() {
+    let mut app = App::test_with_posts(vec![post("p")]);
+    let before = app.provider_label.clone();
+    app.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+        selected: 1,
+        active: None,
+    }));
+    app.activate_config_picker_item(1);
+    let request = app.pending_switch.as_ref().unwrap().request;
+    app.handle_modal_click(None);
+    assert!(app.pending_switch.is_none());
+    app.handle_event(AppEvent::SwitchProbeFinished {
+        request,
+        result: Ok(FeedPage {
+            posts: vec![post("late")],
+            after: None,
+            has_more: false,
+        }),
+    });
+    assert_eq!(app.provider_label, before);
+}

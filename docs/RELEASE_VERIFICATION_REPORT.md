@@ -17,7 +17,7 @@ Final this sprint:
 |---|---|
 | `cargo fmt --all -- --check` | pass |
 | `cargo clippy --all-targets --all-features -- -D warnings` | pass |
-| `cargo test --locked` | **375 passed, 0 failed, 0 ignored** |
+| `cargo test --locked` | **379 passed, 0 failed, 0 ignored** |
 | `cargo test --locked --all-features` | pass |
 | `cargo build --release --locked` | pass |
 | `cargo build --release --locked --example stress` | pass |
@@ -28,7 +28,7 @@ Final this sprint:
 | `python3 scripts/protocol_probe.py` | 4/4 byte-level protocols |
 | `git diff --check` | pass |
 
-Suite split: 289 library/unit, 2 binary/setup, 14 HTML provider, 13
+Suite split: 293 library/unit, 2 binary/setup, 15 HTML provider, 13
 provider/image, 57 UI TestBackend.
 
 ## Independent reviewer findings and resolutions
@@ -46,7 +46,11 @@ P1/P2 items below.
 | Recovery unverified through the binary | P0 verification | `scripts/recovery_verify.py` corrupts files and checks bytes/backups/recovery actions |
 | Real tall-card fixture missing | P1 verification | Real `card_layout` test with long Markdown/Unicode + image at 80×12; card exceeds viewport and scrolls |
 | No bookmark/read-history benchmark | P1 verification | `examples/bookmarks_bench.rs` for 1k/10k bookmarks and 50k read-comment IDs |
-| Missing/truncated library during save could erase unchanged session data | P1 data loss | Full in-memory state is preserved when disk is missing/empty; two regression tests |
+| Missing/truncated library during save could erase unchanged session data | P1 data loss | Full in-memory state preserved when disk is missing/empty; two regression tests |
+| Clicking outside source picker bypassed cancellation | P1 | Modal-close path cancels pending switch/probe |
+| Refresh could race an append request | P1 | `wants_more` gated on refresh/request/error/cooldown |
+| Redlib blocked page could look like an empty listing | P1 | gate detection + real listing-container check |
+| Two-cursor duplicate cycle could loop | P1 | bounded duplicate-page cap |
 | CI Windows job unexecuted | High verification gap | Job configured; still not executed in this environment |
 
 No new critical data-loss defect was found in the final review pass.
@@ -184,7 +188,7 @@ Byte probes are not visual proof. See `docs/MANUAL_TERMINAL_TEST_CHECKLIST.md`.
 
 ## Release recommendation
 
-- **Linux/macOS beta:** **BETA READY** for `v0.2.0-beta.1`.
+- **Linux/macOS beta:** **BETA READY** for `v0.2.0-beta.2`.
 - **Windows:** **NOT READY** (experimental; compile job configured but not run).
 - **Stable candidate:** **NOT READY** until Windows runtime, GUI image rendering,
   and the remaining E2E journeys are verified.
