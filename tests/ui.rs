@@ -103,6 +103,29 @@ fn screen(terminal: &Terminal<TestBackend>) -> String {
 }
 
 #[tokio::test]
+async fn no_color_mode_emits_no_explicit_rgb_colors() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    app.no_color = true;
+    let terminal = draw(&mut app, 100, 30);
+    let buffer = terminal.backend().buffer();
+    for y in 0..buffer.area.height {
+        for x in 0..buffer.area.width {
+            let cell = &buffer[(x, y)];
+            assert!(
+                !matches!(cell.fg, ratatui::style::Color::Rgb(..)),
+                "explicit RGB foreground at {x},{y}: {:?}",
+                cell.fg
+            );
+            assert!(
+                !matches!(cell.bg, ratatui::style::Color::Rgb(..)),
+                "explicit RGB background at {x},{y}: {:?}",
+                cell.bg
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn renders_across_terminal_sizes() {
     for (w, h) in [
         (20, 6),
@@ -199,6 +222,45 @@ async fn post_detail_renders_post_and_nested_comments() {
         "nested comments should show tree rails"
     );
     assert!(text.contains("Sort: Best"));
+}
+
+#[tokio::test]
+async fn op_only_mode_is_visible_in_the_comments_header() {
+    let (provider, mut posts) = demo().await;
+    let post = posts.remove(0);
+    let comments = provider
+        .get_comments(&post.id, CommentSort::Best)
+        .await
+        .unwrap();
+    let (tx, _rx) = unbounded_channel();
+    let settings = settings();
+    let images = ImageManager::new(Picker::halfblocks(), &settings, tx.clone());
+    let mut app = App::new(
+        provider.clone(),
+        settings,
+        test_config_path(),
+        images,
+        tx,
+        None,
+        None,
+        Vec::new(),
+    );
+    let id = ViewId(901);
+    let mut view = PostView::new(id, post, CommentSort::Best);
+    view.comments = comments;
+    view.comments_loading = false;
+    view.comments_dirty = true;
+    app.nav.push(View::Post(view));
+    app.set_size(120, 40);
+    app.prepare();
+    if let Some(View::Post(view)) = app.nav.last_mut() {
+        view.op_only = true;
+        view.comments_dirty = true;
+    }
+    app.prepare();
+    let terminal = draw(&mut app, 120, 40);
+    let text = screen(&terminal);
+    assert!(text.contains("OP only"), "{text}");
 }
 
 #[tokio::test]
@@ -1050,6 +1112,23 @@ async fn long_provider_error_wraps_instead_of_truncating_feedback() {
 }
 
 #[tokio::test]
+async fn notifications_remain_visible_over_modals() {
+    let (mut app, _provider, _posts) = app_with_posts(120, 36).await;
+    app.open_settings();
+    app.notify(
+        reddtty::app::NoticeKind::Error,
+        "Could not save settings: disk full",
+    );
+    let terminal = draw(&mut app, 120, 36);
+    let text = screen(&terminal);
+    assert!(
+        text.contains("Could not save settings: disk full"),
+        "{text}"
+    );
+    assert!(text.contains("Settings"), "{text}");
+}
+
+#[tokio::test]
 async fn settings_modal_shows_change_config_and_theme() {
     let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
     app.handle_key(crossterm::event::KeyEvent::new(
@@ -1068,7 +1147,7 @@ async fn settings_modal_shows_change_config_and_theme() {
     ));
     let terminal = draw(&mut app, 100, 30);
     let text = screen(&terminal);
-    assert!(text.contains("Choose config"), "{text}");
+    assert!(text.contains("Choose content source"), "{text}");
     assert!(text.contains("Demo (offline)"), "{text}");
 }
 
@@ -1305,4 +1384,119 @@ async fn theme_picker_lists_all_themes() {
     ] {
         assert!(text.contains(label), "missing {label}: {text}");
     }
+}
+
+#[tokio::test]
+async fn config_picker_keeps_every_source_reachable_at_80x24() {
+    let (mut app, _provider, _posts) = app_with_posts(80, 24).await;
+    app.modal = Some(reddtty::app::modal::Modal::ConfigPicker(
+        reddtty::app::modal::ConfigPickerModal {
+            selected: reddtty::config::presets::PRESETS.len(),
+            active: None,
+        },
+    ));
+    let terminal = draw(&mut app, 80, 24);
+    let text = screen(&terminal);
+    assert!(text.contains("Custom Redlib instance"), "{text}");
+    assert!(text.contains("safereddit"), "{text}");
+    assert!(text.contains("Enter select"), "{text}");
+}
+
+#[tokio::test]
+async fn bookmark_list_labels_offline_comment_limits_and_search() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    let mut saved = reddtty::models::Post {
+        id: "saved1".into(),
+        subreddit: "rust".into(),
+        author: "alice".into(),
+        title: "Offline snapshot".into(),
+        body: "body".into(),
+        created_utc: 0,
+        score: 1,
+        num_comments: 12,
+        permalink: "/r/rust/comments/saved1".into(),
+        content: reddtty::models::PostContent::Text,
+        flair: None,
+        nsfw: false,
+        spoiler: false,
+        stickied: false,
+        locked: false,
+        removed: false,
+        is_self: true,
+        domain: None,
+        thumbnail: None,
+    };
+    app.library.toggle_bookmark(&saved);
+    saved.id = "saved2".into();
+    saved.title = "Another snapshot".into();
+    app.library.toggle_bookmark(&saved);
+    app.open_bookmarks();
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("not stored"), "{text}");
+    assert!(text.contains("/ search"), "{text}");
+    assert!(text.contains("Offline snapshot"), "{text}");
+}
+
+#[tokio::test]
+async fn tall_feed_cards_render_partial_fragments_without_corruption() {
+    for (width, height) in [(80, 24), (60, 20), (100, 30)] {
+        let (mut app, _provider, _posts) = app_with_posts(width, height).await;
+        if let Some(feed) = app.current_feed_mut() {
+            if let Some(post) = feed.posts.first_mut() {
+                post.body =
+                    "A very long body used to force a card taller than the viewport. ".repeat(40);
+                post.content = reddtty::models::PostContent::Text;
+            }
+            feed.heights_dirty = true;
+        }
+        app.prepare();
+        if let Some(feed) = app.current_feed_mut() {
+            feed.heights = vec![40; feed.posts.len()];
+            feed.heights_dirty = false;
+            feed.last_viewport = height.saturating_sub(6);
+            feed.offset = 4;
+            feed.selected = 0;
+        }
+        let terminal = draw(&mut app, width, height);
+        let text = screen(&terminal);
+        assert!(
+            text.contains("A very long body"),
+            "{width}x{height}: partial card content was not rendered\n{text}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn corrupt_config_recovery_row_is_rendered_and_selected() {
+    let (mut app, _provider, _posts) = app_with_posts(80, 24).await;
+    app.config_corrupt = true;
+    app.open_settings();
+    if let Some(reddtty::app::modal::Modal::Settings(modal)) = &mut app.modal {
+        modal.selected = 7;
+    }
+    app.settings_cursor = 7;
+    let terminal = draw(&mut app, 80, 24);
+    let text = screen(&terminal);
+    assert!(text.contains("Configuration recovery"), "{text}");
+    assert!(text.contains("original preserved"), "{text}");
+}
+
+#[tokio::test]
+async fn confirm_modal_exposes_yes_and_no_hitboxes() {
+    let (mut app, _provider, _posts) = app_with_posts(100, 30).await;
+    app.library.filters.subreddits.push("politics".into());
+    app.open_filters();
+    app.handle_key(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('C'),
+        crossterm::event::KeyModifiers::NONE,
+    ));
+    let terminal = draw(&mut app, 100, 30);
+    let text = screen(&terminal);
+    assert!(text.contains("clear"), "{text}");
+    let yes = app
+        .hit_map
+        .iter()
+        .find(|area| matches!(area.target, reddtty::app::hit::HitTarget::ConfirmYes));
+    assert!(yes.is_some(), "confirm yes hitbox missing");
 }

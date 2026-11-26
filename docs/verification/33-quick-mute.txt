@@ -34,5 +34,5 @@
                        │ │ ▲ 2k   ◍ 102   Link  S ℹ 3 post(s) hidden by local filters.                       ││ │
                        │ ╰─────────────────────── ℹ Press u to undo the last filter.─────────────────────────╯│ │
                        │                          ℹ Muting r/rust locally.                                    │ │
- h hide · Tab focus    │                                                                                      │ │
+ h hide · Tab focus    │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

@@ -11,7 +11,7 @@
                                  │ Mode     Demo · offline synthetic data                                 │
                                  │ Status   Available                                                     │
                                  │ Last ok  just now   Attempt  just now                                  │
-                                 │ Latency  4 ms last · 2 ms average                                      │
+                                 │ Latency  3 ms last · 2 ms average                                      │
                                  │ Reliability 100% of 7 requests                                         │
                                  │                                                                        │
                                  │ Library  1 bookmarks · 0 local filter rules                            │
@@ -31,8 +31,8 @@
 
 
 
-
-
-
+                                                                               ✓ Comment permalink copied to clipboard.
+                                                                               ℹ Showing all comments.
+                                                                               ℹ Showing only comments by u/ferris_fan.
 
 j/k Move · Enter Run · r Test · Esc Back

@@ -34,5 +34,5 @@
                        │ │                                                                                   ││ │
                        │ │ A new open standard for portable terminal graphics                                ││ │
                        │ │                        ℹ Demo images are local fixtures; there is no external imag…│ │
- h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+ h hide · Tab focus    │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

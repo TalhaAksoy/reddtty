@@ -5,13 +5,12 @@
 //! and OAuth sessions all share the same offline-friendly data.
 
 use std::collections::BTreeSet;
-use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
 use crate::models::{FeedSort, FeedSpec, Post};
+use crate::persistence;
 
 /// A post saved together with the snapshot that was visible when it was saved.
 /// The snapshot is what makes the bookmark readable when the source is down.
@@ -203,6 +202,30 @@ impl LocalFilters {
     }
 }
 
+fn apply_set_delta(
+    target: &mut BTreeSet<String>,
+    base: &BTreeSet<String>,
+    current: &BTreeSet<String>,
+) {
+    for removed in base.difference(current) {
+        target.remove(removed);
+    }
+    for added in current.difference(base) {
+        target.insert(added.clone());
+    }
+}
+
+fn apply_vec_delta(target: &mut Vec<String>, base: &[String], current: &[String]) {
+    for removed in base.iter().filter(|value| !current.contains(value)) {
+        target.retain(|value| value != removed);
+    }
+    for added in current.iter().filter(|value| !base.contains(value)) {
+        if !target.contains(added) {
+            target.push(added.clone());
+        }
+    }
+}
+
 fn push_unique(list: &mut Vec<String>, value: &str) {
     if !list
         .iter()
@@ -224,6 +247,21 @@ pub struct Library {
     /// Last user-chosen feed/sort, restored on the next launch.
     pub last_feed: Option<FeedSpec>,
     pub last_sort: Option<FeedSort>,
+    #[serde(default)]
+    pub last_top_range: Option<crate::models::TopRange>,
+    #[serde(default)]
+    pub last_selected_post: Option<String>,
+    /// Snapshot of the last successfully loaded/saved state. Used to merge
+    /// changes made by another ReddTTY process instead of overwriting them.
+    #[serde(skip)]
+    pub baseline: Option<Box<Library>>,
+}
+
+pub struct LibraryLoad {
+    pub library: Library,
+    pub warnings: Vec<String>,
+    pub corrupt: bool,
+    pub recovery: Option<PathBuf>,
 }
 
 impl Library {
@@ -236,63 +274,211 @@ impl Library {
     }
 
     pub fn load(path: &Path) -> (Self, Vec<String>) {
+        let loaded = Self::load_checked(path);
+        (loaded.library, loaded.warnings)
+    }
+
+    pub fn load_checked(path: &Path) -> LibraryLoad {
         let mut warnings = Vec::new();
-        let text = match fs::read_to_string(path) {
-            Ok(text) => text,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return (Self::default(), warnings);
+        let text = match persistence::read_text(path) {
+            Ok(Some(text)) => text,
+            Ok(None) => {
+                let mut library = Self::default();
+                library.set_baseline();
+                return LibraryLoad {
+                    library,
+                    warnings,
+                    corrupt: false,
+                    recovery: None,
+                };
             }
             Err(error) => {
+                let recovery = persistence::backup_corrupt(path).ok();
                 warnings.push(format!(
-                    "Could not read {}: {error}. Bookmarks start empty.",
-                    path.display()
+                    "{error}. Bookmarks start empty; saving is disabled until the file is repaired.{}{}",
+                    recovery
+                        .as_ref()
+                        .map(|path| format!(" Original bytes preserved at {}.", path.display()))
+                        .unwrap_or_default(),
+                    if recovery.is_none() {
+                        " A recovery backup could not be created."
+                    } else {
+                        ""
+                    }
                 ));
-                return (Self::default(), warnings);
+                let mut library = Self::default();
+                library.set_baseline();
+                return LibraryLoad {
+                    library,
+                    warnings,
+                    corrupt: true,
+                    recovery,
+                };
             }
         };
         match toml::from_str::<Self>(&text) {
             Ok(mut library) => {
                 library.normalize();
-                (library, warnings)
+                let unknown = persistence::unknown_top_level_keys(
+                    &text,
+                    &[
+                        "bookmarks",
+                        "read_posts",
+                        "read_comments",
+                        "filters",
+                        "last_feed",
+                        "last_sort",
+                        "last_top_range",
+                        "last_selected_post",
+                    ],
+                );
+                if !unknown.is_empty() {
+                    warnings.push(format!(
+                        "Library contains unknown top-level key(s): {}. Check for typos; the next save will drop them.",
+                        unknown.join(", ")
+                    ));
+                }
+                library.set_baseline();
+                LibraryLoad {
+                    library,
+                    warnings,
+                    corrupt: false,
+                    recovery: None,
+                }
             }
             Err(error) => {
-                warnings.push(format!(
-                    "Invalid library file ({}): {}. Bookmarks start empty.",
-                    path.display(),
-                    error.to_string().lines().next().unwrap_or("parse error")
-                ));
-                (Self::default(), warnings)
+                let recovery = match persistence::backup_corrupt(path) {
+                    Ok(backup) => {
+                        warnings.push(format!(
+                            "Invalid library file ({}): {}. A recovery copy was written to {}. Saving is disabled until the original is repaired or removed.",
+                            path.display(),
+                            error.to_string().lines().next().unwrap_or("parse error"),
+                            backup.display()
+                        ));
+                        Some(backup)
+                    }
+                    Err(backup_error) => {
+                        warnings.push(format!(
+                            "Invalid library file ({}): {}. Recovery backup failed: {backup_error}. Saving is disabled.",
+                            path.display(),
+                            error.to_string().lines().next().unwrap_or("parse error")
+                        ));
+                        None
+                    }
+                };
+                LibraryLoad {
+                    library: Self::default(),
+                    warnings,
+                    corrupt: true,
+                    recovery,
+                }
             }
         }
     }
 
     pub fn save(&self, path: &Path) -> Result<(), String> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| format!("Could not create library directory: {error}"))?;
-        }
         let text = toml::to_string_pretty(self)
             .map_err(|error| format!("Could not serialise library: {error}"))?;
-        let tmp = path.with_extension("toml.tmp");
-        {
-            let mut file = fs::File::create(&tmp)
-                .map_err(|error| format!("Could not write library: {error}"))?;
-            file.write_all(text.as_bytes())
-                .map_err(|error| format!("Could not write library: {error}"))?;
-            file.flush()
-                .map_err(|error| format!("Could not flush library: {error}"))?;
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600));
-        }
-        #[cfg(windows)]
-        {
-            let _ = fs::remove_file(path);
-        }
-        fs::rename(&tmp, path).map_err(|error| format!("Could not replace library: {error}"))?;
+        persistence::write_private(path, text.as_bytes()).map_err(|error| error.to_string())
+    }
+
+    fn set_baseline(&mut self) {
+        let mut snapshot = self.clone();
+        snapshot.baseline = None;
+        self.baseline = Some(Box::new(snapshot));
+    }
+
+    /// Merge this process's changes with the current on-disk library under an
+    /// inter-process lock. Bookmark/read/filter additions and removals are
+    /// applied as deltas against `baseline`, so two sessions cannot silently
+    /// delete each other's changes. Last-view fields remain last-writer-wins.
+    pub fn save_merged(&mut self, path: &Path) -> Result<(), String> {
+        let _lock = persistence::FileLock::acquire(path, std::time::Duration::from_secs(2))
+            .map_err(|error| error.to_string())?;
+        let disk = match persistence::read_text(path).map_err(|error| error.to_string())? {
+            Some(text) => match toml::from_str::<Library>(&text) {
+                Ok(mut library) => {
+                    library.normalize();
+                    library
+                }
+                Err(error) => {
+                    return Err(format!(
+                        "Another process wrote an invalid library file; refusing to overwrite it: {}",
+                        error.to_string().lines().next().unwrap_or("parse error")
+                    ));
+                }
+            },
+            None => Library::default(),
+        };
+        let merged = self.merge_with(disk);
+        let text = toml::to_string_pretty(&merged)
+            .map_err(|error| format!("Could not serialise library: {error}"))?;
+        persistence::write_private(path, text.as_bytes()).map_err(|error| error.to_string())?;
+        *self = merged;
+        self.set_baseline();
         Ok(())
+    }
+
+    fn merge_with(&self, disk: Library) -> Library {
+        let Some(base) = self.baseline.as_deref() else {
+            return self.clone();
+        };
+        let mut merged = disk;
+
+        let base_ids: BTreeSet<String> = base.bookmarks.iter().map(|s| s.post.id.clone()).collect();
+        let self_ids: BTreeSet<String> = self.bookmarks.iter().map(|s| s.post.id.clone()).collect();
+        merged.bookmarks.retain(|saved| {
+            !base_ids.contains(&saved.post.id) || self_ids.contains(&saved.post.id)
+        });
+        for saved in &self.bookmarks {
+            if !base_ids.contains(&saved.post.id) {
+                if let Some(existing) = merged
+                    .bookmarks
+                    .iter_mut()
+                    .find(|item| item.post.id == saved.post.id)
+                {
+                    *existing = saved.clone();
+                } else {
+                    merged.bookmarks.push(saved.clone());
+                }
+            }
+        }
+
+        apply_set_delta(&mut merged.read_posts, &base.read_posts, &self.read_posts);
+        apply_set_delta(
+            &mut merged.read_comments,
+            &base.read_comments,
+            &self.read_comments,
+        );
+        apply_vec_delta(
+            &mut merged.filters.keywords,
+            &base.filters.keywords,
+            &self.filters.keywords,
+        );
+        apply_vec_delta(
+            &mut merged.filters.subreddits,
+            &base.filters.subreddits,
+            &self.filters.subreddits,
+        );
+        apply_vec_delta(
+            &mut merged.filters.authors,
+            &base.filters.authors,
+            &self.filters.authors,
+        );
+        apply_vec_delta(
+            &mut merged.filters.domains,
+            &base.filters.domains,
+            &self.filters.domains,
+        );
+        if self.filters.hide_read != base.filters.hide_read {
+            merged.filters.hide_read = self.filters.hide_read;
+        }
+        merged.last_feed = self.last_feed.clone();
+        merged.last_sort = self.last_sort;
+        merged.last_top_range = self.last_top_range;
+        merged.last_selected_post = self.last_selected_post.clone();
+        merged.normalize();
+        merged
     }
 
     pub fn normalize(&mut self) {
@@ -331,7 +517,6 @@ impl Library {
                     saved_at,
                 },
             );
-            self.bookmarks.truncate(500);
             true
         }
     }
@@ -392,6 +577,7 @@ impl Library {
 mod tests {
     use super::*;
     use crate::models::{FeedSort, FeedSpec, Post, PostContent, SearchScope};
+    use std::fs;
 
     fn post(id: &str) -> Post {
         Post {
@@ -449,6 +635,92 @@ mod tests {
     }
 
     #[test]
+    fn non_utf8_library_is_backed_up_and_stays_read_only() {
+        let path = temp_path("nonutf8");
+        let bytes = [0xff, 0xfe, 0x00, 0x80];
+        fs::write(&path, bytes).unwrap();
+        let loaded = Library::load_checked(&path);
+        assert!(loaded.corrupt);
+        let recovery = loaded.recovery.expect("backup");
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(fs::read(&recovery).unwrap(), bytes);
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_file(&recovery);
+    }
+
+    #[test]
+    fn two_stale_sessions_merge_added_bookmarks() {
+        let path = temp_path("merge-add");
+        Library::default().save(&path).unwrap();
+        let mut first = Library::load(&path).0;
+        let mut second = Library::load(&path).0;
+        first.toggle_bookmark(&post("first"));
+        first.save_merged(&path).unwrap();
+        second.toggle_bookmark(&post("second"));
+        second.save_merged(&path).unwrap();
+        let (disk, _) = Library::load(&path);
+        assert!(disk.is_bookmarked("first"));
+        assert!(disk.is_bookmarked("second"));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn removal_in_one_session_does_not_resurrect_a_bookmark_from_another() {
+        let path = temp_path("merge-remove");
+        let mut seed = Library::default();
+        seed.toggle_bookmark(&post("keep"));
+        seed.toggle_bookmark(&post("remove"));
+        seed.save(&path).unwrap();
+        let mut remover = Library::load(&path).0;
+        let mut adder = Library::load(&path).0;
+        remover.remove_bookmark("remove");
+        remover.save_merged(&path).unwrap();
+        adder.toggle_bookmark(&post("new"));
+        adder.save_merged(&path).unwrap();
+        let (disk, _) = Library::load(&path);
+        assert!(disk.is_bookmarked("keep"));
+        assert!(disk.is_bookmarked("new"));
+        assert!(!disk.is_bookmarked("remove"));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn read_state_and_filters_merge_without_lost_updates() {
+        let path = temp_path("merge-state");
+        Library::default().save(&path).unwrap();
+        let mut first = Library::load(&path).0;
+        let mut second = Library::load(&path).0;
+        first.mark_post_read("p1");
+        first.filters.keywords.push("ai".into());
+        first.save_merged(&path).unwrap();
+        second.mark_post_read("p2");
+        second.filters.authors.push("spam".into());
+        second.save_merged(&path).unwrap();
+        let (disk, _) = Library::load(&path);
+        assert!(disk.is_post_read("p1"));
+        assert!(disk.is_post_read("p2"));
+        assert_eq!(disk.filters.keywords, vec!["ai"]);
+        assert_eq!(disk.filters.authors, vec!["spam"]);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn bookmarks_are_not_truncated_at_five_hundred() {
+        let path = temp_path("bookmark-limit");
+        let mut library = Library::default();
+        for index in 0..1001 {
+            library.toggle_bookmark(&post(&format!("b{index}")));
+        }
+        assert_eq!(library.bookmarks.len(), 1001);
+        library.save_merged(&path).unwrap();
+        let (disk, _) = Library::load(&path);
+        assert_eq!(disk.bookmarks.len(), 1001);
+        assert!(disk.is_bookmarked("b0"));
+        assert!(disk.is_bookmarked("b1000"));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
     fn last_feed_and_sort_roundtrip() {
         let path = temp_path("last-view");
         let library = Library {
@@ -457,6 +729,8 @@ mod tests {
                 scope: SearchScope::Subreddit("rust".into()),
             }),
             last_sort: Some(FeedSort::New),
+            last_top_range: Some(crate::models::TopRange::All),
+            last_selected_post: Some("abc123".into()),
             ..Library::default()
         };
         library.save(&path).unwrap();
@@ -464,6 +738,8 @@ mod tests {
         assert!(warnings.is_empty(), "{warnings:?}");
         assert_eq!(loaded.last_feed, library.last_feed);
         assert_eq!(loaded.last_sort, Some(FeedSort::New));
+        assert_eq!(loaded.last_top_range, Some(crate::models::TopRange::All));
+        assert_eq!(loaded.last_selected_post.as_deref(), Some("abc123"));
         let _ = fs::remove_file(&path);
     }
 
@@ -526,5 +802,20 @@ mod tests {
         assert!(library.bookmarks.is_empty());
         assert_eq!(warnings.len(), 1);
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn corrupt_library_is_backed_up_and_original_survives() {
+        let path = temp_path("corrupt-protected");
+        fs::write(&path, "bookmarks = [oops").unwrap();
+        let loaded = Library::load_checked(&path);
+        assert!(loaded.corrupt);
+        assert!(loaded.library.bookmarks.is_empty());
+        let recovery = loaded.recovery.expect("recovery backup");
+        assert!(recovery.is_file());
+        assert_eq!(fs::read(&path).unwrap(), b"bookmarks = [oops");
+        assert_eq!(fs::read(&recovery).unwrap(), b"bookmarks = [oops");
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_file(&recovery);
     }
 }

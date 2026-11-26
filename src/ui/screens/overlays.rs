@@ -31,6 +31,8 @@ pub fn render_modal(
     health: &SourceHealth,
     provider_label: &str,
     demo: bool,
+    images: &crate::media::renderer::ImageManager,
+    config_corrupt: bool,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
@@ -41,8 +43,19 @@ pub fn render_modal(
         Modal::Range(range) => render_range(frame, area, range.selected, theme, hit_map),
         Modal::Text(text) => render_text(frame, area, text, theme, hit_map),
         Modal::Confirm(confirm) => render_confirm(frame, area, confirm, theme, hit_map),
-        Modal::Settings(modal) => render_settings(frame, area, modal, settings, theme, hit_map),
-        Modal::ConfigPicker(picker) => render_config_picker(frame, area, picker, theme, hit_map),
+        Modal::Settings(modal) => render_settings(
+            frame,
+            area,
+            modal,
+            settings,
+            images,
+            config_corrupt,
+            theme,
+            hit_map,
+        ),
+        Modal::ConfigPicker(picker) => {
+            render_config_picker(frame, area, picker, provider_label, theme, hit_map)
+        }
         Modal::ThemePicker(picker) => render_theme_picker(frame, area, picker, theme, hit_map),
         Modal::Bookmarks(modal) => render_bookmarks(frame, area, modal, library, theme, hit_map),
         Modal::Source(modal) => render_source(
@@ -59,10 +72,11 @@ pub fn render_modal(
         Modal::Filters(modal) => render_filters(frame, area, modal, library, theme, hit_map),
         Modal::Info(modal) => render_info(frame, area, modal, theme, hit_map),
         Modal::ImagePicker(modal) => {
-            render_image_picker(frame, area, modal, settings, theme, hit_map)
+            render_image_picker(frame, area, modal, settings, images, theme, hit_map)
         }
         Modal::Appearance(modal) => render_appearance(frame, area, modal, settings, theme, hit_map),
         Modal::CommandPalette(modal) => render_command_palette(frame, area, modal, theme, hit_map),
+        Modal::Recovery(modal) => render_recovery(frame, area, modal, theme, hit_map),
     }
 }
 
@@ -232,19 +246,83 @@ fn shortcut_line(
     ])
 }
 
+fn render_recovery(
+    frame: &mut Frame,
+    area: Rect,
+    modal: &crate::app::modal::RecoveryModal,
+    theme: &Theme,
+    hit_map: &mut HitMap,
+) {
+    let width = area.width.saturating_sub(4).min(72);
+    let height = (crate::app::modal::RecoveryModal::ACTIONS.len() as u16 * 2 + 9)
+        .min(area.height.saturating_sub(2))
+        .max(10);
+    let rect = layout::centered(area, width, height);
+    modal_frame(frame, rect, "Configuration recovery", theme);
+    let inner = inner_of(rect);
+    hit_map.push(inner, HitTarget::ModalBody);
+    let mut lines = vec![
+        Line::from(Span::styled(
+            "Your existing configuration could not be loaded.",
+            Style::default()
+                .fg(theme.danger)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            "The original file was preserved. Saves are blocked until you choose an action.",
+            Style::default().fg(theme.text_dim),
+        )),
+        Line::from(""),
+    ];
+    for (index, action) in crate::app::modal::RecoveryModal::ACTIONS.iter().enumerate() {
+        let selected = index == modal.selected;
+        let marker = if selected { " ▸ " } else { "   " };
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{action}"),
+            if selected {
+                Style::default()
+                    .fg(theme.selected_fg)
+                    .bg(theme.selected_bg)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.text)
+            },
+        )));
+        hit_map.push(
+            Rect::new(inner.x, inner.y + 3 + index as u16, inner.width, 1),
+            HitTarget::ModalItem(index),
+        );
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "j/k move · Enter select · Esc close",
+        Style::default().fg(theme.muted),
+    )));
+    frame.render_widget(
+        Paragraph::new(lines)
+            .style(Style::default().bg(theme.elevated))
+            .wrap(Wrap { trim: false }),
+        inner,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
 fn render_settings(
     frame: &mut Frame,
     area: Rect,
     modal: &SettingsModal,
     settings: &crate::config::Settings,
+    images: &crate::media::renderer::ImageManager,
+    config_corrupt: bool,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
-    let rect = layout::centered(area, area.width.min(54), 15);
+    let height = if config_corrupt { 19 } else { 17 };
+    let rect = layout::centered(area, area.width.min(54), height);
     modal_frame(frame, rect, "Settings", theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
-    let rows = [
+    let mut rows = vec![
         (
             "Change config".to_string(),
             "switch source now (no restart)".to_string(),
@@ -256,13 +334,18 @@ fn render_settings(
         (
             format!(
                 "Images: {}",
-                if settings.images.enabled {
-                    settings.images.protocol.label()
+                if images.enabled() {
+                    images.protocol_label()
                 } else {
                     "disabled"
                 }
             ),
-            "protocol, enable/disable".to_string(),
+            format!(
+                "configured {} · detected {} · effective {}",
+                settings.images.protocol.label(),
+                images.auto_protocol_label(),
+                images.protocol_label()
+            ),
         ),
         (
             "Appearance".to_string(),
@@ -288,7 +371,17 @@ fn render_settings(
             "Filters".to_string(),
             "hide read, keywords, subs, authors, domains".to_string(),
         ),
+        (
+            "Clear read history".to_string(),
+            "confirm before marking everything unread".to_string(),
+        ),
     ];
+    if config_corrupt {
+        rows.push((
+            "Configuration recovery".to_string(),
+            "original preserved; saves blocked".to_string(),
+        ));
+    }
     for (index, (title, description)) in rows.iter().enumerate() {
         let y = inner.y.saturating_add(index as u16 * 2);
         if y >= inner.bottom().saturating_sub(1) {
@@ -338,19 +431,50 @@ fn render_config_picker(
     frame: &mut Frame,
     area: Rect,
     picker: &ConfigPickerModal,
+    provider_label: &str,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
     let width = area.width.saturating_sub(4).min(76);
     let height = (presets::PRESETS.len() as u16 * 3 + 5)
         .min(area.height.saturating_sub(2))
-        .max(10);
+        .max(8);
     let rect = layout::centered(area, width, height);
-    modal_frame(frame, rect, "Choose config", theme);
+    modal_frame(frame, rect, "Choose content source", theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
-    for (index, preset) in presets::PRESETS.iter().enumerate() {
-        let y = inner.y.saturating_add(index as u16 * 3);
+    let mut available = inner.height.saturating_sub(1);
+    if picker.active.is_none() {
+        frame.render_widget(
+            Paragraph::new(ellipsize(
+                &format!("Current source: {provider_label}"),
+                inner.width as usize,
+            ))
+            .style(
+                Style::default()
+                    .fg(theme.info)
+                    .bg(theme.elevated)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Rect::new(inner.x, inner.y, inner.width, 1),
+        );
+        available = available.saturating_sub(1);
+    }
+    let list_y = inner.y + u16::from(picker.active.is_none());
+    let row_height = if available >= 12 { 3 } else { 2 };
+    let visible = (available / row_height).max(1) as usize;
+    let total = presets::PRESETS.len() + 1;
+    let offset = picker.selected.saturating_sub(visible.saturating_sub(1));
+    for (slot, index) in (offset..total).take(visible).enumerate() {
+        let (name, description, is_custom) = match presets::PRESETS.get(index) {
+            Some(preset) => (preset.name, preset.description, false),
+            None => (
+                "+ Custom Redlib instance…",
+                "Self-hosted or private instance; enter its HTTPS root URL.",
+                true,
+            ),
+        };
+        let y = list_y.saturating_add((slot as u16) * row_height);
         if y >= inner.bottom().saturating_sub(1) {
             break;
         }
@@ -366,8 +490,13 @@ fn render_config_picker(
             theme.text
         };
         let marker = if selected { " ▸ " } else { "   " };
+        let active = if picker.active == Some(index) {
+            "  ● active"
+        } else {
+            ""
+        };
         frame.render_widget(
-            Paragraph::new(format!("{marker}{}", preset.name)).style(
+            Paragraph::new(format!("{marker}{name}{active}")).style(
                 Style::default().fg(fg).bg(bg).add_modifier(if selected {
                     Modifier::BOLD
                 } else {
@@ -376,18 +505,27 @@ fn render_config_picker(
             ),
             Rect::new(inner.x, y, inner.width, 1),
         );
-        frame.render_widget(
-            Paragraph::new(format!("    {}", preset.description))
-                .style(Style::default().fg(theme.muted).bg(theme.elevated)),
-            Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
-        );
+        if row_height >= 3 {
+            frame.render_widget(
+                Paragraph::new(format!("    {description}"))
+                    .style(Style::default().fg(theme.muted).bg(bg)),
+                Rect::new(inner.x, y.saturating_add(1), inner.width, 1),
+            );
+        }
         hit_map.push(
-            Rect::new(inner.x, y, inner.width, 3),
+            Rect::new(inner.x, y, inner.width, row_height),
             HitTarget::ModalItem(index),
         );
+        let _ = is_custom;
     }
+    let footer = format!(
+        "{}–{} / {} · j/k · Enter select · Esc back · network stays opt-in",
+        offset + 1,
+        (offset + visible).min(total),
+        total
+    );
     frame.render_widget(
-        Paragraph::new("j/k move · Enter install · Esc back")
+        Paragraph::new(ellipsize(&footer, inner.width as usize))
             .style(Style::default().fg(theme.muted).bg(theme.elevated))
             .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
@@ -473,24 +611,44 @@ fn render_bookmarks(
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
 
-    if library.bookmarks.is_empty() {
+    let filtered = modal.filtered(library);
+    let footer = if modal.searching {
+        format!("Search: {}▏  ·  Enter/Esc finish", modal.query)
+    } else if modal.query.is_empty() {
+        "j/k move · PgUp/PgDn · Enter open · / search · d remove · Esc close".to_string()
+    } else {
+        format!(
+            "Filter “{}” · j/k move · / edit · d remove · Esc close",
+            modal.query
+        )
+    };
+
+    if filtered.is_empty() {
+        let (heading, detail) = if library.bookmarks.is_empty() {
+            (
+                "No bookmarks yet.",
+                "Press b on a post to save an offline snapshot.",
+            )
+        } else {
+            (
+                "No bookmarks match this search.",
+                "Press / to edit the search or Esc to clear it.",
+            )
+        };
         frame.render_widget(
             Paragraph::new(vec![
                 Line::from(Span::styled(
-                    "No bookmarks yet.",
+                    heading,
                     Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
-                Line::from(Span::styled(
-                    "Press b on a post to save an offline snapshot.",
-                    Style::default().fg(theme.text_dim),
-                )),
+                Line::from(Span::styled(detail, Style::default().fg(theme.text_dim))),
             ])
             .style(Style::default().bg(theme.elevated)),
             inner,
         );
         frame.render_widget(
-            Paragraph::new("Esc close")
+            Paragraph::new(ellipsize(&footer, inner.width as usize))
                 .style(Style::default().fg(theme.muted).bg(theme.elevated))
                 .alignment(Alignment::Right),
             Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
@@ -499,14 +657,12 @@ fn render_bookmarks(
     }
 
     let rows = inner.height.saturating_sub(1) as usize / 2;
-    let offset = if modal.selected >= rows {
-        modal.selected + 1 - rows
-    } else {
-        0
-    };
-    for (slot, index) in (offset..library.bookmarks.len()).take(rows).enumerate() {
+    let selected_pos = modal.selected.min(filtered.len().saturating_sub(1));
+    let offset = selected_pos.saturating_sub(rows.saturating_sub(1));
+    for (slot, position) in (offset..filtered.len()).take(rows).enumerate() {
+        let index = filtered[position];
         let saved = &library.bookmarks[index];
-        let selected = index == modal.selected;
+        let selected = position == selected_pos;
         let bg = if selected {
             theme.selected_bg
         } else {
@@ -537,12 +693,16 @@ fn render_bookmarks(
             ),
             Rect::new(inner.x, y, inner.width, 1),
         );
+        let comments = if saved.post.num_comments == 0 {
+            "no comments".to_string()
+        } else {
+            format!("{} comments · not stored", saved.post.num_comments)
+        };
         let meta = format!(
-            "    r/{}  ·  u/{}  ·  saved {}  ·  {} comments{flags}",
+            "    r/{} · u/{} · saved {} · {comments}{flags}",
             crate::utils::text::sanitize(&saved.post.subreddit),
             crate::utils::text::sanitize(&saved.post.author),
             crate::utils::time::relative_now(saved.saved_at),
-            saved.post.num_comments,
         );
         frame.render_widget(
             Paragraph::new(ellipsize(&meta, inner.width as usize))
@@ -555,7 +715,7 @@ fn render_bookmarks(
         );
     }
     frame.render_widget(
-        Paragraph::new("j/k move · Enter open · d remove · Esc close")
+        Paragraph::new(ellipsize(&footer, inner.width as usize))
             .style(Style::default().fg(theme.muted).bg(theme.elevated))
             .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
@@ -567,6 +727,7 @@ fn render_image_picker(
     area: Rect,
     modal: &ImageProtocolModal,
     settings: &crate::config::Settings,
+    images: &crate::media::renderer::ImageManager,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
@@ -630,9 +791,13 @@ fn render_image_picker(
         );
     }
     frame.render_widget(
-        Paragraph::new("j/k move · Enter apply · Esc back")
-            .style(Style::default().fg(theme.muted).bg(theme.elevated))
-            .alignment(Alignment::Right),
+        Paragraph::new(format!(
+            "effective {} · detected {} · j/k · Enter apply · Esc back",
+            images.protocol_label(),
+            images.auto_protocol_label()
+        ))
+        .style(Style::default().fg(theme.muted).bg(theme.elevated))
+        .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
     );
 }
@@ -907,7 +1072,8 @@ fn render_info(
         }
     }
     let visible = inner.height.saturating_sub(1) as usize;
-    lines.truncate(visible);
+    let offset = modal.scroll.min(lines.len().saturating_sub(visible));
+    let lines: Vec<Line> = lines.into_iter().skip(offset).take(visible).collect();
     frame.render_widget(
         Paragraph::new(lines)
             .style(Style::default().bg(theme.elevated))
@@ -920,7 +1086,7 @@ fn render_info(
         ),
     );
     frame.render_widget(
-        Paragraph::new("Esc or i to close")
+        Paragraph::new("j/k scroll · actions run immediately · Esc or i to close")
             .style(Style::default().fg(theme.muted).bg(theme.elevated))
             .alignment(Alignment::Right),
         Rect::new(inner.x, inner.bottom().saturating_sub(1), inner.width, 1),
@@ -1220,11 +1386,13 @@ fn render_confirm(
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
 
+    let message_lines = message.len();
     let mut lines: Vec<Line> = message
         .into_iter()
         .map(|line| Line::from(Span::styled(line, Style::default().fg(theme.text))))
         .collect();
     lines.push(Line::from(""));
+    let verb = confirm.action.verb();
     lines.push(Line::from(vec![
         Span::styled(
             " Enter/y ",
@@ -1233,7 +1401,7 @@ fn render_confirm(
                 .bg(theme.danger)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" remove   ", Style::default().fg(theme.text_dim)),
+        Span::styled(format!(" {verb}   "), Style::default().fg(theme.text_dim)),
         Span::styled(
             " Esc/n ",
             Style::default()
@@ -1243,6 +1411,22 @@ fn render_confirm(
         ),
         Span::styled(" cancel", Style::default().fg(theme.text)),
     ]));
+    let action_y = inner.y.saturating_add(message_lines as u16 + 1);
+    let yes_width = 9.min(inner.width);
+    hit_map.push(
+        Rect::new(inner.x, action_y, yes_width, 1),
+        HitTarget::ConfirmYes,
+    );
+    let no_x = inner.x.saturating_add(yes_width + verb.len() as u16 + 2);
+    hit_map.push(
+        Rect::new(
+            no_x,
+            action_y,
+            8.min(inner.width.saturating_sub(yes_width)),
+            1,
+        ),
+        HitTarget::ConfirmNo,
+    );
     frame.render_widget(
         Paragraph::new(lines)
             .style(Style::default().bg(theme.elevated))
@@ -1402,6 +1586,7 @@ fn render_text(
         TextKind::Search => "Search: ",
         TextKind::GoToSubreddit => "Subreddit: ",
         TextKind::AddFilter => "Filter: ",
+        TextKind::CustomRedlib => "Instance URL: ",
     };
     let value = &text.value;
     let show_prefix = !is_search
@@ -1467,6 +1652,10 @@ fn render_text(
                 }
                 TextKind::AddFilter => {
                     "keyword:ai · sub:politics · author:name · domain:example.com".to_string()
+                }
+                TextKind::CustomRedlib => {
+                    "HTTPS root URL · no credentials · you will confirm network access next"
+                        .to_string()
                 }
             };
             frame.render_widget(

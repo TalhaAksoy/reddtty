@@ -5,8 +5,8 @@
 
 
 
-                                ╭ Choose config ───────────────────────────────────────────────────────────╮
-                                │  ▸ Demo (offline)                                                        │
+                                ╭ Choose content source ───────────────────────────────────────────────────╮
+                                │  ▸ Demo (offline)  ● active                                              │
                                 │     Synthetic posts and comments. No network or Reddit account.          │
                                 │                                                                          │
                                 │    Redlib · hbubli.cc                                                    │
@@ -26,13 +26,13 @@
                                 │                                                                          │
                                 │                                                                          │
                                 │                                                                          │
-                                │                                      j/k move · Enter install · Esc back │
+                                │           1–6 / 7 · j/k · Enter select · Esc back · network stays opt-in │
                                 ╰──────────────────────────────────────────────────────────────────────────╯
 
 
 
-
-
-
+                                                                               ℹ Theme: Catppuccin Macchiato
+                                                                               ℹ Theme: Catppuccin Mocha
+                                                                               ℹ 1 post(s) hidden by local filters.
 
 j/k Move · Enter Install · Esc Back

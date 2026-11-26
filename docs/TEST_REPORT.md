@@ -20,9 +20,9 @@ Nothing below is presented as verified beyond its category.
 ```bash
 cargo fmt --all -- --check                 # pass
 cargo clippy --all-targets --all-features -- -D warnings   # pass, no warnings
-cargo test                                 # 302 passed, 0 failed, 0 ignored
+cargo test                                 # 368 passed, 0 failed, 0 ignored
 cargo build --release                      # pass
-python3 scripts/pty_verify.py              # 67 captures, 113 assertions, all pass
+python3 scripts/pty_verify.py              # 68 captures, 114 assertions, all pass
 python3 scripts/protocol_probe.py          # 4/4 protocols emit expected bytes
 cargo build --release --example stress
 /usr/bin/time -l ./target/release/examples/stress   # numbers below
@@ -32,12 +32,13 @@ cargo build --release --example stress
 
 | Suite | Tests | Passed | Failed | Ignored |
 |---|---:|---:|---:|---:|
-| Library unit tests (`src/**`) | 231 | 231 | 0 | 0 |
-| HTML provider integration (`tests/html_providers.rs`) | 11 | 11 | 0 | 0 |
+| Library unit tests (`src/**`) | 284 | 284 | 0 | 0 |
+| Binary unit tests (`src/setup.rs`) | 2 | 2 | 0 | 0 |
+| HTML provider integration (`tests/html_providers.rs`) | 14 | 14 | 0 | 0 |
 | OAuth provider/image integration (`tests/providers.rs`) | 13 | 13 | 0 | 0 |
-| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 47 | 47 | 0 | 0 |
+| UI integration (`tests/ui.rs`, Ratatui `TestBackend`) | 55 | 55 | 0 | 0 |
 | Doc tests | 0 | 0 | 0 | 0 |
-| **Total** | **302** | **302** | **0** | **0** |
+| **Total** | **368** | **368** | **0** | **0** |
 
 ### What the unit tests cover
 
@@ -159,11 +160,12 @@ cargo build --release --example stress
   `REDLIB · redlib.hbubli.cc`) so the active source is visible in the top bar.
 - While pagination is in flight, the feed bottom shows an animated spinner and
   `Loading more posts…`, so a slow network does not look like a frozen app.
-- All six themes (dark, light and Catppuccin Latte/Frappé/Macchiato/Mocha)
-  render without panic; theme cycling and config serialization are covered.
+- All eight themes (dark, light, Catppuccin Latte/Frappé/Macchiato/Mocha,
+  high contrast and monochrome) render without panic; quantitative contrast
+  checks, theme cycling and config serialization are covered.
 - The Theme picker previews with `j/k`, commits with `Enter`, and restores the
   original theme on `Esc`/outside click. Preview and persistence are app-tested;
-  the six-row picker is rendered in `TestBackend`.
+  the scrollable picker is rendered in `TestBackend`.
 - Selecting a config rebuilds the provider in-process: the new top-bar label,
   reset navigation stack, preserved favorites/theme, persisted provider choice
   and rejection of old view/request results are all asserted.
@@ -265,7 +267,7 @@ real keystrokes, captures real screen contents and asserts on what a user would
 see. Latest result:
 
 ```json
-{"ok": true, "captures": 67, "assertions": 113}
+{"ok": true, "captures": 68, "assertions": 114}
 ```
 
 Captures and the machine-readable summary are in
@@ -343,7 +345,7 @@ image. The script and raw scan are in `scripts/` and
 
 | Terminal | Evidence | Status |
 |---|---|---|
-| tmux + half-blocks | Real PTY, 58 captures, visual inspection | **Verified** |
+| tmux + half-blocks | Real PTY, 68 captures, visual inspection | **Verified** |
 | Ghostty 1.4.0 | Detection only (Kitty), no screenshot | Detection verified; pixels **unverified** |
 | iTerm2 3.7.7 | Auto selects half-blocks; log and working image verified | **Verified via half-blocks**; native protocols blank |
 | Kitty | Encoder bytes only; binary absent | Encoder verified; terminal **unverified** |

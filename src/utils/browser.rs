@@ -46,7 +46,10 @@ pub fn open_url(raw: &str) -> Result<(), String> {
     let result = if cfg!(target_os = "macos") {
         Command::new("open").arg(raw).spawn()
     } else if cfg!(target_os = "windows") {
-        Command::new("cmd").args(["/C", "start", "", raw]).spawn()
+        // Avoid cmd.exe metacharacter parsing (&, |, ^) for post links.
+        Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", raw])
+            .spawn()
     } else {
         Command::new("xdg-open").arg(raw).spawn()
     };

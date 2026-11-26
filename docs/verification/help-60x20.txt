@@ -4,6 +4,7 @@
   │ FEED                                                 │
   │ j / k       Next / previous post                     │
   │ ↑ / ↓       Same as j / k                            │
+  │ J / K       Scroll one line inside a large card      │
   │ ←           Focus sidebar (shows it if wide)         │
   │ →           Return focus from sidebar to feed        │
   │ PgUp / PgDn Move by half a viewport                  │
@@ -13,8 +14,7 @@
   │ t           Top time range                           │
   │ g           Go to subreddit                          │
   │ /           Search posts                             │
-  │ r           Refresh first page                       │
-  │                                 155 more · Esc close │
+  │                                 157 more · Esc close │
   ╰──────────────────────────────────────────────────────╯
 
 j/k Scroll · PgUp/PgDn Page · Esc/? Close

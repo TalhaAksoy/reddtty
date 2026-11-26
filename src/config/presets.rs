@@ -7,6 +7,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::persistence;
+
 pub struct ConfigPreset {
     pub id: &'static str,
     pub name: &'static str,
@@ -52,6 +54,20 @@ pub const PRESETS: &[ConfigPreset] = &[
         contents: include_str!("../../configs/safereddit.toml"),
     },
 ];
+
+/// Index of the preset whose provider settings match the active config.
+pub fn active_index(settings: &crate::config::Settings) -> Option<usize> {
+    PRESETS.iter().position(|preset| {
+        toml::from_str::<crate::config::Settings>(preset.contents)
+            .ok()
+            .is_some_and(|candidate| {
+                candidate.provider.kind == settings.provider.kind
+                    && candidate.provider.html.redlib_instance
+                        == settings.provider.html.redlib_instance
+                    && candidate.provider.html.allow_network == settings.provider.html.allow_network
+            })
+    })
+}
 
 pub fn find(id: &str) -> Option<&'static ConfigPreset> {
     PRESETS.iter().find(|preset| preset.id == id)
@@ -100,21 +116,8 @@ pub fn install(id: &str, destination: &Path) -> Result<InstallResult, String> {
 
     let backup = backup_existing(destination)?;
 
-    let tmp = parent.join(format!(".config.toml.installing-{}", std::process::id()));
-    fs::write(&tmp, preset.contents)
-        .map_err(|error| format!("could not write {}: {error}", tmp.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600));
-    }
-    if let Err(error) = fs::rename(&tmp, destination) {
-        let _ = fs::remove_file(&tmp);
-        return Err(format!(
-            "could not install {}: {error}",
-            destination.display()
-        ));
-    }
+    persistence::write_private(destination, preset.contents.as_bytes())
+        .map_err(|error| format!("could not install {}: {error}", destination.display()))?;
     Ok(InstallResult {
         destination: destination.to_path_buf(),
         backup,

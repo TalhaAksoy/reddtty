@@ -34,5 +34,5 @@
                        │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                 ● unread ││ │
                        │ │                        ℹ Marked as read.                                          ││ │
                        │ │ A new image of a plane ✓ Saved “Why I love building CLI applications with Rust” wi…│ │
- h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+ h hide · Tab focus    │ │                                                                                   ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

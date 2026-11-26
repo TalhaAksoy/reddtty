@@ -1,10 +1,11 @@
 //! Post card: the primary visual unit of the feed.
 
 use ratatui::Frame;
+use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Padding, Paragraph, Wrap};
+use ratatui::widgets::{Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap};
 
 use crate::config::Settings;
 use crate::media::renderer::{ImageManager, ImageStatus};
@@ -51,6 +52,10 @@ fn preview_height(inner_width: u16, compact: bool) -> u16 {
     }
 }
 
+fn take_chars(text: &str, limit: usize) -> String {
+    text.chars().take(limit).collect()
+}
+
 pub fn card_layout(
     post: &Post,
     card_width: u16,
@@ -76,7 +81,13 @@ pub fn card_layout(
     }
 
     let inner_width = card_width.saturating_sub(4);
-    let title_source = crate::utils::text::sanitize(&post.title);
+    // Only the first few wrapped lines are ever rendered. Bounding the input
+    // before wrapping prevents a multi-megabyte body from being sanitised and
+    // word-wrapped on every frame.
+    let title_source = take_chars(
+        &crate::utils::text::sanitize(&post.title),
+        inner_width as usize * 4,
+    );
     let title_height = wrap_text(&title_source, inner_width as usize)
         .len()
         .clamp(1, 3) as u16;
@@ -85,12 +96,11 @@ pub fn card_layout(
     let has_body = !removed && !post.body.trim().is_empty();
     let max_body = if compact { 1 } else { 2 };
     let body_height = if has_body {
-        let wrapped = wrap_text(
+        let bounded = take_chars(
             &strip_markdown(&crate::utils::text::sanitize(&post.body)),
-            inner_width as usize,
-        )
-        .len()
-        .max(1) as u16;
+            inner_width as usize * (max_body as usize + 2),
+        );
+        let wrapped = wrap_text(&bounded, inner_width as usize).len().max(1) as u16;
         wrapped.min(max_body)
     } else {
         0
@@ -166,9 +176,50 @@ pub fn card_height(
     card_layout(post, card_width, compact, preview_enabled, hidden).total_height
 }
 
+trait BufferRender {
+    fn render_widget<W: Widget>(&mut self, widget: W, area: Rect);
+}
+
+impl BufferRender for Buffer {
+    fn render_widget<W: Widget>(&mut self, widget: W, area: Rect) {
+        widget.render(area, self);
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render(
     frame: &mut Frame,
+    area: Rect,
+    post: &Post,
+    selected: bool,
+    theme: &Theme,
+    settings: &Settings,
+    images: &mut ImageManager,
+    compact: bool,
+    revealed: bool,
+    spinner: usize,
+    unread: bool,
+    bookmarked: bool,
+) {
+    render_buffer(
+        frame.buffer_mut(),
+        area,
+        post,
+        selected,
+        theme,
+        settings,
+        images,
+        compact,
+        revealed,
+        spinner,
+        unread,
+        bookmarked,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn render_buffer(
+    buffer: &mut Buffer,
     area: Rect,
     post: &Post,
     selected: bool,
@@ -204,7 +255,7 @@ pub fn render(
         .border_style(theme.border(selected))
         .style(theme.card(selected))
         .padding(Padding::horizontal(1));
-    frame.render_widget(block, area);
+    buffer.render_widget(block, area);
 
     let inner = Rect::new(area.x + 2, area.y, layout.inner_width.max(1), area.height);
     // Content rows live strictly between the top and bottom borders. A
@@ -219,7 +270,7 @@ pub fn render(
     // Meta row
     if layout.meta_y < content_bottom {
         let meta = post_meta_line(post, theme, settings);
-        frame.render_widget(
+        buffer.render_widget(
             Paragraph::new(meta).style(Style::default().fg(if selected {
                 theme.text_dim
             } else {
@@ -238,7 +289,7 @@ pub fn render(
             let text = flags.join(" · ");
             let marker_width = width(&text) as u16;
             if marker_width < inner.width {
-                frame.render_widget(
+                buffer.render_widget(
                     Paragraph::new(text)
                         .alignment(ratatui::layout::Alignment::Right)
                         .style(Style::default().fg(if bookmarked {
@@ -291,7 +342,7 @@ pub fn render(
             .title_height
             .min(content_bottom.saturating_sub(layout.title_y));
         if height > 0 {
-            frame.render_widget(
+            buffer.render_widget(
                 Paragraph::new(title_lines).wrap(Wrap { trim: true }),
                 Rect::new(inner.x, area.y + layout.title_y, inner.width, height),
             );
@@ -308,7 +359,7 @@ pub fn render(
         } else {
             "content hidden"
         };
-        frame.render_widget(
+        buffer.render_widget(
             Paragraph::new(note).style(
                 Style::default()
                     .fg(theme.warning)
@@ -342,7 +393,7 @@ pub fn render(
                     Line::from(Span::styled(line, Style::default().fg(theme.text_dim)))
                 })
                 .collect();
-            frame.render_widget(
+            buffer.render_widget(
                 Paragraph::new(lines),
                 Rect::new(inner.x, area.y + body_y, inner.width, body_height),
             );
@@ -357,7 +408,7 @@ pub fn render(
             .min(content_bottom.saturating_sub(image_y));
         if image_height >= 2 {
             let image_area = Rect::new(inner.x, area.y + image_y, inner.width, image_height);
-            render_preview(frame, image_area, post, theme, images, spinner);
+            render_preview(buffer, image_area, post, theme, images, spinner);
         }
     }
 
@@ -398,14 +449,14 @@ pub fn render(
             Style::default().fg(theme.info).bg(theme.surface_alt),
         ));
     }
-    frame.render_widget(
+    buffer.render_widget(
         Paragraph::new(Line::from(left_spans))
             .style(Style::default().fg(theme.muted))
             .wrap(Wrap { trim: true }),
         Rect::new(footer.x, footer.y, left_width, 1),
     );
     if right_width > 0 {
-        frame.render_widget(
+        buffer.render_widget(
             Paragraph::new(right).alignment(ratatui::layout::Alignment::Right),
             Rect::new(footer.x + left_width + 1, footer.y, right_width, 1),
         );
@@ -455,7 +506,7 @@ fn footer_badges(post: &Post, theme: &Theme) -> String {
 }
 
 fn render_preview(
-    frame: &mut Frame,
+    buffer: &mut Buffer,
     area: Rect,
     post: &Post,
     theme: &Theme,
@@ -463,7 +514,7 @@ fn render_preview(
     spinner: usize,
 ) {
     // Clean background first, so stale image content is never left behind.
-    frame.render_widget(
+    buffer.render_widget(
         Paragraph::new(" ".repeat(area.width as usize))
             .style(Style::default().bg(theme.surface_alt))
             .wrap(Wrap { trim: false }),
@@ -475,7 +526,7 @@ fn render_preview(
     };
 
     if !images.enabled() {
-        frame.render_widget(
+        buffer.render_widget(
             Paragraph::new("images disabled")
                 .alignment(ratatui::layout::Alignment::Center)
                 .style(Style::default().fg(theme.muted).bg(theme.surface_alt)),
@@ -493,14 +544,14 @@ fn render_preview(
             let x = area.x + area.width.saturating_sub(w) / 2;
             let y = area.y + area.height.saturating_sub(h) / 2;
             let target = Rect::new(x, y, w, h);
-            frame.render_widget(
+            buffer.render_widget(
                 ratatui_image::Image::new(protocol).allow_clipping(true),
                 target,
             );
         }
         ImageStatus::Loading | ImageStatus::NotRequested => {
             let text = format!("{}  loading image…", crate::ui::spinner_char(spinner));
-            frame.render_widget(
+            buffer.render_widget(
                 Paragraph::new(text)
                     .alignment(ratatui::layout::Alignment::Center)
                     .style(Style::default().fg(theme.muted).bg(theme.surface_alt)),
@@ -512,7 +563,7 @@ fn render_preview(
                 &format!("Image unavailable: {}", crate::utils::text::sanitize(error)),
                 area.width as usize,
             );
-            frame.render_widget(
+            buffer.render_widget(
                 Paragraph::new(message)
                     .alignment(ratatui::layout::Alignment::Center)
                     .style(Style::default().fg(theme.danger).bg(theme.surface_alt)),
@@ -520,7 +571,7 @@ fn render_preview(
             );
         }
         ImageStatus::Disabled => {
-            frame.render_widget(
+            buffer.render_widget(
                 Paragraph::new("images unavailable")
                     .alignment(ratatui::layout::Alignment::Center)
                     .style(Style::default().fg(theme.muted).bg(theme.surface_alt)),

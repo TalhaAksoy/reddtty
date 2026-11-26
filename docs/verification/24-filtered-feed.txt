@@ -33,6 +33,6 @@
                        │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │
                        │ │ r/askscience  •  u/orb ℹ 1 post(s) hidden by local filters.              ● unread ││ │
                        │ │                        ℹ Blocking posts containing “black hole”.                  ││ │
-                       │ │ A new image of a plane ℹ Refreshing feed…                                         ││ │
- h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+                       │ │ A new image of a plane ✓ Source probe OK: 10 posts in 1 ms.                       ││ │
+ h hide · Tab focus    │ │                                                                                   ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

@@ -87,6 +87,10 @@ pub struct Cli {
     #[arg(long, value_name = "URL")]
     pub redlib_instance: Option<String>,
 
+    /// Explicitly allow network requests for HTML providers for this session.
+    #[arg(long)]
+    pub allow_network: bool,
+
     /// Open a subreddit directly (accepts rust, r/rust or a reddit.com URL).
     #[arg(short = 'r', long, value_name = "NAME")]
     pub subreddit: Option<String>,
@@ -144,6 +148,12 @@ mod tests {
         assert_eq!(cli.theme, Some(ThemeArg::Light));
         assert!(cli.no_images);
         assert!(cli.provider.is_none());
+    }
+
+    #[test]
+    fn parses_allow_network() {
+        let cli = Cli::try_parse_from(["reddtty", "--allow-network"]).unwrap();
+        assert!(cli.allow_network);
     }
 
     #[test]

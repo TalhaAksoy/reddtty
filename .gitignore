@@ -11,3 +11,7 @@ reddtty.toml
 
 # Generated fixture images can be regenerated with scripts/generate_fixtures.py,
 # but they are intentionally committed so the binary is self-contained.
+
+# Python bytecode from local verification scripts
+__pycache__/
+*.pyc

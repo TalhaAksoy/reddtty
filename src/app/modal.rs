@@ -140,6 +140,7 @@ pub enum TextKind {
     GoToSubreddit,
     Search,
     AddFilter,
+    CustomRedlib,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -181,6 +182,22 @@ impl TextModal {
             prompt: String::new(),
             value: String::new(),
             error: None,
+            scope: SearchScopeChoice::All,
+            current_subreddit: None,
+            cursor: 0,
+        }
+    }
+
+    pub fn custom_redlib() -> Self {
+        Self {
+            kind: TextKind::CustomRedlib,
+            title: "Custom Redlib instance".into(),
+            prompt: "https://".into(),
+            value: String::new(),
+            error: Some(
+                "Enter the HTTPS root URL of an instance you are authorised to use. Network access stays disabled until you confirm the next step."
+                    .into(),
+            ),
             scope: SearchScopeChoice::All,
             current_subreddit: None,
             cursor: 0,
@@ -315,6 +332,21 @@ impl TextModal {
 #[derive(Clone, Debug)]
 pub enum ConfirmAction {
     RemoveFavorite(String),
+    RemoveBookmark(String),
+    EnableCustomRedlib(String),
+    ClearFilters,
+    ClearReadHistory,
+}
+
+impl ConfirmAction {
+    pub fn verb(&self) -> &'static str {
+        match self {
+            Self::RemoveFavorite(_) | Self::RemoveBookmark(_) => "remove",
+            Self::EnableCustomRedlib(_) => "enable",
+            Self::ClearFilters => "clear",
+            Self::ClearReadHistory => "clear",
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -330,6 +362,40 @@ impl ConfirmModal {
             title: "Remove favorite".into(),
             message: format!("Remove r/{name} from favorites?"),
             action: ConfirmAction::RemoveFavorite(name.to_string()),
+        }
+    }
+
+    pub fn enable_custom_redlib(url: &str) -> Self {
+        Self {
+            title: "Enable network access".into(),
+            message: format!(
+                "Use {url} for Redlib and allow HTML network requests for this source? The instance operator can see your requests."
+            ),
+            action: ConfirmAction::EnableCustomRedlib(url.to_string()),
+        }
+    }
+
+    pub fn clear_filters() -> Self {
+        Self {
+            title: "Clear local filters".into(),
+            message: "Remove every keyword, subreddit, author and domain filter?".into(),
+            action: ConfirmAction::ClearFilters,
+        }
+    }
+
+    pub fn clear_read_history() -> Self {
+        Self {
+            title: "Clear read history".into(),
+            message: "Mark every post and comment as unread again?".into(),
+            action: ConfirmAction::ClearReadHistory,
+        }
+    }
+
+    pub fn remove_bookmark(title: &str, id: &str) -> Self {
+        Self {
+            title: "Remove bookmark".into(),
+            message: format!("Remove “{title}” and its offline snapshot?"),
+            action: ConfirmAction::RemoveBookmark(id.to_string()),
         }
     }
 }
@@ -349,6 +415,18 @@ impl SettingsModal {
 #[derive(Clone, Debug, Default)]
 pub struct ConfigPickerModal {
     pub selected: usize,
+    /// Index of the preset matching the active provider, if any.
+    pub active: Option<usize>,
+}
+
+impl ConfigPickerModal {
+    pub fn for_settings(settings: &crate::config::Settings) -> Self {
+        let active = crate::config::presets::active_index(settings);
+        Self {
+            selected: active.unwrap_or(0),
+            active,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -372,12 +450,35 @@ impl ThemePickerModal {
 
 #[derive(Clone, Debug, Default)]
 pub struct BookmarksModal {
+    /// Position within the filtered result list, not the library index.
     pub selected: usize,
+    pub query: String,
+    pub searching: bool,
 }
 
 impl BookmarksModal {
     pub fn clamp(&mut self, total: usize) {
         self.selected = self.selected.min(total.saturating_sub(1));
+    }
+
+    pub fn filtered(&self, library: &crate::library::Library) -> Vec<usize> {
+        let query = self.query.trim().to_lowercase();
+        library
+            .bookmarks
+            .iter()
+            .enumerate()
+            .filter(|(_, saved)| {
+                query.is_empty()
+                    || saved.post.title.to_lowercase().contains(&query)
+                    || saved.post.author.to_lowercase().contains(&query)
+                    || saved.post.subreddit.to_lowercase().contains(&query)
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
+
+    pub fn selected_library_index(&self, library: &crate::library::Library) -> Option<usize> {
+        self.filtered(library).get(self.selected).copied()
     }
 }
 
@@ -396,6 +497,7 @@ pub struct InfoSnapshot {
 #[derive(Clone, Debug, Default)]
 pub struct InfoModal {
     pub info: InfoSnapshot,
+    pub scroll: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -683,6 +785,29 @@ impl SourceModal {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct RecoveryModal {
+    pub selected: usize,
+}
+
+impl RecoveryModal {
+    pub const ACTIONS: [&'static str; 4] = [
+        "Continue temporarily with defaults",
+        "Restore newest backup",
+        "Create a new configuration",
+        "Quit",
+    ];
+
+    pub fn move_selection(&mut self, delta: isize) {
+        let max = Self::ACTIONS.len() - 1;
+        self.selected = if delta < 0 {
+            self.selected.saturating_sub(delta.unsigned_abs())
+        } else {
+            (self.selected + delta as usize).min(max)
+        };
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Modal {
     Help(HelpModal),
@@ -700,6 +825,7 @@ pub enum Modal {
     ImagePicker(ImageProtocolModal),
     Appearance(AppearanceModal),
     CommandPalette(CommandPaletteModal),
+    Recovery(RecoveryModal),
 }
 
 impl Modal {
@@ -714,7 +840,7 @@ impl Modal {
             Self::Text(modal) => &modal.title,
             Self::Confirm(modal) => &modal.title,
             Self::Settings(_) => "Settings",
-            Self::ConfigPicker(_) => "Choose config",
+            Self::ConfigPicker(_) => "Choose content source",
             Self::ThemePicker(_) => "Theme",
             Self::Bookmarks(_) => "Bookmarks",
             Self::Source(_) => "Source health",
@@ -723,6 +849,7 @@ impl Modal {
             Self::ImagePicker(_) => "Image protocol",
             Self::Appearance(_) => "Appearance",
             Self::CommandPalette(_) => "Commands",
+            Self::Recovery(_) => "Configuration recovery",
         }
     }
 }

@@ -45,6 +45,9 @@ pub fn render(
                 ("Ctrl+U", "Clear"),
             ],
             Some(Modal::Confirm(_)) => vec![("Enter/y", "Remove"), ("Esc/n", "Cancel")],
+            Some(Modal::Recovery(_)) => {
+                vec![("j/k", "Move"), ("Enter", "Select"), ("Esc", "Close")]
+            }
             Some(Modal::Settings(_)) => {
                 vec![("j/k", "Move"), ("Enter", "Select"), ("Esc", "Close")]
             }
@@ -100,7 +103,8 @@ pub fn render(
             ],
             Some(View::Feed(feed)) => {
                 let mut pairs = vec![
-                    ("j/k", "Navigate"),
+                    ("j/k", "Select"),
+                    ("J/K", "Line"),
                     ("←", "Sidebar"),
                     ("Enter", "Open"),
                     ("s", "Sort"),
@@ -108,11 +112,16 @@ pub fn render(
                     ("g", "Go"),
                     ("/", "Search"),
                     ("r", "Refresh"),
+                    ("R", "Retry"),
                     ("b", "Save"),
                     ("B", "Saved"),
                     ("y", "Copy"),
                     ("Y", "Comments"),
                     ("G", "Sub"),
+                    ("i", "Info"),
+                    ("m", "Read"),
+                    ("M/A/D", "Mute"),
+                    ("u", "Undo"),
                 ];
                 if feed.has_more || feed.loading_more {
                     pairs.push(("↓", "More"));
@@ -126,7 +135,7 @@ pub fn render(
             Some(View::Post(_)) if focus == Focus::Comments => vec![
                 ("j/k", "Comments"),
                 ("Enter", "Toggle"),
-                ("c", "Collapse"),
+                ("c", "Toggle"),
                 ("←", "Post"),
                 ("z", "All"),
                 ("n", "Unread"),
@@ -149,6 +158,9 @@ pub fn render(
                 ("v", "Image"),
                 ("o", "Browser"),
                 ("x", "Reveal"),
+                ("i", "Info"),
+                ("b", "Save"),
+                ("m", "Read"),
                 ("Esc", "Back"),
                 ("?", "Help"),
                 ("q", "Quit"),
@@ -159,7 +171,8 @@ pub fn render(
                 ("Shift+←", "Pan"),
                 ("0", "Fit"),
                 ("o", "Open"),
-                ("y", "URL"),
+                ("i", "Info"),
+                ("I", "URL"),
                 ("Y", "Comments"),
                 ("G", "Sub"),
                 ("Esc", "Close"),
@@ -252,7 +265,7 @@ fn medium_pairs(
         Some(View::Post(_)) if focus == Focus::Comments => vec![
             ("j/k", "Comments"),
             ("Enter", "Toggle"),
-            ("c", "Collapse"),
+            ("c", "Toggle"),
             ("s", "Sort"),
             ("Tab", "Post"),
             ("Esc", "Back"),
@@ -335,6 +348,7 @@ fn compact_pairs(
     match modal {
         Some(Modal::Help(_)) => vec![("j/k", "Scroll"), ("Esc/?", "Close")],
         Some(Modal::Confirm(_)) => vec![("y", "Remove"), ("Esc", "Cancel")],
+        Some(Modal::Recovery(_)) => vec![("j/k", "Move"), ("Enter", "Select"), ("Esc", "Close")],
         Some(Modal::Text(modal)) if modal.kind == TextKind::GoToSubreddit => {
             vec![("Enter", "Open"), ("Esc", "Close")]
         }

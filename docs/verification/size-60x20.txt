@@ -15,6 +15,6 @@ Home                                         25 posts · more
 │ I switched my entire workflow to Linux                  ││
 │ After using another OS for years, I moved my whole…     ││
 │                                                         ││
-│                                                         ││
-╰─────────────────────────────────────────────────────────╯│
+│                       ▄▄▄▄▄▄▄▄▄▄                        ││
+│                       ▄▄▀▄▄▀▀▄▄▄                        ││
 j/k Move · Enter Open · s Sort · ? Help · q Quit

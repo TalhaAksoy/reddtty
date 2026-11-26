@@ -33,7 +33,8 @@ and filters stay on your machine, and source changes never require a restart.
 - Read/unread state for posts and comments
 - Local filters: hide read, keywords, subreddits, authors and domains
 - Quick mute (`M`/`A`/`D`) with `u` undo for subreddit/author/domain
-- Bookmarks, read state and filters live in `library.toml` next to the config
+- Bookmarks, read state and filters live in `library.toml` next to the config;
+  concurrent sessions merge bookmark/read/filter deltas under an OS file lock
 - No Reddit write actions: saving, reading and filtering are client-side only
 
 ### Sources and reliability
@@ -115,8 +116,8 @@ reddtty --demo
 # First run with no config opens an interactive config picker
 reddtty
 
-# Choose a source directly
-reddtty --provider redlib --redlib-instance https://redlib.example
+# Choose a source directly (explicit network consent)
+reddtty --provider redlib --redlib-instance https://redlib.example --allow-network
 
 # Start on a subreddit or sort
 reddtty --subreddit rust --sort new
@@ -126,20 +127,30 @@ reddtty --diagnostics
 ```
 
 On first launch, ReddTTY installs a starter config from
-[`configs/`](configs/). The same picker is available later from **Settings**
-(`S`). Changing the provider applies immediately and preserves favorites,
-recents, theme, bookmarks, read state and filters.
+[`configs/`](configs/) or accepts a custom HTTPS Redlib root URL. The same picker
+is available later from **Settings** (`S`). Custom instances require an explicit
+network-consent confirmation and are tested before they replace the active
+source. Changing the provider first tests the candidate with a bounded request,
+then applies it. Cancelling or closing the picker drops the candidate result.
+If the configuration cannot be backed up or saved, the previous source remains
+active. A failed test keeps the previous source and configuration.
+Favorites, recents, theme, bookmarks, read state and filters are preserved.
 
 ## Keys
 
 | Key | Action |
 |---|---|
-| `j` / `k` | Move / scroll |
+| `j` / `k` | Move between posts / scroll |
+| `J` / `K` | Scroll one line inside a large feed card |
+| `R` | Retry a failed “load more” without refreshing |
 | `Enter` | Open post or selected item |
 | `Tab` | Switch focus pane |
 | `←` / `→` | Focus sidebar/feed or post/comments (pane-aware) |
 | `s` | Sort |
 | `t` | Top time range |
+| `r` | Refresh the current view |
+| `x` | Reveal NSFW/spoiler content |
+| `h` | Toggle the sidebar (feed views) |
 | `g` | Go to subreddit |
 | `/` | Search |
 | `f` | Add favorite; confirm before removing |
@@ -147,7 +158,7 @@ recents, theme, bookmarks, read state and filters.
 | `m` | Toggle read state |
 | `y` / `Y` | Copy permalink / open comments |
 | `i` | Community info drawer |
-| `I` | Copy a post or image-preview URL |
+| `I` | Copy a post or image-preview URL (gallery: copy image URL) |
 | `G` | Open the current subreddit in the browser |
 | `[` / `]` | Previous / next top-level comment |
 | `p` | Jump to parent comment |
@@ -277,12 +288,20 @@ file with mode `0600`.
 | Redlib HTML | Opt-in, user-selected instance; third-party and not an official API |
 
 HTML access is **disabled by default**. Set `provider.html.allow_network = true`
-only after checking the source’s terms and permissions. ReddTTY does not bypass
+only after checking the source’s terms and permissions, or pass
+`--allow-network` for a single session. CLI provider/network/theme overrides are
+session-only: changing an unrelated setting later does not write them to disk. ReddTTY does not bypass
 login walls, CAPTCHAs or rate limits, and never auto-rotates instances.
+
+If `config.toml` cannot be parsed, ReddTTY preserves the original bytes, blocks
+saving, and offers **Settings → Configuration recovery**: continue temporarily,
+restore a valid backup, create a new config, or quit.
 
 **Source health** (`S` → Source health) shows the active source, status, last
 success, latency, success rate, last error, bookmark/filter counts and a
-“Test now” action.
+“Test now” action. Test now performs an independent, bounded feed request; it
+does not replace the visible feed. A successful probe is evidence for that
+moment only, not a guarantee that a public instance will stay available.
 
 ## Images
 
@@ -309,7 +328,7 @@ In the viewer:
 - `+` / `-` zoom between 100%, 150%, 200%, 300% and 400%.
 - `Shift + arrow keys` pan; `0` resets.
 - Thumbnails under the image are clickable; `Home`/`End` jump to the first/last.
-- `y`/`i` copy the image URL, `I` opens community info, `o` opens externally.
+- `y`/`I` copy the image URL, `i` opens community info, `o` opens externally.
 - The next image and visible thumbnails are prefetched; zoom/pan crops reuse a
   bounded raw-image cache instead of re-downloading the file.
 
@@ -336,18 +355,20 @@ info
 settings
 ```
 
-Recent actions appear first when the palette opens. Invalid commands keep the
-palette open and show an inline error.
+Recent actions appear first when the palette opens. When a command matches the
+filtered list, `Enter` runs the highlighted action even if the typed text is not
+a complete command. Invalid commands with no highlighted match keep the palette
+open and show an inline error.
 
 ## CI and releases
 
-[`.github/workflows/build.yml`](.github/workflows/build.yml) runs on every push,
-pull request, `v*` tag and manual dispatch:
+[`.github/workflows/build.yml`](.github/workflows/build.yml) runs on pushes to
+`main`, pull requests, `v*` tags and manual dispatch:
 
 - Quality job (Ubuntu): `cargo fmt --all -- --check` and Clippy with
   `-D warnings`
 - Build matrix (Linux x86_64 + macOS ARM64): `cargo test --locked`,
-  `cargo build --release --locked`, then package the binary, docs, license and
+  `cargo build --release --locked`, then package the binary, README, license and
   example configs with a SHA-256 sum
 
 Build artifacts are uploaded to the Actions run. A `v*` tag also publishes the

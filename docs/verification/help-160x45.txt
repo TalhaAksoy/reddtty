@@ -7,11 +7,12 @@
                     ╭ Keyboard Shortcuts ──────────────────────────────────────────────────────────────────────────────────────────────────╮
                     │ FEED                                                                                                                 │
                     │ j / k       Next / previous post                          ↑ / ↓       Same as j / k                                  │
-                    │ ←           Focus sidebar (shows it if wide)              →           Return focus from sidebar to feed              │
-                    │ PgUp / PgDn Move by half a viewport                       Home / End  First / last loaded post                       │
-                    │ Enter       Open selected post                            s           Feed sort menu                                 │
-                    │ t           Top time range                                g           Go to subreddit                                │
-                    │ /           Search posts                                  r           Refresh first page                             │
+                    │ J / K       Scroll one line inside a large card           ←           Focus sidebar (shows it if wide)               │
+                    │ →           Return focus from sidebar to feed             PgUp / PgDn Move by half a viewport                        │
+                    │ Home / End  First / last loaded post                      Enter       Open selected post                             │
+                    │ s           Feed sort menu                                t           Top time range                                 │
+                    │ g           Go to subreddit                               /           Search posts                                   │
+                    │ r           Refresh first page                            R           Retry a failed “load more” request             │
                     │ o           Open post/link in browser                     v           Open image / gallery                           │
                     │ x           Reveal NSFW or spoiler                        f           Favorite subreddit                             │
                     │ b           Bookmark selected post                        B           Open bookmarks                                 │
@@ -33,8 +34,7 @@
                     │ Tab         Return focus to feed                          f           Add/remove favorite                            │
                     │ h           Hide sidebar                                  G           Open selected subreddit                        │
                     │ s, t, g, /  Same feed actions                             r, o, v, x  Same feed actions                              │
-                    │                                                                                                                      │
-                    │ j/k scroll · PgUp/PgDn page · / search                                                  29/100 · 71 more · Esc close │
+                    │ j/k scroll · PgUp/PgDn page · / search                                                  29/101 · 72 more · Esc close │
                     ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 

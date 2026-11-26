@@ -1,9 +1,9 @@
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::persistence;
 use crate::utils::text::normalize_subreddit;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -281,6 +281,16 @@ pub struct Settings {
     pub provider: ProviderSettings,
     pub favorites: Vec<String>,
     pub recent: Vec<String>,
+    /// Monotonic revision used for inter-process conflict detection.
+    #[serde(default)]
+    pub revision: u64,
+}
+
+pub struct SettingsLoad {
+    pub settings: Settings,
+    pub warnings: Vec<String>,
+    pub corrupt: bool,
+    pub recovery: Option<std::path::PathBuf>,
 }
 
 impl Default for Settings {
@@ -298,7 +308,35 @@ impl Default for Settings {
             provider: ProviderSettings::default(),
             favorites: Vec::new(),
             recent: Vec::new(),
+            revision: 0,
         }
+    }
+}
+
+fn copy_new_private(source: &Path, destination: &Path) -> Result<bool, String> {
+    let bytes = std::fs::read(source)
+        .map_err(|error| format!("could not read {}: {error}", source.display()))?;
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    match options.open(destination) {
+        Ok(mut file) => {
+            use std::io::Write;
+            file.write_all(&bytes)
+                .map_err(|error| format!("could not write {}: {error}", destination.display()))?;
+            file.flush()
+                .map_err(|error| format!("could not flush {}: {error}", destination.display()))?;
+            Ok(true)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
+        Err(error) => Err(format!(
+            "could not create {}: {error}",
+            destination.display()
+        )),
     }
 }
 
@@ -476,39 +514,136 @@ impl Settings {
                 "Could not migrate settings: {error}. Existing files were left untouched."
             )),
         }
+        if let Some(parent) = new_path.parent() {
+            let destination = parent.join("library.toml");
+            if !destination.exists() {
+                for directory in &legacy {
+                    let source = directory.join("library.toml");
+                    if !source.is_file() {
+                        continue;
+                    }
+                    match copy_new_private(&source, &destination) {
+                        Ok(true) => {
+                            warnings.push(format!(
+                                "Migrated local library from {} to {}. The old file was left in place.",
+                                source.display(),
+                                destination.display()
+                            ));
+                        }
+                        Ok(false) => {}
+                        Err(error) => warnings.push(format!(
+                            "Could not migrate local library: {error}. Existing files were left untouched."
+                        )),
+                    }
+                    break;
+                }
+            }
+        }
         (new_path, warnings)
     }
 
     /// Load settings, falling back to safe defaults for a missing or malformed
     /// file. Warnings are surfaced in the UI instead of crashing the app.
     pub fn load(path: &Path) -> (Self, Vec<String>) {
+        let loaded = Self::load_checked(path);
+        (loaded.settings, loaded.warnings)
+    }
+
+    pub fn load_checked(path: &Path) -> SettingsLoad {
         let mut warnings = Vec::new();
-        let text = match fs::read_to_string(path) {
-            Ok(text) => text,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                return (Self::default(), warnings);
+        let text = match persistence::read_text(path) {
+            Ok(Some(text)) => text,
+            Ok(None) => {
+                return SettingsLoad {
+                    settings: Self::default(),
+                    warnings,
+                    corrupt: false,
+                    recovery: None,
+                };
             }
             Err(err) => {
+                let recovery = if path.is_file() {
+                    persistence::backup_corrupt(path).ok()
+                } else {
+                    None
+                };
                 warnings.push(format!(
-                    "Could not read {}: {err}. Using default settings.",
-                    path.display()
+                    "{err}. Using temporary default settings; changes will not be saved until recovery.{}{}",
+                    recovery
+                        .as_ref()
+                        .map(|path| format!(" Original bytes preserved at {}.", path.display()))
+                        .unwrap_or_default(),
+                    if path.is_file() && recovery.is_none() {
+                        " A recovery backup could not be created."
+                    } else {
+                        ""
+                    }
                 ));
-                return (Self::default(), warnings);
+                return SettingsLoad {
+                    settings: Self::default(),
+                    warnings,
+                    corrupt: true,
+                    recovery,
+                };
             }
         };
 
         match toml::from_str::<Settings>(&text) {
             Ok(mut settings) => {
                 warnings.extend(settings.validate());
-                (settings, warnings)
+                let unknown = persistence::unknown_top_level_keys(
+                    &text,
+                    &[
+                        "general",
+                        "images",
+                        "content",
+                        "ui",
+                        "reddit",
+                        "provider",
+                        "favorites",
+                        "recent",
+                        "revision",
+                    ],
+                );
+                if !unknown.is_empty() {
+                    warnings.push(format!(
+                        "Config contains unknown top-level key(s): {}. They will be preserved until the next save; check for typos.",
+                        unknown.join(", ")
+                    ));
+                }
+                SettingsLoad {
+                    settings,
+                    warnings,
+                    corrupt: false,
+                    recovery: None,
+                }
             }
             Err(err) => {
-                warnings.push(format!(
-                    "Invalid config ({}): {} Using default settings.",
-                    path.display(),
-                    first_line(&err.to_string())
-                ));
-                (Self::default(), warnings)
+                let recovery = match persistence::backup_corrupt(path) {
+                    Ok(backup) => {
+                        warnings.push(format!(
+                            "Invalid config ({}): {}. Original bytes preserved at {}. Using temporary defaults; changes are not saved until recovery.",
+                            path.display(),
+                            first_line(&err.to_string()),
+                            backup.display()
+                        ));
+                        Some(backup)
+                    }
+                    Err(backup_error) => {
+                        warnings.push(format!(
+                            "Invalid config ({}): {}. Recovery backup failed: {backup_error}. Using temporary defaults; changes are not saved.",
+                            path.display(),
+                            first_line(&err.to_string())
+                        ));
+                        None
+                    }
+                };
+                SettingsLoad {
+                    settings: Self::default(),
+                    warnings,
+                    corrupt: true,
+                    recovery,
+                }
             }
         }
     }
@@ -614,34 +749,43 @@ impl Settings {
         warnings
     }
 
-    pub fn save(&self, path: &Path) -> Result<(), String> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Could not create config directory: {e}"))?;
+    pub fn save(&mut self, path: &Path) -> Result<(), String> {
+        let _lock = persistence::FileLock::acquire(path, std::time::Duration::from_secs(2))
+            .map_err(|error| error.to_string())?;
+        let disk_revision = match persistence::read_text(path).map_err(|error| error.to_string())? {
+            Some(text) => match toml::from_str::<Settings>(&text) {
+                Ok(settings) => settings.revision,
+                Err(error) => {
+                    return Err(format!(
+                        "The configuration file is invalid; refusing to overwrite it: {}",
+                        first_line(&error.to_string())
+                    ));
+                }
+            },
+            None => 0,
+        };
+        if disk_revision != self.revision {
+            return Err(format!(
+                "Configuration was changed by another ReddTTY process (disk revision {disk_revision}, this session {}). Reopen ReddTTY to reload it.",
+                self.revision
+            ));
         }
+        self.revision = self.revision.saturating_add(1);
         let text =
             toml::to_string_pretty(self).map_err(|e| format!("Could not serialise config: {e}"))?;
-        let tmp = path.with_extension("toml.tmp");
-        {
-            let mut file =
-                fs::File::create(&tmp).map_err(|e| format!("Could not write config: {e}"))?;
-            file.write_all(text.as_bytes())
-                .map_err(|e| format!("Could not write config: {e}"))?;
-            file.flush()
-                .map_err(|e| format!("Could not flush config: {e}"))?;
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600));
-        }
-        #[cfg(windows)]
-        {
-            // Windows cannot rename over an existing file.
-            let _ = fs::remove_file(path);
-        }
-        fs::rename(&tmp, path).map_err(|e| format!("Could not replace config: {e}"))?;
-        Ok(())
+        persistence::write_private(path, text.as_bytes()).map_err(|error| error.to_string())
+    }
+
+    /// Explicit recovery action: replace an unreadable/corrupt file after the
+    /// user has chosen to create a new configuration. The caller must have
+    /// preserved the original bytes first.
+    pub fn write_new(&mut self, path: &Path) -> Result<(), String> {
+        let _lock = persistence::FileLock::acquire(path, std::time::Duration::from_secs(2))
+            .map_err(|error| error.to_string())?;
+        self.revision = self.revision.saturating_add(1);
+        let text =
+            toml::to_string_pretty(self).map_err(|e| format!("Could not serialise config: {e}"))?;
+        persistence::write_private(path, text.as_bytes()).map_err(|error| error.to_string())
     }
 
     pub fn add_recent(&mut self, name: &str) {
@@ -905,6 +1049,122 @@ max_cache_mb = 32
         assert_eq!(loaded.images.protocol, ImageProtocolSetting::Kitty);
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn legacy_library_copy_never_overwrites_and_uses_private_mode() {
+        let dir = std::env::temp_dir().join(format!(
+            "reddtty-library-migrate-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let source = dir.join("old.toml");
+        let destination = dir.join("new.toml");
+        std::fs::write(&source, b"bookmarks = []").unwrap();
+        assert!(copy_new_private(&source, &destination).unwrap());
+        assert_eq!(std::fs::read(&destination).unwrap(), b"bookmarks = []");
+        std::fs::write(&source, b"bookmarks = [\"changed\"]").unwrap();
+        assert!(!copy_new_private(&source, &destination).unwrap());
+        assert_eq!(std::fs::read(&destination).unwrap(), b"bookmarks = []");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                std::fs::metadata(&destination)
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn non_utf8_config_is_backed_up_before_recovery() {
+        let dir = std::env::temp_dir().join(format!(
+            "reddtty-nonutf8-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        let bytes = [0xff, 0xfe, 0x00, 0x80];
+        std::fs::write(&path, bytes).unwrap();
+        let loaded = Settings::load_checked(&path);
+        assert!(loaded.corrupt);
+        assert!(loaded.recovery.is_some());
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        let backup = loaded.recovery.unwrap();
+        assert_eq!(std::fs::read(&backup).unwrap(), bytes);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn stale_config_session_cannot_overwrite_a_newer_one() {
+        let dir = std::env::temp_dir().join(format!(
+            "reddtty-config-conflict-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        let mut seed = Settings::default();
+        seed.save(&path).unwrap();
+        let (mut first, _) = Settings::load(&path);
+        let (mut second, _) = Settings::load(&path);
+        first.general.theme = ThemeMode::Light;
+        first.save(&path).unwrap();
+        second.general.theme = ThemeMode::Latte;
+        let error = second.save(&path).unwrap_err();
+        assert!(error.contains("another ReddTTY process"), "{error}");
+        let (disk, _) = Settings::load(&path);
+        assert_eq!(disk.general.theme, ThemeMode::Light);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn corrupt_config_is_preserved_and_backed_up() {
+        let dir = std::env::temp_dir().join(format!(
+            "reddtty-corrupt-config-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        std::fs::write(&path, "this is not [ valid toml").unwrap();
+        let (_loaded, warnings) = Settings::load(&path);
+        assert!(
+            warnings
+                .iter()
+                .any(|warning| warning.contains("Invalid config"))
+        );
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            b"this is not [ valid toml",
+            "the original bytes must survive"
+        );
+        let backups = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_name().to_string_lossy().contains(".corrupt-"))
+            .count();
+        assert_eq!(backups, 1);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

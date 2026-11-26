@@ -488,6 +488,12 @@ impl PostView {
         !all_collapsed
     }
 
+    pub fn has_threads(&self) -> bool {
+        self.comments
+            .iter()
+            .any(|comment| !comment.replies.is_empty())
+    }
+
     /// Toggle the OP-only filter. Returns true when it is enabled.
     pub fn toggle_op_only(&mut self, width: u16) -> bool {
         self.op_only = !self.op_only;

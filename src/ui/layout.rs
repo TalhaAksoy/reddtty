@@ -167,8 +167,10 @@ pub struct DetailRects {
 }
 
 pub fn detail(area: Rect, params: DetailParams) -> DetailRects {
-    let min_comments = 7u16;
-    let (post_h, comments_h) = if params.has_comments && area.height >= 12 {
+    // Keep at least a small comments viewport on short terminals instead of
+    // silently giving comments zero rows.
+    let min_comments = if area.height >= 20 { 7u16 } else { 4u16 };
+    let (post_h, comments_h) = if params.has_comments && area.height >= 10 {
         // Size the post pane to its actual content, with a cap so comments stay
         // usable. A short text post no longer wastes half the screen.
         let available_with_comments = area.height.saturating_sub(min_comments).max(1);
@@ -216,8 +218,14 @@ pub fn detail(area: Rect, params: DetailParams) -> DetailRects {
     let mut image = None;
     if params.has_image && post_pane.height >= 10 {
         let available = post_pane.bottom().saturating_sub(y + 1);
-        let image_h = detail_image_height(post_pane.width).min(available);
-        if image_h >= 5 {
+        let mut image_h = detail_image_height(post_pane.width).min(available);
+        // An image must never consume the entire post pane. When the post has
+        // body text, reserve at least three visible lines for it; the full
+        // image remains available in the gallery.
+        if params.has_body {
+            image_h = image_h.min(available.saturating_sub(3));
+        }
+        if image_h >= 3 {
             image = Some(Rect::new(pad_x, y + 1, content_w, image_h));
             y = y.saturating_add(1 + image_h);
         }
@@ -497,5 +505,50 @@ mod tests {
         assert_eq!(r.height, 20);
         assert_eq!(r.x, 25);
         assert_eq!(r.y, 10);
+    }
+}
+
+#[cfg(test)]
+mod detail_body_tests {
+    use super::*;
+
+    #[test]
+    fn image_plus_body_always_leaves_visible_body_rows() {
+        for (width, height) in [(80, 24), (80, 20), (100, 30), (60, 18), (130, 36)] {
+            let d = detail(
+                Rect::new(0, 0, width, height),
+                DetailParams {
+                    title_lines: 1,
+                    body_lines: 12,
+                    has_comments: true,
+                    has_image: true,
+                    has_body: true,
+                },
+            );
+            assert!(
+                d.body.height >= 3,
+                "{width}x{height}: body height was {}",
+                d.body.height
+            );
+            if let Some(image) = d.image {
+                assert!(image.height < d.post_pane.height);
+            }
+        }
+    }
+
+    #[test]
+    fn comments_keep_rows_on_short_terminals() {
+        let d = detail(
+            Rect::new(0, 0, 80, 12),
+            DetailParams {
+                title_lines: 1,
+                body_lines: 4,
+                has_comments: true,
+                has_image: false,
+                has_body: true,
+            },
+        );
+        assert!(d.comments_pane.height >= 4, "{d:?}");
+        assert!(d.comments_list.height >= 2, "{d:?}");
     }
 }

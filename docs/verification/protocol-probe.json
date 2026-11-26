@@ -3,24 +3,24 @@
     "protocol": "kitty",
     "ok": true,
     "detail": "kitty_sequences=33",
-    "bytes": 162178
+    "bytes": 162945
   },
   {
     "protocol": "iterm2",
     "ok": true,
     "detail": "iterm2_sequences=1",
-    "bytes": 46148
+    "bytes": 52036
   },
   {
     "protocol": "sixel",
     "ok": true,
     "detail": "sixel_sequences=1",
-    "bytes": 42360
+    "bytes": 42974
   },
   {
     "protocol": "halfblocks",
     "ok": true,
-    "detail": "halfblock_cells=110",
-    "bytes": 35633
+    "detail": "halfblock_cells=130",
+    "bytes": 36964
   }
 ]

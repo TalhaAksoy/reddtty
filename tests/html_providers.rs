@@ -31,6 +31,7 @@ struct Reply {
     content_type: &'static str,
     headers: Vec<(&'static str, String)>,
     body: Vec<u8>,
+    chunked: bool,
 }
 
 impl Reply {
@@ -40,6 +41,7 @@ impl Reply {
             content_type: "text/html; charset=utf-8",
             headers: Vec::new(),
             body: body.into().into_bytes(),
+            chunked: false,
         }
     }
 
@@ -49,6 +51,7 @@ impl Reply {
             content_type: "text/html",
             headers: Vec::new(),
             body: format!("<html><body>status {status}</body></html>").into_bytes(),
+            chunked: false,
         }
     }
 
@@ -58,6 +61,7 @@ impl Reply {
             content_type: "application/json",
             headers: Vec::new(),
             body: body.into().into_bytes(),
+            chunked: false,
         }
     }
 
@@ -140,19 +144,30 @@ where
             } else {
                 Reply::status(405)
             };
+            let framing = if reply.chunked {
+                "Transfer-Encoding: chunked\r\n".to_string()
+            } else {
+                format!("Content-Length: {}\r\n", reply.body.len())
+            };
             let head = format!(
-                "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n",
+                "HTTP/1.1 {} {}\r\nContent-Type: {}\r\n{}Connection: close\r\n",
                 reply.status,
                 if reply.status == 200 { "OK" } else { "Error" },
                 reply.content_type,
-                reply.body.len()
+                framing
             );
             let mut response = head.into_bytes();
             for (name, value) in &reply.headers {
                 response.extend_from_slice(format!("{name}: {value}\r\n").as_bytes());
             }
             response.extend_from_slice(b"\r\n");
-            response.extend_from_slice(&reply.body);
+            if reply.chunked {
+                response.extend_from_slice(format!("{:x}\r\n", reply.body.len()).as_bytes());
+                response.extend_from_slice(&reply.body);
+                response.extend_from_slice(b"\r\n0\r\n\r\n");
+            } else {
+                response.extend_from_slice(&reply.body);
+            }
             let _ = stream.write_all(&response);
         }
     });
@@ -481,6 +496,7 @@ async fn redlib_block_error_page_is_clean_access_denied() {
         content_type: "text/html; charset=utf-8",
         headers: Vec::new(),
         body: b"<!doctype html><html><head><title>Error: Reddit blocked this request (403 Forbidden)</title></head><body><main><h1>Error: Reddit blocked this request (403 Forbidden)</h1></main></body></html>".to_vec(),
+        chunked: false,
     }
     });
     let provider = redlib_provider(&server, true);
@@ -514,4 +530,49 @@ async fn invalid_pagination_url_is_rejected_without_a_request() {
     let error = provider.get_feed(request).await.unwrap_err();
     assert!(matches!(error, ProviderError::InvalidInput(_)), "{error:?}");
     assert!(server.requests.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn oversized_html_response_is_rejected_before_parsing() {
+    let server = spawn_server(|_path, _index| Reply {
+        status: 200,
+        content_type: "text/html; charset=utf-8",
+        headers: Vec::new(),
+        body: vec![b'x'; 4 * 1024 * 1024 + 1],
+        chunked: false,
+    });
+    let provider = old_provider(&server, true);
+    let error = provider.get_feed(home(FeedSort::Hot)).await.unwrap_err();
+    assert!(matches!(error, ProviderError::Parse(_)), "{error:?}");
+    assert!(error.to_string().contains("too large"), "{error}");
+}
+
+#[tokio::test]
+async fn oversized_chunked_response_is_bounded_without_content_length() {
+    let server = spawn_server(|_path, _index| Reply {
+        status: 200,
+        content_type: "text/html; charset=utf-8",
+        headers: Vec::new(),
+        body: vec![b'x'; 4 * 1024 * 1024 + 1],
+        chunked: true,
+    });
+    let provider = old_provider(&server, true);
+    let error = provider.get_feed(home(FeedSort::Hot)).await.unwrap_err();
+    assert!(matches!(error, ProviderError::Parse(_)), "{error:?}");
+    assert!(error.to_string().contains("too large"), "{error}");
+}
+
+#[tokio::test]
+async fn oversized_error_response_is_bounded() {
+    let server = spawn_server(|_path, _index| Reply {
+        status: 500,
+        content_type: "text/html; charset=utf-8",
+        headers: Vec::new(),
+        body: vec![b'x'; 2 * 1024 * 1024],
+        chunked: false,
+    });
+    let provider = old_provider(&server, true);
+    let error = provider.get_feed(home(FeedSort::Hot)).await.unwrap_err();
+    // The error is still classified without buffering the whole body.
+    assert!(!error.to_string().contains("xxxx"));
 }

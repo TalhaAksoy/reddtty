@@ -27,4 +27,4 @@
   │    I have been using this approach in production for a year. One caveat: watch the memory     │
   │    usage.                                                                                     │
                                                                                                   │
-j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit
+j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

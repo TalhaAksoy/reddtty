@@ -43,8 +43,11 @@ async fn run() -> Result<()> {
     } else {
         Settings::migrate_default_config()
     };
-    let (mut settings, load_warnings) = Settings::load(&config_path);
-    warnings.extend(load_warnings);
+    let loaded = Settings::load_checked(&config_path);
+    let mut settings = loaded.settings;
+    let mut config_corrupt = loaded.corrupt;
+    let mut config_recovery = loaded.recovery;
+    warnings.extend(loaded.warnings);
 
     let first_run = cli.config.is_none()
         && !cli.demo
@@ -59,7 +62,7 @@ async fn run() -> Result<()> {
         let _ = ratatui::try_restore();
         std::thread::sleep(Duration::from_millis(40));
         match selected.context("could not read the setup screen input")? {
-            Some(id) => {
+            Some(setup::SetupChoice::Preset(id)) => {
                 let installed = reddtty::config::presets::install(id, &config_path)
                     .map_err(anyhow::Error::msg)?;
                 warnings.push(format!(
@@ -74,9 +77,28 @@ async fn run() -> Result<()> {
                         ))
                         .unwrap_or_default()
                 ));
-                let (reloaded, reload_warnings) = Settings::load(&config_path);
-                settings = reloaded;
-                warnings.extend(reload_warnings);
+                let reloaded = Settings::load_checked(&config_path);
+                settings = reloaded.settings;
+                config_corrupt = reloaded.corrupt;
+                config_recovery = reloaded.recovery;
+                warnings.extend(reloaded.warnings);
+            }
+            Some(setup::SetupChoice::CustomRedlib(url)) => {
+                let mut custom = Settings::default();
+                custom.provider.kind = ProviderKind::Redlib;
+                custom.provider.html.redlib_instance = url.clone();
+                custom.provider.html.allow_network = true;
+                custom
+                    .save(&config_path)
+                    .map_err(|error| anyhow::anyhow!("could not save custom config: {error}"))?;
+                warnings.push(format!(
+                    "Custom Redlib instance saved: {url}. HTML network access was explicitly enabled for this source."
+                ));
+                let reloaded = Settings::load_checked(&config_path);
+                settings = reloaded.settings;
+                config_corrupt = reloaded.corrupt;
+                config_recovery = reloaded.recovery;
+                warnings.extend(reloaded.warnings);
             }
             None => {
                 settings.provider.kind = ProviderKind::Demo;
@@ -88,6 +110,7 @@ async fn run() -> Result<()> {
     let config_theme = settings.general.theme;
     let config_images_enabled = settings.images.enabled;
     let config_images_protocol = settings.images.protocol;
+    let config_provider = settings.provider.clone();
 
     if cli.demo
         && cli
@@ -105,6 +128,11 @@ async fn run() -> Result<()> {
         settings.provider.html.redlib_instance =
             reddtty::config::validate_html_base(instance).map_err(anyhow::Error::msg)?;
     }
+    if cli.allow_network {
+        settings.provider.html.allow_network = true;
+        warnings
+            .push("Network access explicitly enabled for HTML providers for this session.".into());
+    }
     if let Some(theme) = cli.theme {
         settings.general.theme = match theme {
             ThemeArg::Dark => ThemeMode::Dark,
@@ -117,9 +145,15 @@ async fn run() -> Result<()> {
             ThemeArg::Mono => ThemeMode::Mono,
         };
     }
-    if cli.no_color || std::env::var_os("NO_COLOR").is_some() {
-        settings.general.theme = ThemeMode::Mono;
-        warnings.push("NO_COLOR/no-color: using the monochrome theme for this session.".into());
+    let no_color = cli.no_color || std::env::var_os("NO_COLOR").is_some();
+    if no_color {
+        // Session-only: do not change the saved theme. Disable image colours
+        // as well so strict no-colour output stays consistent.
+        settings.images.enabled = false;
+        warnings.push(
+            "NO_COLOR/no-color: using terminal default colours and disabling images for this session."
+                .into(),
+        );
     }
     if cli.no_images {
         settings.images.enabled = false;
@@ -225,6 +259,10 @@ async fn run() -> Result<()> {
     app.persist_theme = config_theme;
     app.persist_images_enabled = config_images_enabled;
     app.persist_images_protocol = config_images_protocol;
+    app.persist_provider = config_provider;
+    app.no_color = no_color;
+    app.config_corrupt = config_corrupt;
+    app.config_recovery = config_recovery;
 
     start_input_thread(tx.clone()).context("could not start the terminal input thread")?;
     start_ticker(tx.clone());
@@ -239,8 +277,9 @@ async fn run() -> Result<()> {
 
     run_loop(&mut terminal, &mut app, rx).await?;
 
-    // Persist changes made through explicit settings actions. The CLI flags
-    // themselves are session overrides; there is no implicit save on exit.
+    // Persist the final reading context, but never override an explicit config
+    // recovery action.
+    app.finalize_on_exit();
     let _ = stdout().flush();
     Ok(())
 }

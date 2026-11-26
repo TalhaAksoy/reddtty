@@ -35,4 +35,4 @@
     ▀▀▀▀     ▀▀▀▀▀▀▀▀
       1          2
  ←/→ image · +/− zoom · Shift+arrows pan · 0 fit · o open · Esc close        1 / 2 · 100%
-←/→ Image · +/- Zoom · Shift+← Pan · 0 Fit · o Open · y URL · Y Comments · G Sub · Esc Close · ? Help · q Quit
+←/→ Image · +/- Zoom · Shift+← Pan · 0 Fit · o Open · i Info · I URL · Y Comments · G Sub · Esc Close · ? Help · q Quit

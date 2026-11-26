@@ -35,4 +35,4 @@
                                                                                                              │  │v    image viewer
   u/firefox_fox   ▲ 972   2h ago                                                                             │  │x    reveal hidden
   This is why I love small tools. One job, done well, composable with everything else.                       │  │Esc  back to feed
-j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit
+j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

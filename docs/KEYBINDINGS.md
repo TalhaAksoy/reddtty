@@ -38,6 +38,7 @@ Mouse wheel, clicks and double-clicks are described at the end of this file.
 | `g` | Open “Go to subreddit” |
 | `/` | Open search |
 | `r` | Refresh the first page (keeps selection when possible) |
+| `R` | Retry a failed “load more” request without refreshing |
 | `o` | Open the post/link in the system browser |
 | `v` | Open the gallery/image viewer |
 | `x` | Reveal an NSFW or spoiler post for this session |
@@ -84,7 +85,7 @@ between them. Comments are focused by default after opening a post.
 | `j` / `↓` | Scroll body down, or select next comment |
 | `k` / `↑` | Scroll body up, or select previous comment |
 | `PageDown` / `PageUp` | Page the focused pane |
-| `Home` / `End` | Start/end of the focused pane; reaching the end loads more posts |
+| `Home` / `End` | Start/end of the focused pane; in comments, first/last loaded comment |
 | `Enter` (comments) | Collapse/expand a comment, or load a “more replies” node |
 | `c` (comments) | Collapse/expand the selected comment |
 | `[` / `]` | Previous / next top-level comment |
@@ -131,8 +132,8 @@ Removed posts hide their comments with an explanatory placeholder.
 | Click a thumbnail | Jump to that image |
 | `Esc` | Close viewer (returns to feed or detail) |
 | `o` | Open the current image externally |
-| `y` / `i` | Copy the current image URL |
-| `I` | Open the community-info drawer |
+| `y` / `I` | Copy the current image URL |
+| `i` | Open the community-info drawer |
 | `Y` | Open the post's comments page in the browser |
 | `G` | Open the post's subreddit in the browser |
 | `r` | Request a cleared redraw of the image |
@@ -200,12 +201,14 @@ names show an inline error and do not trigger a request.
 | `Enter` in Appearance | Toggle relative/absolute time or reduced/full motion |
 
 Changing the config replaces only the provider settings; favorites, recents,
-theme, image, bookmarks, filters and UI preferences are preserved. The new
-provider is built immediately and the navigation stack is reset safely; no
-restart is required. Theme changes apply immediately and are persisted.
+theme, image, bookmarks, filters and UI preferences are preserved. The candidate
+provider is probed first; only a successful probe replaces the active source and
+resets navigation safely. A failed probe keeps the previous source and config.
+Theme changes apply immediately and are persisted.
 
 `--no-color` (or the standard `NO_COLOR` environment variable) forces the
-monochrome theme for the session without overwriting the saved theme.
+strict terminal-default colours (and disables image colours) for the session
+without overwriting the saved theme.
 
 ## Bookmarks and read state
 
@@ -216,8 +219,13 @@ monochrome theme for the session without overwriting the saved theme.
 |---|---|
 | `j` / `k` | Move through saved posts |
 | `Enter` | Open the selected saved post (works from the local snapshot if the source is down) |
-| `d` / `Delete` | Remove the selected bookmark |
+| `d` / `Delete` | Remove the selected bookmark (confirmation required) |
+| `/` | Search title, author and subreddit |
+| `Home` / `End`, `PgUp` / `PgDn` | Jump / page through the list |
 | `Esc` | Close the list |
+
+Offline snapshots store the post, not its comments. The list labels recorded
+comment counts as “not stored offline” instead of pretending comments exist.
 
 `m` toggles read/unread. Unread cards show `● unread`; saved cards show
 `★ saved`. Bookmarking does not perform a Reddit write.
@@ -227,7 +235,7 @@ monochrome theme for the session without overwriting the saved theme.
 | Action | Feed | Post detail | Image viewer |
 |---|---|---|---|
 | Copy post/comment permalink | `y` | `y` | — |
-| Copy current image URL | `I` | `I` (post image preview) | `y` / `i` |
+| Copy current image URL | `I` | `I` (post image preview) | `y` / `I` |
 | Open comments/permalink | `Y` | `Y` | `Y` |
 | Open current subreddit | `G` | `G` | `G` |
 | Open post/image externally | `o` | `o` | `o` |
@@ -244,8 +252,10 @@ description, post details, suggested communities and actions.
 
 | Key | Action |
 |---|---|
-| `i` (feed/post) or `I` (gallery) | Open the info drawer |
-| `Esc` / `i` / `I` | Close |
+| `i` (feed/post/gallery) | Open the info drawer |
+| `j` / `k`, `PgUp` / `PgDn` | Scroll the drawer |
+| `g` / `G` / `f` / `r` / `Y` / `b` | Run the advertised action immediately |
+| `Esc` / `i` | Close |
 | Click outside | Close |
 
 ## Local filters
@@ -267,7 +277,7 @@ Quick mute from a selected post:
 |---|---|
 | `M` | Mute the post's subreddit |
 | `A` | Mute the post's author |
-| `D` | Mute the post's domain |
+| `D` | Mute the post's external link domain (self/text/gallery posts explain why this is unavailable) |
 | `u` | Undo the last quick mute |
 
 Accepted expressions:
@@ -290,7 +300,7 @@ Open **Settings → Source health**.
 | Key | Action |
 |---|---|
 | `j` / `k` | Move between actions |
-| `Enter` or `r` | Test now: refresh the current view and update health |
+| `Enter` or `r` | Test now: run an independent bounded probe (does not replace the feed) |
 | `Enter` or `c` on Change source | Open the config picker |
 | `Esc` | Back to Settings |
 

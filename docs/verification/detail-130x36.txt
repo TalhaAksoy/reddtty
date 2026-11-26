@@ -33,4 +33,4 @@
                                                                                                    │  │r    refresh
   u/quiet_signal   ▲ 1k   2h ago                                                                   │  │o    open browser
   Does this work with older terminals? I spend a lot of time on servers over SSH.                  │  │v    image viewer
-j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit
+j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

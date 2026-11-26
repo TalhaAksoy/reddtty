@@ -35,4 +35,4 @@
   Does this work with older terminals? I spend a lot of time on servers over SSH.                            │  │v    image viewer
                                                                                                              │  │x    reveal hidden
   ├─ u/[deleted]   2h ago                                                                                    │  │Esc  back to feed
-j/k Scroll · →/Tab Comments · v Image · o Browser · x Reveal · Esc Back · ? Help · q Quit
+j/k Scroll · →/Tab Comments · v Image · o Browser · x Reveal · i Info · b Save · m Read · Esc Back · ? Help · q Quit

@@ -49,4 +49,16 @@ pub enum AppEvent {
         key: ImageKey,
         result: Result<Protocol, String>,
     },
+    /// Result of an explicit, bounded source-health probe. It never mutates
+    /// the active feed or navigation state.
+    ProbeFinished {
+        request: u64,
+        result: Result<FeedPage, ProviderError>,
+    },
+    /// Result of the bounded pre-flight test performed before replacing the
+    /// active provider configuration.
+    SwitchProbeFinished {
+        request: u64,
+        result: Result<FeedPage, ProviderError>,
+    },
 }

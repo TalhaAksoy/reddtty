@@ -6,5 +6,5 @@ Home           25 posts · more
 │                           ││
 │ Why I love building CLI   ││
 │ applications with Rust    ││
-╰───────────────────────────╯│
+│ I have been writing…      ││
 j/k  · ↵  · s  · ?  · q Quit

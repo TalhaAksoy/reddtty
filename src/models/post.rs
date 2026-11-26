@@ -198,6 +198,58 @@ impl Post {
             .filter(|d| !d.is_empty())
             .unwrap_or(&self.subreddit)
     }
+
+    /// The external host a domain filter may safely target.
+    ///
+    /// Self/text posts, galleries and Reddit-internal links have no external
+    /// domain; using the subreddit name as a domain produced filters such as
+    /// `rust` that can never match a real host.
+    pub fn external_domain(&self) -> Option<String> {
+        if let Some(domain) = self.domain.as_deref() {
+            let normalized = normalize_domain(domain);
+            if is_external_domain(&normalized) {
+                return Some(normalized);
+            }
+        }
+        let url = match &self.content {
+            PostContent::Link { url, .. }
+            | PostContent::Video { url, .. }
+            | PostContent::Image { url } => url,
+            PostContent::Text | PostContent::Gallery { .. } | PostContent::Removed => return None,
+        };
+        let host = url
+            .split_once("://")
+            .map(|(_, rest)| rest)
+            .unwrap_or(url)
+            .split('/')
+            .next()?
+            .split(':')
+            .next()?;
+        let normalized = normalize_domain(host);
+        is_external_domain(&normalized).then_some(normalized)
+    }
+}
+
+fn normalize_domain(domain: &str) -> String {
+    domain
+        .trim()
+        .trim_start_matches("www.")
+        .trim_end_matches('.')
+        .to_ascii_lowercase()
+}
+
+fn is_external_domain(domain: &str) -> bool {
+    !domain.is_empty()
+        && domain.contains('.')
+        && !domain.starts_with("self.")
+        && !domain.ends_with(".reddit.com")
+        && !domain.ends_with(".redd.it")
+        && !domain.ends_with(".redditmedia.com")
+        && !domain.ends_with(".redditstatic.com")
+        && !matches!(
+            domain,
+            "reddit.com" | "redd.it" | "redditmedia.com" | "redditstatic.com"
+        )
 }
 
 #[cfg(test)]
@@ -295,5 +347,66 @@ mod tests {
         post.author = "[deleted]".into();
         post.body = "still readable".into();
         assert!(!post.is_deleted());
+    }
+}
+
+#[cfg(test)]
+mod external_domain_tests {
+    use super::*;
+
+    fn post(content: PostContent, domain: Option<&str>) -> Post {
+        Post {
+            id: "x".into(),
+            subreddit: "rust".into(),
+            author: "a".into(),
+            title: "t".into(),
+            body: String::new(),
+            created_utc: 0,
+            score: 0,
+            num_comments: 0,
+            permalink: "/r/rust/comments/x".into(),
+            content,
+            flair: None,
+            nsfw: false,
+            spoiler: false,
+            removed: false,
+            is_self: false,
+            locked: false,
+            stickied: false,
+            domain: domain.map(str::to_string),
+            thumbnail: None,
+        }
+    }
+
+    #[test]
+    fn self_posts_have_no_external_domain() {
+        let post = post(PostContent::Text, Some("self.rust"));
+        assert_eq!(post.external_domain(), None);
+    }
+
+    #[test]
+    fn galleries_and_internal_links_have_no_external_domain() {
+        let gallery = post(PostContent::Gallery { items: Vec::new() }, None);
+        assert_eq!(gallery.external_domain(), None);
+        let internal = post(
+            PostContent::Link {
+                url: "https://www.reddit.com/r/rust".into(),
+                thumbnail: None,
+            },
+            Some("reddit.com"),
+        );
+        assert_eq!(internal.external_domain(), None);
+    }
+
+    #[test]
+    fn external_link_posts_expose_a_normalized_host() {
+        let post = post(
+            PostContent::Link {
+                url: "https://www.Example.com/path".into(),
+                thumbnail: None,
+            },
+            Some("example.com"),
+        );
+        assert_eq!(post.external_domain().as_deref(), Some("example.com"));
     }
 }

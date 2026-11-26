@@ -34,5 +34,5 @@
                        │ │                                                                                   ││ │?     help
                        │ │ 📌 Weekly help thread — ask anything                                              ││ │
                        │ │                        ℹ Demo images are local fixtures; there is no external imag…│ │
- h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+ h hide · Tab focus    │ │ New to Rust? Stuck on a lifetime? Ask here. No question is too small.             ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

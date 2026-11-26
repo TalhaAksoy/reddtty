@@ -8,6 +8,9 @@ use url::Url;
 use crate::error::ProviderError;
 
 const MAX_HTML_BYTES: usize = 4 * 1024 * 1024;
+/// Error pages are only used to classify a failure, so keep their excerpt
+/// small and independently bounded even when the server streams forever.
+const MAX_ERROR_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug)]
 pub struct HtmlClientConfig {
@@ -58,9 +61,14 @@ impl HtmlClient {
                     return attempt.stop();
                 }
                 let same_host = match (attempt.url().host_str(), attempt.previous().last()) {
-                    (Some(host), Some(previous)) => previous
-                        .host_str()
-                        .is_some_and(|p| p.eq_ignore_ascii_case(host)),
+                    (Some(host), Some(previous)) => {
+                        previous.scheme() == attempt.url().scheme()
+                            && previous
+                                .host_str()
+                                .is_some_and(|p| p.eq_ignore_ascii_case(host))
+                            && previous.port_or_known_default()
+                                == attempt.url().port_or_known_default()
+                    }
                     (Some(_), None) => true,
                     _ => false,
                 };
@@ -131,8 +139,12 @@ impl HtmlClient {
                 .get(RETRY_AFTER)
                 .and_then(|value| value.to_str().ok())
                 .and_then(|value| value.parse::<u64>().ok());
-            let raw_body =
-                String::from_utf8_lossy(&response.bytes().await.unwrap_or_default()).into_owned();
+            let raw_body = String::from_utf8_lossy(
+                &read_bounded(response, MAX_ERROR_BYTES)
+                    .await
+                    .unwrap_or_default(),
+            )
+            .into_owned();
             let lower_body = raw_body.to_ascii_lowercase();
             let body = super::parser::plain_text(&raw_body, 240);
             let page_blocked = lower_body.contains("reddit blocked this request")
@@ -199,13 +211,7 @@ impl HtmlClient {
                 "the source redirected outside its configured origin".into(),
             ));
         }
-        let bytes = response.bytes().await.map_err(map_reqwest_error)?;
-        if bytes.len() > MAX_HTML_BYTES {
-            return Err(ProviderError::Parse(format!(
-                "HTML response is too large ({} bytes; limit {MAX_HTML_BYTES})",
-                bytes.len()
-            )));
-        }
+        let bytes = read_bounded(response, MAX_HTML_BYTES).await?;
         let body = String::from_utf8_lossy(&bytes).into_owned();
         if body.trim().is_empty() {
             return Err(ProviderError::Parse(
@@ -222,6 +228,25 @@ impl HtmlClient {
 pub struct FetchedPage {
     pub url: Url,
     pub body: String,
+}
+
+/// Read a response body chunk-by-chunk and abort as soon as `limit` is
+/// exceeded. Checking `Content-Length` alone is not enough: a chunked response
+/// can omit it and still stream an unbounded amount of data.
+async fn read_bounded(
+    mut response: reqwest::Response,
+    limit: usize,
+) -> Result<Vec<u8>, ProviderError> {
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(map_reqwest_error)? {
+        if bytes.len().saturating_add(chunk.len()) > limit {
+            return Err(ProviderError::Parse(format!(
+                "HTML response is too large (limit {limit} bytes)"
+            )));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }
 
 fn map_reqwest_error(error: reqwest::Error) -> ProviderError {

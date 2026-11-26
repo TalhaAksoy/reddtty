@@ -20,14 +20,14 @@
    code                                                                                                         │▸ r/rust
    #[derive(clap::Parser)]                                                                                      │▸ r/linux
    struct Args {                                                                                       ↕ 17/25  │▸ r/programming
- COMMENTS  248                                                                                    Sort: Best ▾  │▸ r/technology
+ COMMENTS  248   ·   OP only                                                                      Sort: Best ▾  │▸ r/technology
  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────  │▸ r/opensource
-                                               No comments yet.                                                 │▸ r/unixporn
-                                       Be the first to reply on Reddit.                                         │
+                                                                                                                │▸ r/unixporn
+                                                                                                                │
                                                                                                                 │ACTIONS
                                                                                                                 │G    open subreddit
-                                                                                                                │Y    open comments
-                                                                                                                │b    bookmark
+                                         No comments by u/ferris_fan.                                           │Y    open comments
+                                         Press O to show all comments.                                          │b    bookmark
                                                                                                                 │m    read / unread
                                                                                                                 │i    community info
                                                                                                                 │r    refresh
@@ -35,4 +35,4 @@
                                                                                ℹ Jumped to the next unread comment.   image viewer
                                                                                ℹ Expanded all comment threads.  │x    reveal hidden
                                                                                                                 │Esc  back to feed
-j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit
+j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

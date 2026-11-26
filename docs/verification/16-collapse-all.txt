@@ -35,4 +35,4 @@
                                                                                ℹ Marked as read.             ┃  │v    image viewer
                                                                                ✓ Saved “Why I love building CLI applications with Rust” wi…
                                                                                                              ┃  │Esc  back to feed
-j/k Comments · Enter Toggle · c Collapse · s Sort · Tab Post · Esc Back · ? Help · q Quit
+j/k Comments · Enter Toggle · c Toggle · s Sort · Tab Post · Esc Back · ? Help · q Quit

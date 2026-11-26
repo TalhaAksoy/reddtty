@@ -11,6 +11,7 @@ pub mod event;
 pub mod library;
 pub mod media;
 pub mod models;
+pub mod persistence;
 pub mod providers;
 pub mod ui;
 pub mod utils;

@@ -92,3 +92,37 @@ None observed.
 - Demo/live state is visible even at 30 columns after the badge fix.
 - Quit restores the terminal cleanly in every captured size (shell prompt and
   `EXIT:0` observed).
+
+---
+
+## Update — 2026-11-26 stability pass
+
+The findings above were re-checked against the current tree. Fixed since this
+review:
+
+- Modal notifications are now drawn above the modal, so Settings, Filters and
+  Source Health feedback is visible.
+- Gallery uppercase shortcuts work; `i` opens info and `I`/`y` copy the image
+  URL consistently with feed/post.
+- The first-run/source picker scrolls and fits 80×24; it includes a custom
+  Redlib URL flow with explicit network consent and a pre-flight probe.
+- Provider switching tests the candidate first and keeps the old source on
+  failure.
+- Source Health “Test now” performs an independent bounded probe instead of
+  refreshing the feed.
+- Theme contrast is enforced quantitatively across all eight themes; strict
+  `NO_COLOR` uses terminal defaults and reverse selection.
+- Image+text post detail reserves visible body rows; short terminals keep a
+  comments viewport.
+- Pagination failures keep the cursor and offer a deliberate retry.
+- Bookmarks support search, paging, confirmed deletion and honest offline
+  comment labels.
+- Info drawer actions execute, and the drawer scrolls.
+- Self/text posts no longer create bogus domain filters.
+- OP-only and comment read state are visible.
+- Last view restores Top range and the selected post.
+- README/KEYBINDINGS/TEST_REPORT inconsistencies were corrected.
+
+Still open: line scrolling inside a card taller than the viewport, multi-process
+lost-update protection, and visual verification of pixel image protocols. See
+[`STABILITY_AND_UX_IMPROVEMENT_REPORT.md`](STABILITY_AND_UX_IMPROVEMENT_REPORT.md).

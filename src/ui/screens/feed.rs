@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use ratatui::Frame;
+use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -80,38 +81,79 @@ pub fn render(
     let compact = post_card::compact_for_viewport(lists.list.height);
     let mut last_bottom = lists.list.y;
 
-    for index in feed.visible_range(lists.list.height) {
+    let status_rows = u16::from(feed.more_error.is_some() || feed.loading_more);
+    let list_height = lists.list.height.saturating_sub(status_rows);
+    let viewport_top = feed.offset;
+    let viewport_bottom = feed.offset.saturating_add(list_height as u32);
+    for index in feed.visible_range(list_height) {
         let Some(post) = feed.posts.get(index) else {
             break;
         };
-        let height = feed.heights.get(index).copied().unwrap_or(12);
-        let top = feed.prefix_height(index).saturating_sub(feed.offset) as u16;
-        let y = lists.list.y.saturating_add(top);
-        if y >= lists.list.bottom() {
-            break;
+        let full_height = feed.heights.get(index).copied().unwrap_or(12);
+        let card_start = feed.prefix_height(index);
+        let card_end = card_start.saturating_add(full_height as u32);
+        let visible_top = card_start.max(viewport_top);
+        let visible_bottom = card_end.min(viewport_bottom);
+        if visible_bottom <= visible_top {
+            continue;
         }
-        let available = lists.list.bottom().saturating_sub(y);
-        if available < 3 {
-            break;
+        let dest_y = lists
+            .list
+            .y
+            .saturating_add((visible_top - viewport_top) as u16);
+        let dest_height = (visible_bottom - visible_top) as u16;
+        if dest_height == 0 {
+            continue;
         }
-        let card_height = height.min(available);
-        let card_area = Rect::new(cards_area.x, y, cards_area.width, card_height);
-        post_card::render(
-            frame,
-            card_area,
-            post,
-            index == feed.selected && focus == Focus::Feed,
-            theme,
-            settings,
-            images,
-            compact,
-            revealed.contains(&post.id),
-            spinner_index,
-            !library.is_post_read(&post.id),
-            library.is_bookmarked(&post.id),
-        );
-        hit_map.push(card_area, HitTarget::FeedPost(index));
-        last_bottom = y.saturating_add(card_height);
+        let dest = Rect::new(cards_area.x, dest_y, cards_area.width, dest_height);
+        let selected = index == feed.selected && focus == Focus::Feed;
+        if card_start >= viewport_top && card_end <= viewport_bottom {
+            // Fully visible: paint directly, no temporary buffer.
+            post_card::render(
+                frame,
+                dest,
+                post,
+                selected,
+                theme,
+                settings,
+                images,
+                compact,
+                revealed.contains(&post.id),
+                spinner_index,
+                !library.is_post_read(&post.id),
+                library.is_bookmarked(&post.id),
+            );
+        } else {
+            // Partially visible: render the whole card into an off-screen
+            // buffer, then copy only the visible fragment. Borders and images
+            // stay inside the card and cannot paint over the feed header.
+            let full_area = Rect::new(0, 0, cards_area.width, full_height);
+            let mut buffer = Buffer::empty(full_area);
+            post_card::render_buffer(
+                &mut buffer,
+                full_area,
+                post,
+                selected,
+                theme,
+                settings,
+                images,
+                compact,
+                revealed.contains(&post.id),
+                spinner_index,
+                !library.is_post_read(&post.id),
+                library.is_bookmarked(&post.id),
+            );
+            let source_y = (visible_top - card_start) as u16;
+            let target = frame.buffer_mut();
+            for row in 0..dest_height {
+                for column in 0..cards_area.width {
+                    target[(dest.x + column, dest.y + row)] =
+                        buffer[(column, source_y + row)].clone();
+                }
+            }
+        }
+        hit_map.push(dest, HitTarget::FeedPost(index));
+        last_bottom = dest_y.saturating_add(dest_height);
     }
 
     if feed.loading_more {
@@ -126,6 +168,38 @@ pub fn render(
                     .style(Style::default().fg(theme.accent).bg(theme.bg))
                     .alignment(ratatui::layout::Alignment::Center),
                 Rect::new(cards_area.x, y, cards_area.width, 1),
+            );
+        }
+    }
+
+    if let Some(error) = &feed.more_error {
+        let y = if last_bottom.saturating_add(1) < lists.list.bottom() {
+            last_bottom.saturating_add(1)
+        } else {
+            lists.list.bottom().saturating_sub(1)
+        };
+        if y >= lists.list.y {
+            let text = ellipsize(
+                &format!(
+                    "Could not load more: {}  ·  press R to retry",
+                    crate::utils::text::sanitize(error)
+                ),
+                cards_area.width as usize,
+            );
+            frame.render_widget(
+                Paragraph::new(text)
+                    .style(
+                        Style::default()
+                            .fg(theme.danger)
+                            .bg(theme.bg)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                    .alignment(ratatui::layout::Alignment::Center),
+                Rect::new(cards_area.x, y, cards_area.width, 1),
+            );
+            hit_map.push(
+                Rect::new(cards_area.x, y, cards_area.width, 1),
+                HitTarget::RetryMore,
             );
         }
     }
@@ -332,21 +406,14 @@ fn render_feed_state(
             width,
             height,
         );
+        let retry_y = rect.y.saturating_add(lines.len().saturating_sub(1) as u16);
         frame.render_widget(
             Paragraph::new(lines)
                 .style(theme.base())
                 .alignment(ratatui::layout::Alignment::Center),
             rect,
         );
-        hit_map.push(
-            Rect::new(
-                rect.x,
-                rect.y + 4,
-                rect.width,
-                1.min(rect.height.saturating_sub(4)),
-            ),
-            HitTarget::Retry,
-        );
+        hit_map.push(Rect::new(rect.x, retry_y, rect.width, 1), HitTarget::Retry);
         return;
     }
     if feed.loading_initial || (feed.posts.is_empty() && feed.loading_more) {

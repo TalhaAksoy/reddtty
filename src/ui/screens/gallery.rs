@@ -97,7 +97,7 @@ pub fn render(
     if !images.enabled() {
         frame.render_widget(
             Paragraph::new(
-                "Images are disabled.\nRestart with --images or enable images in config.",
+                "Images are disabled.\nEnable them in Settings → Images or set images.enabled = true.",
             )
             .style(Style::default().fg(theme.muted).bg(theme.bg))
             .alignment(Alignment::Center),

@@ -17,6 +17,16 @@ pub fn spinner_char(index: usize) -> &'static str {
 
 pub fn render(frame: &mut Frame, app: &mut App) {
     let theme: Theme = app.theme();
+    if frame.area().width < 16 || frame.area().height < 5 {
+        frame.render_widget(Block::default().style(theme.base()), frame.area());
+        frame.render_widget(
+            ratatui::widgets::Paragraph::new("Terminal too small — resize to at least 16×5.")
+                .style(theme.base())
+                .alignment(ratatui::layout::Alignment::Center),
+            frame.area(),
+        );
+        return;
+    }
     let root = layout::root(frame.area());
     frame.render_widget(Block::default().style(theme.base()), frame.area());
     app.hit_map.clear();
@@ -92,6 +102,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     spinner,
                     spinner_index,
                     revealed,
+                    &library.read_comments,
                     &theme,
                     hit_map,
                 );
@@ -123,12 +134,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         );
     }
 
-    let notification_area = match app.nav.last() {
-        Some(View::Feed(_)) => layout::feed(root.body, &app.settings, true).feed,
-        _ => root.body,
-    };
-    screens::overlays::render_notifications(frame, notification_area, &app.notifications, &theme);
-
     if let Some(modal) = &app.modal {
         // Keep the top bar and status hints, but remove the noisy feed behind
         // the modal. Search/help/sort then read as a single focused surface.
@@ -146,8 +151,23 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             &app.health,
             &app.provider_label,
             app.demo,
+            &app.images,
+            app.config_corrupt,
             &theme,
             &mut app.hit_map,
         );
     }
+
+    // Notifications must be the last visual layer: modal actions such as
+    // "Test now", filter changes and image-protocol switches need visible
+    // success/error feedback.
+    let notification_area = if app.modal.is_some() {
+        root.body
+    } else {
+        match app.nav.last() {
+            Some(View::Feed(_)) => layout::feed(root.body, &app.settings, true).feed,
+            _ => root.body,
+        }
+    };
+    screens::overlays::render_notifications(frame, notification_area, &app.notifications, &theme);
 }

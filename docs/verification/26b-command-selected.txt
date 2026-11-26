@@ -34,5 +34,5 @@
                        │ │ r/askscience  •  u/orb ℹ Theme: Catppuccin Macchiato                     ● unread ││ │
                        │ │                        ℹ Theme: Catppuccin Mocha                                  ││ │
                        │ │ A new image of a plane ℹ 1 post(s) hidden by local filters.                       ││ │
- h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+ h hide · Tab focus    │ │                                                                                   ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

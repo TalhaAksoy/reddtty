@@ -23,6 +23,7 @@ pub fn render(
     focus: Focus,
     hidden: bool,
     spinner: &str,
+    read_comments: &std::collections::BTreeSet<String>,
     hit_map: &mut HitMap,
 ) {
     if area.height == 0 || area.width < 6 {
@@ -58,22 +59,34 @@ pub fn render(
                 ),
                 Style::default().fg(theme.danger),
             )
+        } else if post.op_only {
+            (
+                format!(
+                    "No comments by u/{}.\nPress O to show all comments.",
+                    crate::utils::text::sanitize(&post.post.author)
+                ),
+                Style::default().fg(theme.muted),
+            )
         } else {
             (
                 "No comments yet.\nBe the first to reply on Reddit.".to_string(),
                 Style::default().fg(theme.muted),
             )
         };
+        let text_height = 2u16.min(area.height);
+        let text_y = area
+            .y
+            .saturating_add(area.height.saturating_sub(text_height + 2) / 2);
         frame.render_widget(
             Paragraph::new(text)
                 .style(style.bg(theme.bg))
                 .alignment(ratatui::layout::Alignment::Center),
-            area,
+            Rect::new(area.x, text_y, area.width, text_height),
         );
         if post.comments_error.is_some() {
             let retry = Rect::new(
                 area.x + area.width.saturating_sub(14) / 2,
-                area.y + area.height / 2 + 2,
+                text_y.saturating_add(text_height),
                 14.min(area.width),
                 1,
             );
@@ -167,6 +180,9 @@ pub fn render(
                     .add_modifier(Modifier::BOLD)
             };
             header_spans.push(Span::styled(format!("u/{}", row.author), author_style));
+            if read_comments.contains(&row.id) {
+                header_spans.push(Span::styled(" ✓", Style::default().fg(theme.success)));
+            }
             if !row.deleted && !row.removed && row.author == post.post.author {
                 header_spans.push(Span::styled(
                     " OP",

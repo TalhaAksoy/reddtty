@@ -4,6 +4,7 @@
   │ FEED                                                                                         │
   │ j / k       Next / previous post                                                             │
   │ ↑ / ↓       Same as j / k                                                                    │
+  │ J / K       Scroll one line inside a large card                                              │
   │ ←           Focus sidebar (shows it if wide)                                                 │
   │ →           Return focus from sidebar to feed                                                │
   │ PgUp / PgDn Move by half a viewport                                                          │
@@ -14,6 +15,7 @@
   │ g           Go to subreddit                                                                  │
   │ /           Search posts                                                                     │
   │ r           Refresh first page                                                               │
+  │ R           Retry a failed “load more” request                                               │
   │ o           Open post/link in browser                                                        │
   │ v           Open image / gallery                                                             │
   │ x           Reveal NSFW or spoiler                                                           │
@@ -22,9 +24,7 @@
   │ B           Open bookmarks                                                                   │
   │ m           Toggle read / unread                                                             │
   │ y           Copy post permalink                                                              │
-  │ i           Community info drawer                                                            │
-  │ I           Copy image preview URL                                                           │
-  │ j/k scroll · PgUp/PgDn page · / search                         23/168 · 145 more · Esc close │
+  │ j/k scroll · PgUp/PgDn page · / search                         23/170 · 147 more · Esc close │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 
 j/k Scroll · PgUp/PgDn Page · Esc/? Close

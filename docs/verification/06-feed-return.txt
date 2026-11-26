@@ -34,5 +34,5 @@
                        │ │ r/askscience  •  u/orbit_nerd  •  3d ago                                 ● unread ││ │
                        │ │                                                                                   ││ │
                        │ │ A new image of a planet-forming disk                                              ││ │
- h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
+ h hide · Tab focus    │ │                                                                                   ││ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

@@ -60,6 +60,7 @@ pub fn render(
     spinner: &str,
     spinner_index: usize,
     revealed: &HashSet<String>,
+    read_comments: &std::collections::BTreeSet<String>,
     theme: &Theme,
     hit_map: &mut HitMap,
 ) {
@@ -119,6 +120,15 @@ pub fn render(
                 ),
                 Span::styled(format!("  {count}"), Style::default().fg(theme.muted)),
             ];
+            if post_view.op_only {
+                spans.push(Span::styled(
+                    "   ·   OP only",
+                    Style::default()
+                        .fg(theme.on_accent)
+                        .bg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
             if let Some(error) = &post_view.post_error {
                 spans.push(Span::styled(
                     format!(
@@ -180,6 +190,7 @@ pub fn render(
                 focus,
                 hidden,
                 spinner,
+                read_comments,
                 hit_map,
             );
         }

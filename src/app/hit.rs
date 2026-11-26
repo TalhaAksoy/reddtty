@@ -31,6 +31,9 @@ pub enum HitTarget {
     GalleryThumb(usize),
     GalleryOpen,
     Retry,
+    RetryMore,
+    ConfirmYes,
+    ConfirmNo,
 }
 
 #[derive(Clone, Debug)]

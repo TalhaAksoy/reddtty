@@ -125,6 +125,76 @@ fn rgb(hex: u32) -> Color {
     )
 }
 
+fn channel_luminance(value: u8) -> f64 {
+    let value = value as f64 / 255.0;
+    if value <= 0.04045 {
+        value / 12.92
+    } else {
+        ((value + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+pub fn relative_luminance(color: Color) -> Option<f64> {
+    match color {
+        Color::Rgb(red, green, blue) => Some(
+            0.2126 * channel_luminance(red)
+                + 0.7152 * channel_luminance(green)
+                + 0.0722 * channel_luminance(blue),
+        ),
+        _ => None,
+    }
+}
+
+pub fn contrast_ratio(first: Color, second: Color) -> Option<f64> {
+    let a = relative_luminance(first)?;
+    let b = relative_luminance(second)?;
+    let (lighter, darker) = if a >= b { (a, b) } else { (b, a) };
+    Some((lighter + 0.05) / (darker + 0.05))
+}
+
+/// Blend `foreground` toward black or white until it reaches `target`
+/// contrast against `background`, preserving the original hue as much as
+/// possible. Non-RGB colours (terminal defaults) are returned unchanged.
+fn ensure_contrast(foreground: Color, background: Color, target: f64) -> Color {
+    let Color::Rgb(red, green, blue) = foreground else {
+        return foreground;
+    };
+    let Some(background_luminance) = relative_luminance(background) else {
+        return foreground;
+    };
+    if contrast_ratio(foreground, background).is_some_and(|ratio| ratio >= target) {
+        return foreground;
+    }
+    let target_color = if background_luminance > 0.5 {
+        Color::Rgb(0, 0, 0)
+    } else {
+        Color::Rgb(255, 255, 255)
+    };
+    let Color::Rgb(target_red, target_green, target_blue) = target_color else {
+        return foreground;
+    };
+    let mut low = 0.0;
+    let mut high = 1.0;
+    for _ in 0..24 {
+        let mid = (low + high) / 2.0;
+        let blended = Color::Rgb(
+            (red as f64 + (target_red as f64 - red as f64) * mid).round() as u8,
+            (green as f64 + (target_green as f64 - green as f64) * mid).round() as u8,
+            (blue as f64 + (target_blue as f64 - blue as f64) * mid).round() as u8,
+        );
+        if contrast_ratio(blended, background).is_some_and(|ratio| ratio >= target) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    Color::Rgb(
+        (red as f64 + (target_red as f64 - red as f64) * high).round() as u8,
+        (green as f64 + (target_green as f64 - green as f64) * high).round() as u8,
+        (blue as f64 + (target_blue as f64 - blue as f64) * high).round() as u8,
+    )
+}
+
 impl Theme {
     pub fn dark() -> Self {
         Self {
@@ -183,7 +253,7 @@ impl Theme {
     }
 
     pub fn from_mode(mode: ThemeMode) -> Self {
-        match mode {
+        let mut theme = match mode {
             ThemeMode::Dark => Self::dark(),
             ThemeMode::Light => Self::light(),
             ThemeMode::Latte => Self::catppuccin(CATPPUCCIN_LATTE, false),
@@ -192,7 +262,74 @@ impl Theme {
             ThemeMode::Mocha => Self::catppuccin(CATPPUCCIN_MOCHA, true),
             ThemeMode::HighContrast => Self::high_contrast(),
             ThemeMode::Mono => Self::mono(),
+        };
+        theme.enforce_readable_contrast();
+        theme
+    }
+
+    /// True no-colour palette: terminal default foreground/background with
+    /// reverse video for selection. No explicit RGB values are emitted.
+    pub fn no_color() -> Self {
+        Self {
+            bg: Color::Reset,
+            surface: Color::Reset,
+            surface_alt: Color::Reset,
+            elevated: Color::Reset,
+            text: Color::Reset,
+            text_dim: Color::Reset,
+            muted: Color::Reset,
+            accent: Color::Reset,
+            accent_soft: Color::Reset,
+            on_accent: Color::Reset,
+            success: Color::Reset,
+            warning: Color::Reset,
+            danger: Color::Reset,
+            info: Color::Reset,
+            border: Color::Reset,
+            border_active: Color::Reset,
+            selected_bg: Color::Reset,
+            selected_fg: Color::Reset,
+            badge_bg: Color::Reset,
+            badge_fg: Color::Reset,
+            code_bg: Color::Reset,
+            scroll_track: Color::Reset,
+            scroll_thumb: Color::Reset,
         }
+    }
+
+    fn enforce_readable_contrast(&mut self) {
+        self.text = ensure_contrast(self.text, self.bg, 7.0);
+        self.text = ensure_contrast(self.text, self.surface, 7.0);
+        self.text = ensure_contrast(self.text, self.selected_bg, 7.0);
+        self.text_dim = ensure_contrast(self.text_dim, self.bg, 4.5);
+        self.text_dim = ensure_contrast(self.text_dim, self.elevated, 4.5);
+        self.text_dim = ensure_contrast(self.text_dim, self.surface, 4.5);
+        self.text_dim = ensure_contrast(self.text_dim, self.surface_alt, 4.5);
+        self.text_dim = ensure_contrast(self.text_dim, self.selected_bg, 4.5);
+        self.muted = ensure_contrast(self.muted, self.bg, 4.5);
+        self.muted = ensure_contrast(self.muted, self.elevated, 4.5);
+        self.muted = ensure_contrast(self.muted, self.surface, 4.5);
+        self.muted = ensure_contrast(self.muted, self.surface_alt, 4.5);
+        self.accent = ensure_contrast(self.accent, self.bg, 3.0);
+        self.accent = ensure_contrast(self.accent, self.elevated, 3.0);
+        self.accent = ensure_contrast(self.accent, self.surface, 3.0);
+        self.accent = ensure_contrast(self.accent, self.surface_alt, 3.0);
+        self.accent = ensure_contrast(self.accent, self.selected_bg, 3.0);
+        for color in [
+            &mut self.success,
+            &mut self.warning,
+            &mut self.danger,
+            &mut self.info,
+        ] {
+            *color = ensure_contrast(*color, self.bg, 4.5);
+            *color = ensure_contrast(*color, self.elevated, 4.5);
+            *color = ensure_contrast(*color, self.surface, 4.5);
+            *color = ensure_contrast(*color, self.surface_alt, 4.5);
+        }
+        self.warning = ensure_contrast(self.warning, self.code_bg, 4.5);
+        self.on_accent = ensure_contrast(self.on_accent, self.accent, 4.5);
+        self.selected_fg = ensure_contrast(self.selected_fg, self.selected_bg, 4.5);
+        self.badge_fg = ensure_contrast(self.badge_fg, self.badge_bg, 4.5);
     }
 
     /// Maximum-contrast palette for low-vision terminals.
@@ -349,6 +486,9 @@ impl Theme {
     }
 
     pub fn selected(&self) -> Style {
+        if self.bg == Color::Reset {
+            return Style::default().add_modifier(Modifier::REVERSED | Modifier::BOLD);
+        }
         Style::default()
             .fg(self.selected_fg)
             .bg(self.selected_bg)
@@ -356,7 +496,9 @@ impl Theme {
     }
 
     pub fn card(&self, selected: bool) -> Style {
-        if selected {
+        if selected && self.bg == Color::Reset {
+            Style::default().add_modifier(Modifier::REVERSED)
+        } else if selected {
             Style::default().fg(self.text).bg(self.selected_bg)
         } else {
             Style::default().fg(self.text).bg(self.surface)
@@ -442,5 +584,45 @@ mod tests {
             assert_ne!(theme.text, theme.bg, "{mode:?}");
             assert_ne!(theme.accent, theme.bg, "{mode:?}");
         }
+    }
+
+    #[test]
+    fn every_theme_meets_quantitative_contrast_targets() {
+        for mode in ThemeMode::ALL {
+            let theme = Theme::from_mode(mode);
+            let pairs = [
+                ("text/bg", theme.text, theme.bg, 7.0),
+                ("text_dim/bg", theme.text_dim, theme.bg, 4.5),
+                ("muted/elevated", theme.muted, theme.elevated, 4.5),
+                ("accent/bg", theme.accent, theme.bg, 3.0),
+                ("danger/bg", theme.danger, theme.bg, 4.5),
+                ("success/bg", theme.success, theme.bg, 4.5),
+                ("warning/bg", theme.warning, theme.bg, 4.5),
+                ("info/bg", theme.info, theme.bg, 4.5),
+                (
+                    "selected_fg/selected_bg",
+                    theme.selected_fg,
+                    theme.selected_bg,
+                    4.5,
+                ),
+                ("on_accent/accent", theme.on_accent, theme.accent, 4.5),
+                ("badge_fg/badge_bg", theme.badge_fg, theme.badge_bg, 4.5),
+            ];
+            for (label, foreground, background, target) in pairs {
+                let ratio = contrast_ratio(foreground, background).unwrap_or(21.0);
+                assert!(
+                    ratio >= target,
+                    "{mode:?} {label} contrast {ratio:.2} < {target}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn no_color_uses_terminal_defaults_and_reverse_selection() {
+        let theme = Theme::no_color();
+        assert_eq!(theme.bg, Color::Reset);
+        assert_eq!(theme.text, Color::Reset);
+        assert!(theme.selected().add_modifier.contains(Modifier::REVERSED));
     }
 }

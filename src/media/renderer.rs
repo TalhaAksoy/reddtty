@@ -140,6 +140,10 @@ impl ImageManager {
         &self.protocol_label
     }
 
+    pub fn auto_protocol_label(&self) -> String {
+        format!("{:?}", self.auto_protocol)
+    }
+
     pub fn pending_count(&self) -> usize {
         self.pending.len()
     }
@@ -561,5 +565,27 @@ mod tests {
             ImageStatus::Disabled
         ));
         assert!(!manager.enabled());
+    }
+}
+
+#[cfg(test)]
+mod protocol_tests {
+    use super::*;
+
+    #[test]
+    fn auto_returns_to_the_detected_protocol_after_disabling() {
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut manager = ImageManager::new(Picker::halfblocks(), &Settings::default(), tx);
+        let detected = manager.auto_protocol_label();
+        manager
+            .set_protocol(ImageProtocolSetting::Halfblocks, false)
+            .unwrap();
+        assert!(!manager.enabled());
+        assert_eq!(manager.protocol_label(), "Disabled");
+        manager
+            .set_protocol(ImageProtocolSetting::Auto, true)
+            .unwrap();
+        assert!(manager.enabled());
+        assert_eq!(manager.protocol_label(), detected);
     }
 }

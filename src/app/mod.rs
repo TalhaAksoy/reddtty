@@ -42,9 +42,9 @@ use hit::{HitMap, HitTarget, Pane};
 pub use modal::Modal;
 use modal::{
     AppearanceModal, BookmarksModal, CommandId, CommandPaletteModal, ConfigPickerModal,
-    ConfirmAction, FiltersModal, ImageProtocolModal, InfoModal, InfoSnapshot, RangeModal,
-    SettingsModal, SortChoice, SortContext, SortModal, SourceModal, TextKind, TextModal,
-    ThemePickerModal,
+    ConfirmAction, ConfirmModal, FiltersModal, ImageProtocolModal, InfoModal, InfoSnapshot,
+    RangeModal, RecoveryModal, SettingsModal, SortChoice, SortContext, SortModal, SourceModal,
+    TextKind, TextModal, ThemePickerModal,
 };
 use post::{PostView, ToggleOutcome};
 use sidebar::{SidebarEntry, SidebarState};
@@ -112,6 +112,12 @@ impl Notification {
     }
 }
 
+struct PendingSwitch {
+    request: u64,
+    name: String,
+    settings: Settings,
+}
+
 pub struct App {
     pub provider: Arc<dyn ContentProvider>,
     pub settings: Settings,
@@ -140,14 +146,30 @@ pub struct App {
     /// completed yet in this session.
     pub provider_status: Option<crate::providers::ProviderStatus>,
     pub persist_error_shown: bool,
+    /// Session-only strict no-colour mode (`--no-color` / `NO_COLOR`).
+    pub no_color: bool,
+    /// The existing config could not be parsed. Saves stay blocked until an
+    /// explicit recovery action.
+    pub config_corrupt: bool,
+    pub config_recovery: Option<PathBuf>,
+    /// Last Settings row, restored when returning from a submenu.
+    pub settings_cursor: usize,
+    /// Set after an explicit recovery action so the normal exit save cannot
+    /// overwrite the file that was just restored/created.
+    pub skip_exit_persist: bool,
     /// Values from the config file, before CLI session overrides. These are
     /// what gets written back unless the user changes them in-app.
     pub persist_theme: crate::config::ThemeMode,
     pub persist_images_enabled: bool,
     pub persist_images_protocol: crate::config::ImageProtocolSetting,
+    /// Provider settings from the config file, before CLI session overrides.
+    pub persist_provider: crate::config::ProviderSettings,
     /// Local bookmarks, read state and filters. Never sent to a provider.
     pub library: Library,
     pub library_path: PathBuf,
+    /// A corrupt library is kept read-only so automatic saves cannot replace it.
+    pub library_corrupt: bool,
+    pub library_recovery: Option<PathBuf>,
     /// In-memory source health shown on the Source screen.
     pub health: SourceHealth,
     /// Start time for each in-flight request, used for latency reporting.
@@ -156,6 +178,16 @@ pub struct App {
     pub recent_commands: Vec<CommandId>,
     /// Last quick-mute rule, so `u` can undo it.
     pub last_filter_undo: Option<(FilterKind, String)>,
+    /// In-flight source-health probe, if any.
+    pub probe_request: Option<u64>,
+    /// Candidate provider awaiting its pre-flight probe.
+    pending_switch: Option<PendingSwitch>,
+    /// Bookmark list state to restore after reading a bookmarked post.
+    pub return_to_bookmarks: Option<BookmarksModal>,
+    /// Bookmark list state to restore when a delete confirmation is cancelled.
+    pub bookmark_delete_return: Option<BookmarksModal>,
+    /// Custom-instance form to restore when network consent is cancelled.
+    pub custom_redlib_return: Option<TextModal>,
 }
 
 impl App {
@@ -173,8 +205,11 @@ impl App {
         let demo = provider.is_demo();
         let provider_label = provider.display_name();
         let library_path = Library::path_for(&config_path);
-        let (library, library_warnings) = Library::load(&library_path);
-        notices.extend(library_warnings);
+        let loaded = Library::load_checked(&library_path);
+        let library = loaded.library;
+        let library_corrupt = loaded.corrupt;
+        let library_recovery = loaded.recovery;
+        notices.extend(loaded.warnings);
         let explicit_feed = initial_spec.is_some();
         let restored_feed = if explicit_feed {
             None
@@ -198,11 +233,20 @@ impl App {
             sort = options.first().copied().unwrap_or(spec.default_sort());
         }
         let view_id = ViewId(1);
-        let mut feed = FeedView::new(view_id, spec.clone(), sort, TopRange::Week);
+        let restored_range = if explicit_feed {
+            TopRange::Week
+        } else {
+            library.last_top_range.unwrap_or(TopRange::Week)
+        };
+        let mut feed = FeedView::new(view_id, spec.clone(), sort, restored_range);
+        if !explicit_feed {
+            feed.pending_selected_id = library.last_selected_post.clone();
+        }
         feed.loading_initial = true;
         let persist_theme = settings.general.theme;
         let persist_images_enabled = settings.images.enabled;
         let persist_images_protocol = settings.images.protocol;
+        let persist_provider = settings.provider.clone();
 
         let mut app = Self {
             provider,
@@ -229,15 +273,28 @@ impl App {
             provider_label,
             provider_status: None,
             persist_error_shown: false,
+            no_color: false,
+            config_corrupt: false,
+            config_recovery: None,
+            settings_cursor: 0,
+            skip_exit_persist: false,
             persist_theme,
             persist_images_enabled,
             persist_images_protocol,
+            persist_provider,
             library,
             library_path,
+            library_corrupt,
+            library_recovery,
             health: SourceHealth::default(),
             request_starts: HashMap::new(),
             recent_commands: Vec::new(),
             last_filter_undo: None,
+            probe_request: None,
+            pending_switch: None,
+            return_to_bookmarks: None,
+            bookmark_delete_return: None,
+            custom_redlib_return: None,
         };
         for notice in notices {
             let kind = if notice.to_ascii_lowercase().contains("demo") {
@@ -273,7 +330,11 @@ impl App {
     // ------------------------------------------------------------------
 
     pub fn theme(&self) -> Theme {
-        Theme::from_mode(self.settings.general.theme)
+        if self.no_color {
+            Theme::no_color()
+        } else {
+            Theme::from_mode(self.settings.general.theme)
+        }
     }
 
     /// Compact navigation trail for the top bar.
@@ -438,9 +499,43 @@ impl App {
     // Local library
     // ------------------------------------------------------------------
 
-    pub fn save_library(&mut self) {
-        if let Err(error) = self.library.save(&self.library_path) {
-            self.notify(NoticeKind::Error, error);
+    /// Persist the local library. Returns false and leaves the in-memory state
+    /// untouched when a corrupt original file is being protected or a write
+    /// fails. Callers must not emit success notifications when this is false.
+    pub fn save_library(&mut self) -> bool {
+        if self.library_corrupt {
+            let recovery = self
+                .library_recovery
+                .as_ref()
+                .map(|path| format!(" Recovery copy: {}.", path.display()))
+                .unwrap_or_default();
+            self.notify(
+                NoticeKind::Error,
+                format!(
+                    "Local library is corrupt; changes were not saved.{recovery} Repair or remove {} and restart.",
+                    self.library_path.display()
+                ),
+            );
+            return false;
+        }
+        match self.library.save_merged(&self.library_path) {
+            Ok(()) => true,
+            Err(error) => {
+                self.notify(
+                    NoticeKind::Error,
+                    format!("Could not save local library: {error}"),
+                );
+                false
+            }
+        }
+    }
+
+    fn persist_library_or_revert(&mut self, before: Library) -> bool {
+        if self.save_library() {
+            true
+        } else {
+            self.library = before;
+            false
         }
     }
 
@@ -451,9 +546,27 @@ impl App {
         else {
             return;
         };
+        let top_range = self
+            .current_feed()
+            .map(|feed| feed.top_range)
+            .unwrap_or(TopRange::Week);
+        let selected = self.current_feed().and_then(FeedView::selected_id);
+        let before = (
+            self.library.last_feed.clone(),
+            self.library.last_sort,
+            self.library.last_top_range,
+            self.library.last_selected_post.clone(),
+        );
         self.library.last_feed = Some(spec);
         self.library.last_sort = Some(sort);
-        self.save_library();
+        self.library.last_top_range = Some(top_range);
+        self.library.last_selected_post = selected;
+        if !self.save_library() {
+            self.library.last_feed = before.0;
+            self.library.last_sort = before.1;
+            self.library.last_top_range = before.2;
+            self.library.last_selected_post = before.3;
+        }
     }
 
     /// Rebuild the provider from the current settings and restart navigation
@@ -468,6 +581,10 @@ impl App {
         self.provider_status = None;
         self.health.reset();
         self.request_starts.clear();
+        // Any probe from the previous provider generation must not mutate the
+        // new provider's health or status.
+        self.probe_request = None;
+        self.pending_switch = None;
         self.images.clear_failures();
 
         let context = self.nav.iter().rev().find_map(|view| match view {
@@ -597,6 +714,9 @@ impl App {
         if matches!(self.nav.last(), Some(View::Feed(_))) {
             self.remember_last_view();
         }
+        if let Some(modal) = self.return_to_bookmarks.take() {
+            self.modal = Some(Modal::Bookmarks(modal));
+        }
         self.dirty = true;
     }
 
@@ -622,8 +742,9 @@ impl App {
         if post_removed {
             view.comments_loading = false;
         }
-        if self.library.mark_post_read(&post.id) {
-            self.save_library();
+        let before = self.library.clone();
+        if self.library.mark_post_read(&post.id) && !self.persist_library_or_revert(before) {
+            // The post still opens, but the read marker was rolled back.
         }
         self.nav.push(View::Post(view));
         self.focus = Focus::Comments;
@@ -759,8 +880,12 @@ impl App {
             self.dirty = true;
             return;
         }
+        let before = self.settings.clone();
         let added = self.settings.toggle_favorite(&name);
-        self.persist();
+        if !self.persist() {
+            self.settings = before;
+            return;
+        }
         self.clamp_sidebar();
         if added {
             self.notify(NoticeKind::Success, format!("r/{name} added to favorites."));
@@ -769,8 +894,12 @@ impl App {
 
     fn remove_favorite_now(&mut self, name: &str) {
         if self.settings.is_favorite(name) {
+            let before = self.settings.clone();
             self.settings.toggle_favorite(name);
-            self.persist();
+            if !self.persist() {
+                self.settings = before;
+                return;
+            }
             self.clamp_sidebar();
             self.notify(
                 NoticeKind::Info,
@@ -789,8 +918,11 @@ impl App {
             self.notify(NoticeKind::Info, "Select a post first.");
             return;
         };
+        let before = self.library.clone();
         let saved = self.library.toggle_bookmark(&post);
-        self.save_library();
+        if !self.persist_library_or_revert(before) {
+            return;
+        }
         if saved {
             self.notify(
                 NoticeKind::Success,
@@ -807,8 +939,11 @@ impl App {
             self.notify(NoticeKind::Info, "Select a post first.");
             return;
         };
+        let before = self.library.clone();
         let read = self.library.toggle_post_read(&post.id);
-        self.save_library();
+        if !self.persist_library_or_revert(before) {
+            return;
+        }
         if self.library.filters.hide_read && read {
             self.prune_current_feed();
         }
@@ -834,10 +969,14 @@ impl App {
         };
         let title = saved.post.title.clone();
         let id = saved.post.id.clone();
+        let before = self.library.clone();
         self.library.remove_bookmark(&id);
-        self.save_library();
+        if !self.persist_library_or_revert(before) {
+            return;
+        }
         if let Some(Modal::Bookmarks(modal)) = &mut self.modal {
-            modal.clamp(self.library.bookmarks.len());
+            let total = modal.filtered(&self.library).len();
+            modal.clamp(total);
         }
         self.notify(
             NoticeKind::Info,
@@ -850,7 +989,22 @@ impl App {
         let Some(post) = self.library.saved_post(index).cloned() else {
             return;
         };
+        if let Some(Modal::Bookmarks(modal)) = &self.modal {
+            self.return_to_bookmarks = Some(modal.clone());
+        }
+        self.modal = None;
         self.open_post_object(post);
+    }
+
+    fn remove_bookmark_by_id(&mut self, id: &str) {
+        if let Some(index) = self
+            .library
+            .bookmarks
+            .iter()
+            .position(|saved| saved.post.id == id)
+        {
+            self.remove_bookmark_item(index);
+        }
     }
 
     /// Remove posts hidden by the current local filters from the visible feed.
@@ -872,11 +1026,15 @@ impl App {
     }
 
     pub fn toggle_theme(&mut self) {
+        if self.no_color {
+            self.notify(
+                NoticeKind::Info,
+                "NO_COLOR is active for this session; the saved theme is unchanged.",
+            );
+            return;
+        }
         let next = self.settings.general.theme.toggle();
-        self.apply_theme_preview(next);
-        self.persist_theme = next;
-        self.persist();
-        self.notify(NoticeKind::Info, format!("Theme: {}", next.label()));
+        self.commit_theme(next);
     }
 
     fn apply_theme_preview(&mut self, theme: crate::config::ThemeMode) {
@@ -893,16 +1051,37 @@ impl App {
     }
 
     fn commit_theme(&mut self, theme: crate::config::ThemeMode) {
+        if self.no_color {
+            self.notify(
+                NoticeKind::Info,
+                "NO_COLOR is active for this session; the saved theme is unchanged.",
+            );
+            return;
+        }
+        let previous = self.settings.general.theme;
+        let previous_persist = self.persist_theme;
         self.apply_theme_preview(theme);
         self.persist_theme = theme;
-        self.persist();
+        if !self.persist() {
+            self.apply_theme_preview(previous);
+            self.persist_theme = previous_persist;
+            return;
+        }
         self.notify(NoticeKind::Info, format!("Theme: {}", theme.label()));
     }
 
     pub fn toggle_sidebar(&mut self) {
-        self.settings.general.show_sidebar = !self.settings.general.show_sidebar;
+        let previous = self.settings.general.show_sidebar;
+        self.settings.general.show_sidebar = !previous;
         if !self.settings.general.show_sidebar && self.focus == Focus::Sidebar {
             self.focus = Focus::Feed;
+        }
+        if !self.persist() {
+            self.settings.general.show_sidebar = previous;
+            if previous && self.focus == Focus::Feed {
+                self.focus = Focus::Sidebar;
+            }
+            return;
         }
         if self.settings.general.show_sidebar && self.size.width < 76 {
             self.notify(
@@ -910,24 +1089,42 @@ impl App {
                 "The sidebar needs at least 76 columns; it will appear when the terminal is wider.",
             );
         }
-        self.persist();
         self.dirty = true;
     }
 
-    pub fn persist(&mut self) {
-        let mut to_save = self.settings.clone();
-        to_save.general.theme = self.persist_theme;
-        to_save.images.enabled = self.persist_images_enabled;
-        to_save.images.protocol = self.persist_images_protocol;
-        if let Err(error) = to_save.save(&self.config_path) {
+    pub fn persist(&mut self) -> bool {
+        if self.config_corrupt {
             if !self.persist_error_shown {
                 self.persist_error_shown = true;
                 self.notify(
                     NoticeKind::Error,
-                    format!("Could not save settings: {error}"),
+                    "Configuration is corrupt; changes are session-only. Open Settings → Configuration recovery to create a new config or restore a backup.",
                 );
             }
-            tracing::warn!(error = %error, "failed to save settings");
+            return false;
+        }
+        let mut to_save = self.settings.clone();
+        to_save.general.theme = self.persist_theme;
+        to_save.images.enabled = self.persist_images_enabled;
+        to_save.images.protocol = self.persist_images_protocol;
+        to_save.provider = self.persist_provider.clone();
+        match to_save.save(&self.config_path) {
+            Ok(()) => {
+                self.settings.revision = to_save.revision;
+                self.persist_error_shown = false;
+                true
+            }
+            Err(error) => {
+                if !self.persist_error_shown {
+                    self.persist_error_shown = true;
+                    self.notify(
+                        NoticeKind::Error,
+                        format!("Could not save settings: {error}"),
+                    );
+                }
+                tracing::warn!(error = %error, "failed to save settings");
+                false
+            }
         }
     }
 
@@ -982,26 +1179,37 @@ impl App {
     }
 
     fn request_more(&mut self) {
-        let request_id = self.begin_request();
+        self.request_more_with(false);
+    }
+
+    fn request_more_with(&mut self, force: bool) {
         let limit = self.settings.content.default_post_limit;
-        let Some(view) = self.current_feed() else {
-            return;
+        let (view_id, request) = {
+            let Some(view) = self.current_feed() else {
+                return;
+            };
+            let viewport = view.last_viewport;
+            if !force && !view.wants_more(viewport) {
+                return;
+            }
+            if force && view.more_request.is_some() {
+                return;
+            }
+            let Some(after) = view.after.clone() else {
+                return;
+            };
+            (
+                view.id,
+                FeedRequest {
+                    spec: view.spec.clone(),
+                    sort: view.sort,
+                    top_range: view.top_range,
+                    after: Some(after),
+                    limit,
+                },
+            )
         };
-        let view_id = view.id;
-        let viewport = view.last_viewport;
-        if !view.wants_more(viewport) {
-            return;
-        }
-        let Some(after) = view.after.clone() else {
-            return;
-        };
-        let request = FeedRequest {
-            spec: view.spec.clone(),
-            sort: view.sort,
-            top_range: view.top_range,
-            after: Some(after),
-            limit,
-        };
+        let request_id = self.begin_request();
         if let Some(view) = self.feed_mut(view_id) {
             view.more_request = Some(request_id);
             view.loading_more = true;
@@ -1018,6 +1226,21 @@ impl App {
                 result,
             });
         });
+    }
+
+    /// Retry a failed append without refreshing or losing the current feed.
+    fn retry_more(&mut self) {
+        let Some(view) = self.current_feed() else {
+            return;
+        };
+        if view.more_error.is_none() {
+            self.notify(NoticeKind::Info, "No failed page to retry.");
+            return;
+        }
+        if let Some(view) = self.current_feed_mut() {
+            view.more_error = None;
+        }
+        self.request_more_with(true);
     }
 
     fn request_more_if_needed(&mut self) {
@@ -1291,6 +1514,7 @@ impl App {
     pub fn open_info(&mut self) {
         self.modal = Some(Modal::Info(InfoModal {
             info: self.info_snapshot(),
+            scroll: 0,
         }));
         self.dirty = true;
     }
@@ -1409,7 +1633,9 @@ impl App {
                 if rest.is_empty() {
                     self.open_source_health();
                 } else {
-                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::for_settings(
+                        &self.settings,
+                    )));
                 }
                 Ok(true)
             }
@@ -1423,8 +1649,9 @@ impl App {
                 } else if rest == "clear" {
                     self.clear_all_filters();
                 } else if let Some(expression) = rest.strip_prefix("add ") {
+                    let before = self.library.clone();
                     let message = self.library.filters.add_expression(expression)?;
-                    self.apply_filter_change(message);
+                    self.apply_filter_change(before, message);
                 } else {
                     return Err("Usage: filter | filter add <kind:value> | filter clear".into());
                 }
@@ -1455,12 +1682,12 @@ impl App {
                     "keyword" | "word" => FilterKind::Keyword,
                     _ => return Err("Unknown filter kind".into()),
                 };
+                let before = self.library.clone();
                 if self.library.filters.remove_entry(kind, value.trim()) {
-                    self.apply_filter_change(format!(
-                        "Removed {} filter “{}”.",
-                        kind.label(),
-                        value.trim()
-                    ));
+                    self.apply_filter_change(
+                        before,
+                        format!("Removed {} filter “{}”.", kind.label(), value.trim()),
+                    );
                 } else {
                     return Err("No matching local filter.".into());
                 }
@@ -1538,11 +1765,13 @@ impl App {
 
     fn add_filter_rule(&mut self, kind: FilterKind, value: &str) {
         let expression = format!("{}:{}", kind.label(), value);
+        let before = self.library.clone();
         match self.library.filters.add_expression(&expression) {
             Ok(message) => {
-                self.last_filter_undo = Some((kind, value.trim().to_string()));
-                self.apply_filter_change(message);
-                self.notify(NoticeKind::Info, "Press u to undo the last filter.");
+                if self.apply_filter_change(before, message) {
+                    self.last_filter_undo = Some((kind, value.trim().to_string()));
+                    self.notify(NoticeKind::Info, "Press u to undo the last filter.");
+                }
             }
             Err(error) => self.notify(NoticeKind::Error, error),
         }
@@ -1553,8 +1782,14 @@ impl App {
             self.notify(NoticeKind::Info, "No recent filter change to undo.");
             return;
         };
-        if self.library.filters.remove_entry(kind, &value) {
-            self.apply_filter_change(format!("Removed {} filter “{value}”.", kind.label()));
+        let before = self.library.clone();
+        if self.library.filters.remove_entry(kind, &value)
+            && !self.apply_filter_change(
+                before,
+                format!("Removed {} filter “{value}”.", kind.label()),
+            )
+        {
+            self.last_filter_undo = Some((kind, value));
         }
     }
 
@@ -1566,7 +1801,16 @@ impl App {
         let value = match kind {
             FilterKind::Subreddit => post.subreddit.clone(),
             FilterKind::Author => post.author.clone(),
-            FilterKind::Domain => post.domain_or_subreddit().to_string(),
+            FilterKind::Domain => match post.external_domain() {
+                Some(domain) => domain,
+                None => {
+                    self.notify(
+                        NoticeKind::Info,
+                        "This post has no external domain. Press M to mute the subreddit instead.",
+                    );
+                    return;
+                }
+            },
             FilterKind::Keyword => {
                 self.notify(
                     NoticeKind::Info,
@@ -1576,6 +1820,142 @@ impl App {
             }
         };
         self.add_filter_rule(kind, &value);
+    }
+
+    /// Persist the final reading context once, but never after an explicit
+    /// config recovery action.
+    pub fn finalize_on_exit(&mut self) {
+        if !self.skip_exit_persist {
+            self.persist();
+        }
+        if !self.library_corrupt {
+            self.remember_last_view();
+        }
+    }
+
+    fn execute_recovery_action(&mut self, index: usize) {
+        match index {
+            0 => {
+                self.modal = None;
+                self.notify(
+                    NoticeKind::Info,
+                    "Continuing with temporary defaults; changes will not be saved.",
+                );
+            }
+            1 => {
+                let backup = self.newest_recovery_backup();
+                match backup {
+                    Some(path) => match Settings::load_checked(&path) {
+                        loaded if loaded.corrupt => {
+                            self.notify(NoticeKind::Error, "That backup is also invalid.");
+                        }
+                        _ => match std::fs::read(&path) {
+                            Ok(bytes) => {
+                                match crate::persistence::write_private(&self.config_path, &bytes) {
+                                    Ok(()) => {
+                                        // Keep the corrupt guard active for the
+                                        // rest of this process so the exit save
+                                        // cannot overwrite the restored bytes.
+                                        self.config_corrupt = true;
+                                        self.config_recovery = Some(path.clone());
+                                        self.skip_exit_persist = true;
+                                        self.notify(
+                                            NoticeKind::Success,
+                                            format!(
+                                                "Restored {}. Restart ReddTTY to load it.",
+                                                path.display()
+                                            ),
+                                        );
+                                        self.should_quit = true;
+                                    }
+                                    Err(error) => self.notify(NoticeKind::Error, error.to_string()),
+                                }
+                            }
+                            Err(error) => self.notify(
+                                NoticeKind::Error,
+                                format!("Could not read backup: {error}"),
+                            ),
+                        },
+                    },
+                    None => self.notify(NoticeKind::Info, "No valid backup was found."),
+                }
+            }
+            2 => {
+                let recovery = self.config_recovery.clone();
+                if self.config_path.exists() && recovery.is_none() {
+                    self.notify(
+                        NoticeKind::Error,
+                        "No recovery copy exists; refusing to replace the original config.",
+                    );
+                    return;
+                }
+                let mut to_save = self.settings.clone();
+                to_save.general.theme = self.persist_theme;
+                to_save.images.enabled = self.persist_images_enabled;
+                to_save.images.protocol = self.persist_images_protocol;
+                to_save.provider = self.persist_provider.clone();
+                match to_save.write_new(&self.config_path) {
+                    Ok(()) => {
+                        self.settings = to_save;
+                        self.config_corrupt = false;
+                        self.skip_exit_persist = true;
+                        self.notify(
+                            NoticeKind::Success,
+                            format!(
+                                "New configuration written.{}{}",
+                                recovery
+                                    .map(|path| format!(
+                                        " Original preserved at {}.",
+                                        path.display()
+                                    ))
+                                    .unwrap_or_default(),
+                                " Restart ReddTTY to reload it."
+                            ),
+                        );
+                        self.should_quit = true;
+                    }
+                    Err(error) => {
+                        self.notify(NoticeKind::Error, error);
+                    }
+                }
+            }
+            3 => self.should_quit = true,
+            _ => {}
+        }
+    }
+
+    fn newest_recovery_backup(&self) -> Option<PathBuf> {
+        let parent = self.config_path.parent()?;
+        let stem = self
+            .config_path
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("config");
+        let mut candidates: Vec<(std::time::SystemTime, PathBuf)> = std::fs::read_dir(parent)
+            .ok()?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| {
+                if self
+                    .config_recovery
+                    .as_ref()
+                    .is_some_and(|known| known == path)
+                {
+                    return true;
+                }
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                name.starts_with(stem) && (name.contains(".bckp_") || name.contains(".corrupt-"))
+            })
+            .filter_map(|path| {
+                let modified = std::fs::metadata(&path)
+                    .and_then(|meta| meta.modified())
+                    .ok()?;
+                Some((modified, path))
+            })
+            .collect();
+        candidates.retain(|(_, path)| !Settings::load_checked(path).corrupt);
+        candidates.sort_by_key(|(modified, _)| *modified);
+        candidates.pop().map(|(_, path)| path)
     }
 
     fn execute_command(&mut self, command: CommandId) {
@@ -1593,7 +1973,9 @@ impl App {
             CommandId::Search => self.open_search_modal(),
             CommandId::GoToSubreddit => self.open_goto_modal(),
             CommandId::ChangeSource => {
-                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::for_settings(
+                    &self.settings,
+                )));
             }
             CommandId::Refresh => self.refresh_current(),
             CommandId::ToggleSidebar => self.toggle_sidebar(),
@@ -1625,15 +2007,24 @@ impl App {
     }
 
     pub fn open_settings(&mut self) {
-        self.modal = Some(Modal::Settings(SettingsModal::new(
-            self.settings.general.theme,
-        )));
+        self.settings_cursor = 0;
+        self.modal = Some(Modal::Settings(self.settings_modal()));
+    }
+
+    fn settings_modal(&self) -> SettingsModal {
+        SettingsModal {
+            selected: self.settings_cursor,
+            theme: self.settings.general.theme,
+        }
     }
 
     fn activate_settings_item(&mut self, index: usize) {
+        self.settings_cursor = index;
         match index {
             0 => {
-                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::for_settings(
+                    &self.settings,
+                )));
             }
             1 => {
                 self.modal = Some(Modal::ThemePicker(ThemePickerModal::new(
@@ -1650,12 +2041,29 @@ impl App {
             }
             4 => self.open_source_health(),
             5 => self.open_filters(),
+            6 => {
+                self.modal = Some(Modal::Confirm(ConfirmModal::clear_read_history()));
+            }
+            7 => {
+                self.modal = Some(Modal::Recovery(RecoveryModal::default()));
+            }
             _ => {}
         }
     }
 
     fn commit_image_protocol(&mut self, setting: crate::config::ImageProtocolSetting) {
         let enabled = setting != crate::config::ImageProtocolSetting::Disabled;
+        if self.no_color && enabled {
+            self.notify(
+                NoticeKind::Info,
+                "NO_COLOR is active for this session; images stay disabled.",
+            );
+            return;
+        }
+        let previous_protocol = self.settings.images.protocol;
+        let previous_enabled = self.settings.images.enabled;
+        let previous_persist_protocol = self.persist_images_protocol;
+        let previous_persist_enabled = self.persist_images_enabled;
         if let Err(error) = self.images.set_protocol(setting, enabled) {
             self.notify(NoticeKind::Error, error);
             return;
@@ -1664,7 +2072,16 @@ impl App {
         self.settings.images.enabled = enabled;
         self.persist_images_protocol = setting;
         self.persist_images_enabled = enabled;
-        self.persist();
+        if !self.persist() {
+            self.settings.images.protocol = previous_protocol;
+            self.settings.images.enabled = previous_enabled;
+            self.persist_images_protocol = previous_persist_protocol;
+            self.persist_images_enabled = previous_persist_enabled;
+            let _ = self
+                .images
+                .set_protocol(previous_protocol, previous_enabled);
+            return;
+        }
         self.force_clear = true;
         self.dirty = true;
         if enabled {
@@ -1678,8 +2095,12 @@ impl App {
     }
 
     fn toggle_relative_time(&mut self) {
+        let previous = self.settings.ui.relative_time;
         self.settings.ui.relative_time = !self.settings.ui.relative_time;
-        self.persist();
+        if !self.persist() {
+            self.settings.ui.relative_time = previous;
+            return;
+        }
         self.notify(
             NoticeKind::Info,
             if self.settings.ui.relative_time {
@@ -1692,11 +2113,15 @@ impl App {
     }
 
     fn toggle_reduce_motion(&mut self) {
+        let previous = self.settings.ui.reduce_motion;
         self.settings.ui.reduce_motion = !self.settings.ui.reduce_motion;
         if self.settings.ui.reduce_motion {
             self.spinner = 0;
         }
-        self.persist();
+        if !self.persist() {
+            self.settings.ui.reduce_motion = previous;
+            return;
+        }
         self.notify(
             NoticeKind::Info,
             if self.settings.ui.reduce_motion {
@@ -1705,6 +2130,11 @@ impl App {
                 "Reduced motion disabled."
             },
         );
+        self.dirty = true;
+    }
+
+    pub fn open_custom_redlib(&mut self) {
+        self.modal = Some(Modal::Text(TextModal::custom_redlib()));
         self.dirty = true;
     }
 
@@ -1718,13 +2148,17 @@ impl App {
     }
 
     fn toggle_hide_read(&mut self) {
+        let before = self.library.clone();
         self.library.filters.hide_read = !self.library.filters.hide_read;
         let enabled = self.library.filters.hide_read;
-        self.apply_filter_change(if enabled {
-            "Hiding read posts."
-        } else {
-            "Showing read posts again."
-        });
+        self.apply_filter_change(
+            before,
+            if enabled {
+                "Hiding read posts."
+            } else {
+                "Showing read posts again."
+            },
+        );
     }
 
     fn remove_filter_row(&mut self, index: usize) {
@@ -1735,16 +2169,16 @@ impl App {
         let Some(entry) = self.library.filters.entries().get(index - 1).cloned() else {
             return;
         };
+        let before = self.library.clone();
         self.library.filters.remove_entry(entry.kind, &entry.value);
         let rows = self.filter_row_count().saturating_sub(1);
         if let Some(Modal::Filters(modal)) = &mut self.modal {
             modal.selected = modal.selected.min(rows);
         }
-        self.apply_filter_change(format!(
-            "Removed {} filter “{}”.",
-            entry.kind.label(),
-            entry.value
-        ));
+        self.apply_filter_change(
+            before,
+            format!("Removed {} filter “{}”.", entry.kind.label(), entry.value),
+        );
     }
 
     fn clear_all_filters(&mut self) {
@@ -1752,17 +2186,20 @@ impl App {
             self.notify(NoticeKind::Info, "No local filters are active.");
             return;
         }
+        let before = self.library.clone();
         self.library.clear_filters();
         if let Some(Modal::Filters(modal)) = &mut self.modal {
             modal.selected = 0;
         }
-        self.apply_filter_change("Cleared all local filters.");
+        self.apply_filter_change(before, "Cleared all local filters.");
     }
 
     /// Persist filter changes, prune the visible feed immediately and refetch
     /// the current feed so the active rule set is applied consistently.
-    fn apply_filter_change(&mut self, message: impl Into<String>) {
-        self.save_library();
+    fn apply_filter_change(&mut self, before: Library, message: impl Into<String>) -> bool {
+        if !self.persist_library_or_revert(before) {
+            return false;
+        }
         self.prune_current_feed();
         if let Some(View::Feed(feed)) = self.nav.last() {
             let id = feed.id;
@@ -1770,6 +2207,7 @@ impl App {
         }
         self.notify(NoticeKind::Info, message);
         self.dirty = true;
+        true
     }
 
     pub fn open_source_health(&mut self) {
@@ -1777,26 +2215,55 @@ impl App {
         self.dirty = true;
     }
 
+    /// Run a bounded, independent probe against the current provider. Unlike
+    /// `refresh_current`, this never replaces the visible feed or post.
+    fn probe_source(&mut self) {
+        if self.probe_request.is_some() {
+            self.notify(NoticeKind::Info, "A source probe is already running.");
+            return;
+        }
+        let request = self.begin_request();
+        self.probe_request = Some(request);
+        let feed_request = probe_feed_request(&self.settings, self.provider.as_ref());
+        self.notify(
+            NoticeKind::Info,
+            format!(
+                "Testing {} with a bounded feed request…",
+                self.provider_label
+            ),
+        );
+        if let Some(Modal::Source(modal)) = &mut self.modal {
+            modal.selected = 0;
+        }
+        let provider = self.provider.clone();
+        let tx = self.tx.clone();
+        spawn_guarded(async move {
+            let result = provider.get_feed(feed_request).await;
+            let _ = tx.send(AppEvent::ProbeFinished { request, result });
+        });
+    }
+
     fn execute_source_action(&mut self, index: usize) {
         match index {
-            0 => {
-                self.notify(
-                    NoticeKind::Info,
-                    format!("Testing {}…", self.provider_label),
-                );
-                self.refresh_current();
-                if let Some(Modal::Source(modal)) = &mut self.modal {
-                    modal.selected = 0;
-                }
-            }
+            0 => self.probe_source(),
             1 => {
-                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::default()));
+                self.modal = Some(Modal::ConfigPicker(ConfigPickerModal::for_settings(
+                    &self.settings,
+                )));
             }
             _ => {}
         }
     }
 
     fn activate_config_picker_item(&mut self, index: usize) {
+        if index >= crate::config::presets::PRESETS.len() {
+            self.open_custom_redlib();
+            return;
+        }
+        if self.pending_switch.is_some() {
+            self.notify(NoticeKind::Info, "A source test is already running.");
+            return;
+        }
         let Some(preset) = crate::config::presets::PRESETS.get(index) else {
             return;
         };
@@ -1810,37 +2277,113 @@ impl App {
                 return;
             }
         };
-        let backup = match crate::config::presets::backup_existing(&self.config_path) {
-            Ok(backup) => backup,
-            Err(error) => {
-                self.notify(NoticeKind::Error, error);
-                return;
-            }
+        // Build a temporary candidate and test it before touching the active
+        // provider, navigation stack or persisted configuration.
+        let mut candidate = self.settings.clone();
+        candidate.provider = preset_settings.provider;
+        self.start_provider_switch(candidate, preset.name.to_string());
+    }
+
+    fn start_provider_switch(&mut self, candidate: Settings, name: String) {
+        let setup = crate::providers::build_provider(&candidate, false);
+        let request = self.begin_request();
+        self.pending_switch = Some(PendingSwitch {
+            request,
+            name: name.clone(),
+            settings: candidate.clone(),
+        });
+        self.notify(
+            NoticeKind::Info,
+            format!("Testing {name} before switching…"),
+        );
+        let feed_request = probe_feed_request(&candidate, setup.provider.as_ref());
+        let provider = setup.provider;
+        let tx = self.tx.clone();
+        spawn_guarded(async move {
+            let result = provider.get_feed(feed_request).await;
+            let _ = tx.send(AppEvent::SwitchProbeFinished { request, result });
+        });
+    }
+
+    fn handle_switch_probe_finished(
+        &mut self,
+        request: u64,
+        result: Result<FeedPage, ProviderError>,
+    ) {
+        let Some(pending) = self.pending_switch.take() else {
+            self.request_starts.remove(&request);
+            return;
         };
-        // Change the content source only. Favorites, recents, theme, images and
-        // UI preferences stay with the user.
-        let mut to_save = self.settings.clone();
-        to_save.provider = preset_settings.provider;
-        to_save.general.theme = self.persist_theme;
-        to_save.images.enabled = self.persist_images_enabled;
-        to_save.images.protocol = self.persist_images_protocol;
-        if let Err(error) = to_save.save(&self.config_path) {
-            self.notify(NoticeKind::Error, format!("Could not save config: {error}"));
+        if pending.request != request {
+            self.pending_switch = Some(pending);
+            self.request_starts.remove(&request);
             return;
         }
-        self.settings.provider = to_save.provider;
-        let backup = backup
-            .map(|path| format!(" Previous config: {}.", path.display()))
-            .unwrap_or_default();
-        // Apply the new provider immediately; a restart is no longer needed.
-        self.reload_provider();
-        self.notify(
-            NoticeKind::Success,
-            format!(
-                "Changed to {}. Provider applied immediately.{}",
-                preset.name, backup
-            ),
-        );
+        let latency = self.request_starts.remove(&request).map(|at| at.elapsed());
+        match result {
+            Ok(page) => {
+                let backup = match crate::config::presets::backup_existing(&self.config_path) {
+                    Ok(backup) => backup,
+                    Err(error) => {
+                        self.notify(
+                            NoticeKind::Error,
+                            format!(
+                                "Could not back up the current config; source was not changed: {error}"
+                            ),
+                        );
+                        return;
+                    }
+                };
+                let mut to_save = self.settings.clone();
+                to_save.provider = pending.settings.provider.clone();
+                to_save.general.theme = self.persist_theme;
+                to_save.images.enabled = self.persist_images_enabled;
+                to_save.images.protocol = self.persist_images_protocol;
+                if let Err(error) = to_save.save(&self.config_path) {
+                    self.notify(
+                        NoticeKind::Error,
+                        format!("Could not save the new source; keeping the current one: {error}"),
+                    );
+                    return;
+                }
+                self.settings.provider = pending.settings.provider.clone();
+                self.settings.revision = to_save.revision;
+                self.persist_provider = pending.settings.provider;
+                self.reload_provider();
+                let backup = backup
+                    .map(|path| format!(" Previous config: {}.", path.display()))
+                    .unwrap_or_default();
+                self.notify(
+                    NoticeKind::Success,
+                    format!(
+                        "Switched to {}. Probe returned {} in {}.{}",
+                        pending.name,
+                        if page.posts.is_empty() {
+                            "a valid but empty listing".to_string()
+                        } else {
+                            format!("{} posts", page.posts.len())
+                        },
+                        latency
+                            .map(|value| format!("{} ms", value.as_millis()))
+                            .unwrap_or_else(|| "unknown time".into()),
+                        backup
+                    ),
+                );
+                if matches!(self.modal, Some(Modal::ConfigPicker(_))) {
+                    self.modal = None;
+                }
+            }
+            Err(error) => {
+                self.notify(
+                    NoticeKind::Error,
+                    format!(
+                        "Could not switch to {}: {error}. The current source was kept.",
+                        pending.name
+                    ),
+                );
+            }
+        }
+        self.dirty = true;
     }
 
     fn apply_feed_sort(&mut self, sort: FeedSort) {
@@ -1957,17 +2500,39 @@ impl App {
                     true,
                 );
             }
-            TextKind::AddFilter => match self.library.filters.add_expression(&modal.value) {
-                Ok(message) => {
-                    self.modal = Some(Modal::Filters(FiltersModal { selected: 1 }));
-                    self.apply_filter_change(message);
-                }
-                Err(error) => {
-                    if let Some(Modal::Text(m)) = &mut self.modal {
-                        m.error = Some(error);
+            TextKind::AddFilter => {
+                let before = self.library.clone();
+                match self.library.filters.add_expression(&modal.value) {
+                    Ok(message) => {
+                        self.modal = Some(Modal::Filters(FiltersModal { selected: 1 }));
+                        self.apply_filter_change(before, message);
+                    }
+                    Err(error) => {
+                        if let Some(Modal::Text(m)) = &mut self.modal {
+                            m.error = Some(error);
+                        }
                     }
                 }
-            },
+            }
+            TextKind::CustomRedlib => {
+                let raw = modal.value.trim();
+                let raw = if raw.starts_with("http://") || raw.starts_with("https://") {
+                    raw.to_string()
+                } else {
+                    format!("https://{raw}")
+                };
+                match crate::config::validate_html_base(&raw) {
+                    Ok(url) => {
+                        self.custom_redlib_return = Some(modal);
+                        self.modal = Some(Modal::Confirm(ConfirmModal::enable_custom_redlib(&url)));
+                    }
+                    Err(error) => {
+                        if let Some(Modal::Text(m)) = &mut self.modal {
+                            m.error = Some(error);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -2119,10 +2684,6 @@ impl App {
             return;
         }
 
-        if key.code == KeyCode::Char('q') {
-            self.should_quit = true;
-            return;
-        }
         match modal {
             Modal::Help(mut help) => {
                 let width = self.size.width;
@@ -2234,15 +2795,19 @@ impl App {
             Modal::Settings(settings) => match key.code {
                 KeyCode::Esc => self.modal = None,
                 KeyCode::Char('j') | KeyCode::Down => {
-                    let next = (settings.selected + 1).min(5);
+                    let max = if self.config_corrupt { 7 } else { 6 };
+                    let next = (settings.selected + 1).min(max);
+                    self.settings_cursor = next;
                     self.modal = Some(Modal::Settings(SettingsModal {
                         selected: next,
                         theme: settings.theme,
                     }));
                 }
                 KeyCode::Char('k') | KeyCode::Up => {
+                    let next = settings.selected.saturating_sub(1);
+                    self.settings_cursor = next;
                     self.modal = Some(Modal::Settings(SettingsModal {
-                        selected: settings.selected.saturating_sub(1),
+                        selected: next,
                         theme: settings.theme,
                     }));
                 }
@@ -2282,28 +2847,86 @@ impl App {
                 }
                 _ => {}
             },
-            Modal::Bookmarks(mut bookmarks) => match key.code {
-                KeyCode::Esc => self.modal = None,
-                KeyCode::Char('j') | KeyCode::Down => {
-                    let total = self.library.bookmarks.len();
-                    bookmarks.selected = (bookmarks.selected + 1).min(total.saturating_sub(1));
+            Modal::Bookmarks(mut bookmarks) => {
+                if bookmarks.searching {
+                    match key.code {
+                        KeyCode::Esc => bookmarks.searching = false,
+                        KeyCode::Enter => bookmarks.searching = false,
+                        KeyCode::Backspace => {
+                            bookmarks.query.pop();
+                            bookmarks.selected = 0;
+                        }
+                        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            bookmarks.query.clear();
+                            bookmarks.selected = 0;
+                        }
+                        KeyCode::Char(ch)
+                            if !key
+                                .modifiers
+                                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+                        {
+                            bookmarks.query.push(ch);
+                            bookmarks.selected = 0;
+                        }
+                        _ => {}
+                    }
                     self.modal = Some(Modal::Bookmarks(bookmarks));
+                } else {
+                    let filtered = bookmarks.filtered(&self.library);
+                    match key.code {
+                        KeyCode::Esc => self.modal = None,
+                        KeyCode::Char('/') => {
+                            bookmarks.searching = true;
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::Char('j') | KeyCode::Down => {
+                            bookmarks.selected =
+                                (bookmarks.selected + 1).min(filtered.len().saturating_sub(1));
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::Char('k') | KeyCode::Up => {
+                            bookmarks.selected = bookmarks.selected.saturating_sub(1);
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::PageDown => {
+                            bookmarks.selected =
+                                (bookmarks.selected + 8).min(filtered.len().saturating_sub(1));
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::PageUp => {
+                            bookmarks.selected = bookmarks.selected.saturating_sub(8);
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::Home => {
+                            bookmarks.selected = 0;
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::End => {
+                            bookmarks.selected = filtered.len().saturating_sub(1);
+                            self.modal = Some(Modal::Bookmarks(bookmarks));
+                        }
+                        KeyCode::Char('d') | KeyCode::Delete => {
+                            if let Some(index) = bookmarks.selected_library_index(&self.library) {
+                                let saved = &self.library.bookmarks[index];
+                                self.bookmark_delete_return = Some(bookmarks.clone());
+                                self.modal = Some(Modal::Confirm(ConfirmModal::remove_bookmark(
+                                    &saved.post.title,
+                                    &saved.post.id,
+                                )));
+                            }
+                        }
+                        KeyCode::Enter => {
+                            if let Some(index) = bookmarks.selected_library_index(&self.library) {
+                                self.open_bookmark_item(index);
+                            }
+                        }
+                        _ => {}
+                    }
                 }
-                KeyCode::Char('k') | KeyCode::Up => {
-                    bookmarks.selected = bookmarks.selected.saturating_sub(1);
-                    self.modal = Some(Modal::Bookmarks(bookmarks));
-                }
-                KeyCode::Char('d') | KeyCode::Delete => {
-                    self.remove_bookmark_item(bookmarks.selected);
-                }
-                KeyCode::Enter => self.open_bookmark_item(bookmarks.selected),
-                _ => {}
-            },
+            }
             Modal::Filters(mut filters) => match key.code {
                 KeyCode::Esc => {
-                    self.modal = Some(Modal::Settings(SettingsModal::new(
-                        self.settings.general.theme,
-                    )));
+                    self.modal = Some(Modal::Settings(self.settings_modal()));
                 }
                 KeyCode::Char('j') | KeyCode::Down => {
                     let max = self.filter_row_count().saturating_sub(1);
@@ -2330,18 +2953,60 @@ impl App {
                 KeyCode::Char('d') | KeyCode::Delete => {
                     self.remove_filter_row(filters.selected);
                 }
-                KeyCode::Char('C') => self.clear_all_filters(),
+                KeyCode::Char('C') => {
+                    self.modal = Some(Modal::Confirm(ConfirmModal::clear_filters()));
+                }
                 _ => {}
             },
-            Modal::Info(_) => match key.code {
+            Modal::Info(mut info) => match key.code {
                 KeyCode::Esc | KeyCode::Char('i') | KeyCode::Char('I') => self.modal = None,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    info.scroll = info.scroll.saturating_add(1);
+                    self.modal = Some(Modal::Info(info));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    info.scroll = info.scroll.saturating_sub(1);
+                    self.modal = Some(Modal::Info(info));
+                }
+                KeyCode::PageDown => {
+                    info.scroll = info.scroll.saturating_add(8);
+                    self.modal = Some(Modal::Info(info));
+                }
+                KeyCode::PageUp => {
+                    info.scroll = info.scroll.saturating_sub(8);
+                    self.modal = Some(Modal::Info(info));
+                }
+                // Advertised actions execute directly. Close the drawer first
+                // so the action sees the same state as the underlying screen.
+                KeyCode::Char('g') => {
+                    self.modal = None;
+                    self.open_goto_modal();
+                }
+                KeyCode::Char('G') => {
+                    self.modal = None;
+                    self.open_subreddit();
+                }
+                KeyCode::Char('f') => {
+                    self.modal = None;
+                    self.toggle_favorite();
+                }
+                KeyCode::Char('r') => {
+                    self.modal = None;
+                    self.refresh_current();
+                }
+                KeyCode::Char('Y') => {
+                    self.modal = None;
+                    self.open_comments();
+                }
+                KeyCode::Char('b') => {
+                    self.modal = None;
+                    self.toggle_bookmark_current();
+                }
                 _ => {}
             },
             Modal::ImagePicker(mut picker) => match key.code {
                 KeyCode::Esc => {
-                    self.modal = Some(Modal::Settings(SettingsModal::new(
-                        self.settings.general.theme,
-                    )));
+                    self.modal = Some(Modal::Settings(self.settings_modal()));
                 }
                 KeyCode::Char('j') | KeyCode::Down => {
                     picker.move_selection(1);
@@ -2388,9 +3053,10 @@ impl App {
             },
             Modal::Source(mut source) => match key.code {
                 KeyCode::Esc => {
-                    self.modal = Some(Modal::Settings(SettingsModal::new(
-                        self.settings.general.theme,
-                    )));
+                    if let Some(request) = self.probe_request.take() {
+                        self.request_starts.remove(&request);
+                    }
+                    self.modal = Some(Modal::Settings(self.settings_modal()));
                 }
                 KeyCode::Char('j') | KeyCode::Down => {
                     source.move_selection(1);
@@ -2405,33 +3071,139 @@ impl App {
                 KeyCode::Char('c') => self.execute_source_action(1),
                 _ => {}
             },
-            Modal::ConfigPicker(picker) => match key.code {
-                KeyCode::Esc => {
-                    self.modal = Some(Modal::Settings(SettingsModal::new(
-                        self.settings.general.theme,
-                    )));
+            Modal::ConfigPicker(picker) => {
+                let last = crate::config::presets::PRESETS.len();
+                match key.code {
+                    KeyCode::Esc => {
+                        if let Some(pending) = self.pending_switch.take() {
+                            self.request_starts.remove(&pending.request);
+                            self.notify(
+                                NoticeKind::Info,
+                                "Source test cancelled; the current source was kept.",
+                            );
+                        }
+                        self.modal = Some(Modal::Settings(self.settings_modal()));
+                    }
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        let next = (picker.selected + 1).min(last);
+                        self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                            selected: next,
+                            active: picker.active,
+                        }));
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                            selected: picker.selected.saturating_sub(1),
+                            active: picker.active,
+                        }));
+                    }
+                    KeyCode::PageDown => {
+                        let next = (picker.selected + 4).min(last);
+                        self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                            selected: next,
+                            active: picker.active,
+                        }));
+                    }
+                    KeyCode::PageUp => {
+                        self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                            selected: picker.selected.saturating_sub(4),
+                            active: picker.active,
+                        }));
+                    }
+                    KeyCode::Home => {
+                        self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                            selected: 0,
+                            active: picker.active,
+                        }));
+                    }
+                    KeyCode::End => {
+                        self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
+                            selected: last,
+                            active: picker.active,
+                        }));
+                    }
+                    KeyCode::Enter => self.activate_config_picker_item(picker.selected),
+                    _ => {}
                 }
-                KeyCode::Char('j') | KeyCode::Down => {
-                    let next = (picker.selected + 1).min(crate::config::presets::PRESETS.len() - 1);
-                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal { selected: next }));
-                }
-                KeyCode::Char('k') | KeyCode::Up => {
-                    self.modal = Some(Modal::ConfigPicker(ConfigPickerModal {
-                        selected: picker.selected.saturating_sub(1),
-                    }));
-                }
-                KeyCode::Enter => self.activate_config_picker_item(picker.selected),
-                _ => {}
-            },
+            }
             Modal::Confirm(confirm) => match key.code {
                 KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
-                    self.modal = None;
+                    if let Some(text) = self.custom_redlib_return.take() {
+                        self.modal = Some(Modal::Text(text));
+                    } else if matches!(confirm.action, ConfirmAction::ClearFilters) {
+                        self.modal = Some(Modal::Filters(FiltersModal::default()));
+                    } else if matches!(confirm.action, ConfirmAction::ClearReadHistory) {
+                        self.modal = Some(Modal::Settings(self.settings_modal()));
+                    } else {
+                        self.modal = self.bookmark_delete_return.take().map(Modal::Bookmarks);
+                    }
                 }
                 KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
-                    let ConfirmAction::RemoveFavorite(name) = confirm.action.clone();
-                    self.remove_favorite_now(&name);
-                    self.modal = None;
+                    match confirm.action.clone() {
+                        ConfirmAction::RemoveFavorite(name) => {
+                            self.remove_favorite_now(&name);
+                            self.modal = None;
+                        }
+                        ConfirmAction::RemoveBookmark(id) => {
+                            self.remove_bookmark_by_id(&id);
+                            self.modal = self.bookmark_delete_return.take().map(|mut state| {
+                                let total = state.filtered(&self.library).len();
+                                state.clamp(total);
+                                Modal::Bookmarks(state)
+                            });
+                        }
+                        ConfirmAction::ClearFilters => {
+                            self.clear_all_filters();
+                            self.modal = Some(Modal::Filters(FiltersModal::default()));
+                        }
+                        ConfirmAction::ClearReadHistory => {
+                            let before = self.library.clone();
+                            self.library.read_posts.clear();
+                            self.library.read_comments.clear();
+                            if !self.persist_library_or_revert(before) {
+                                self.modal = None;
+                                return;
+                            }
+                            self.notify(NoticeKind::Info, "Read history cleared.");
+                            if self.library.filters.hide_read
+                                && let Some(feed) = self.current_feed()
+                            {
+                                let id = feed.id;
+                                self.request_feed_initial(id);
+                            }
+                            self.modal = Some(Modal::Settings(self.settings_modal()));
+                        }
+                        ConfirmAction::EnableCustomRedlib(url) => {
+                            if self.pending_switch.is_some() {
+                                self.notify(NoticeKind::Info, "A source test is already running.");
+                                return;
+                            }
+                            let mut candidate = self.settings.clone();
+                            candidate.provider.kind = crate::config::ProviderKind::Redlib;
+                            candidate.provider.html.redlib_instance = url.clone();
+                            candidate.provider.html.allow_network = true;
+                            self.custom_redlib_return = None;
+                            self.modal = None;
+                            self.start_provider_switch(candidate, format!("Custom Redlib · {url}"));
+                        }
+                    }
                 }
+                _ => {}
+            },
+            Modal::Recovery(mut recovery) => match key.code {
+                KeyCode::Esc => {
+                    self.settings_cursor = 7;
+                    self.modal = Some(Modal::Settings(self.settings_modal()));
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    recovery.move_selection(1);
+                    self.modal = Some(Modal::Recovery(recovery));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    recovery.move_selection(-1);
+                    self.modal = Some(Modal::Recovery(recovery));
+                }
+                KeyCode::Enter => self.execute_recovery_action(recovery.selected),
                 _ => {}
             },
             Modal::CommandPalette(_) => {}
@@ -2732,11 +3504,25 @@ impl App {
             KeyCode::Char('g') => self.open_goto_modal(),
             KeyCode::Char('/') => self.open_search_modal(),
             KeyCode::Char('r') => self.refresh_current(),
+            KeyCode::Char('R') => self.retry_more(),
             KeyCode::Char('o') => self.open_url(),
             KeyCode::Char('v') => self.open_gallery(),
             KeyCode::Char('x') => self.reveal_current(),
             KeyCode::Esc => self.back(),
             KeyCode::Enter => self.open_post(),
+            KeyCode::Char('J') if self.focus != Focus::Sidebar => {
+                let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
+                if let Some(feed) = self.current_feed_mut() {
+                    feed.scroll_lines(1, viewport);
+                }
+                self.request_more_if_needed();
+            }
+            KeyCode::Char('K') if self.focus != Focus::Sidebar => {
+                let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
+                if let Some(feed) = self.current_feed_mut() {
+                    feed.scroll_lines(-1, viewport);
+                }
+            }
             KeyCode::Char('j') | KeyCode::Down => {
                 let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
                 if let Some(feed) = self.current_feed_mut() {
@@ -2750,26 +3536,26 @@ impl App {
                     feed.move_selection(-1, viewport);
                 }
             }
-            KeyCode::PageDown => {
+            KeyCode::PageDown if self.focus != Focus::Sidebar => {
                 let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
                 if let Some(feed) = self.current_feed_mut() {
                     feed.page_move(true, viewport);
                 }
                 self.request_more_if_needed();
             }
-            KeyCode::PageUp => {
+            KeyCode::PageUp if self.focus != Focus::Sidebar => {
                 let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
                 if let Some(feed) = self.current_feed_mut() {
                     feed.page_move(false, viewport);
                 }
             }
-            KeyCode::Home => {
+            KeyCode::Home if self.focus != Focus::Sidebar => {
                 let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
                 if let Some(feed) = self.current_feed_mut() {
                     feed.go_home(viewport);
                 }
             }
-            KeyCode::End => {
+            KeyCode::End if self.focus != Focus::Sidebar => {
                 let viewport = self.current_feed().map(|f| f.last_viewport).unwrap_or(1);
                 if let Some(feed) = self.current_feed_mut() {
                     feed.go_end(viewport);
@@ -2827,7 +3613,6 @@ impl App {
             KeyCode::Char('z') => self.comment_collapse_all(),
             KeyCode::Char('O') => self.comment_toggle_op_only(),
             KeyCode::Char('n') => self.comment_next_unread(),
-            KeyCode::Char('h') => self.toggle_sidebar(),
             KeyCode::Char('T') => self.toggle_theme(),
             KeyCode::Char('j') | KeyCode::Down => {
                 self.post_move(1);
@@ -2978,6 +3763,10 @@ impl App {
         };
         let post_id = post.id;
         let width = post.last_comment_width.max(40);
+        if !post.has_threads() {
+            self.notify(NoticeKind::Info, "Nothing to collapse.");
+            return;
+        }
         let collapsed = self
             .post_mut(post_id)
             .is_some_and(|post| post.toggle_collapse_all(width));
@@ -3224,13 +4013,24 @@ impl App {
         }
         if key.modifiers.contains(KeyModifiers::SHIFT) {
             match key.code {
-                KeyCode::Left => self.gallery_pan(-10, 0),
-                KeyCode::Right => self.gallery_pan(10, 0),
-                KeyCode::Up => self.gallery_pan(0, -10),
-                KeyCode::Down => self.gallery_pan(0, 10),
+                KeyCode::Left => {
+                    self.gallery_pan(-10, 0);
+                    return;
+                }
+                KeyCode::Right => {
+                    self.gallery_pan(10, 0);
+                    return;
+                }
+                KeyCode::Up => {
+                    self.gallery_pan(0, -10);
+                    return;
+                }
+                KeyCode::Down => {
+                    self.gallery_pan(0, 10);
+                    return;
+                }
                 _ => {}
             }
-            return;
         }
         match key.code {
             KeyCode::Esc => self.back(),
@@ -3250,8 +4050,8 @@ impl App {
             KeyCode::Char('-') | KeyCode::Char('_') => self.gallery_zoom(-1),
             KeyCode::Char('0') => self.gallery_reset_zoom(),
             KeyCode::Char('o') => self.open_url(),
-            KeyCode::Char('y') | KeyCode::Char('i') => self.copy_image_url(),
-            KeyCode::Char('I') => self.open_info(),
+            KeyCode::Char('y') | KeyCode::Char('I') => self.copy_image_url(),
+            KeyCode::Char('i') => self.open_info(),
             KeyCode::Char('Y') => self.open_comments(),
             KeyCode::Char('G') => self.open_subreddit(),
             KeyCode::Char('b') => self.toggle_bookmark_current(),
@@ -3391,6 +4191,31 @@ impl App {
                     return;
                 }
                 if self.modal.is_some() {
+                    let scrollable = matches!(
+                        self.modal,
+                        Some(Modal::Settings(_))
+                            | Some(Modal::Bookmarks(_))
+                            | Some(Modal::Source(_))
+                            | Some(Modal::Filters(_))
+                            | Some(Modal::Info(_))
+                            | Some(Modal::Sort(_))
+                            | Some(Modal::Range(_))
+                            | Some(Modal::ThemePicker(_))
+                            | Some(Modal::ConfigPicker(_))
+                            | Some(Modal::ImagePicker(_))
+                            | Some(Modal::Appearance(_))
+                            | Some(Modal::Recovery(_))
+                    );
+                    if scrollable {
+                        self.handle_modal_key(crossterm::event::KeyEvent::new(
+                            if direction > 0 {
+                                crossterm::event::KeyCode::Char('j')
+                            } else {
+                                crossterm::event::KeyCode::Char('k')
+                            },
+                            crossterm::event::KeyModifiers::NONE,
+                        ));
+                    }
                     self.dirty = false;
                     return;
                 }
@@ -3414,6 +4239,12 @@ impl App {
     }
 
     fn scroll_pane(&mut self, x: u16, y: u16, direction: i32) {
+        if matches!(self.nav.last(), Some(View::Gallery(_)))
+            && !matches!(self.hit_map.pane_at(x, y), Some(Pane::Gallery))
+        {
+            self.gallery_step(direction > 0);
+            return;
+        }
         let pane = self.hit_map.pane_at(x, y).or(match self.focus {
             Focus::Sidebar => Some(Pane::Sidebar),
             Focus::Feed => Some(Pane::FeedList),
@@ -3430,6 +4261,7 @@ impl App {
                 self.request_more_if_needed();
             }
             Some(Pane::Comments) => {
+                self.focus = Focus::Comments;
                 let vp = self
                     .current_post()
                     .map(|p| p.last_comments_viewport)
@@ -3439,6 +4271,7 @@ impl App {
                 }
             }
             Some(Pane::PostBody) => {
+                self.focus = Focus::PostBody;
                 if let Some(post) = self.current_post_mut() {
                     let step = (post.last_body_viewport.max(2) as i32 / 2) * direction;
                     post.scroll_body(step);
@@ -3474,6 +4307,8 @@ impl App {
                     self.modal = Some(Modal::Settings(SettingsModal { selected: 1, theme }));
                 } else if matches!(self.modal, Some(Modal::Bookmarks(_))) {
                     self.open_bookmark_item(index);
+                } else if matches!(self.modal, Some(Modal::Recovery(_))) {
+                    self.execute_recovery_action(index);
                 } else if matches!(self.modal, Some(Modal::Source(_))) {
                     self.execute_source_action(index);
                 } else if matches!(self.modal, Some(Modal::ImagePicker(_))) {
@@ -3588,8 +4423,52 @@ impl App {
             HitTarget::CommentSort => self.open_sort_modal(),
             HitTarget::OpenImage => self.open_gallery(),
             HitTarget::Retry => self.refresh_current(),
+            HitTarget::RetryMore => self.retry_more(),
+            HitTarget::ConfirmYes => {
+                self.handle_modal_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
+            }
+            HitTarget::ConfirmNo => {
+                self.handle_modal_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE))
+            }
             _ => {}
         }
+    }
+
+    fn handle_probe_finished(&mut self, request: u64, result: Result<FeedPage, ProviderError>) {
+        if self.probe_request != Some(request) {
+            self.request_starts.remove(&request);
+            return;
+        }
+        self.probe_request = None;
+        let latency = self.request_starts.remove(&request).map(|at| at.elapsed());
+        match result {
+            Ok(page) => {
+                self.health
+                    .record(crate::providers::ProviderStatus::Available, None, latency);
+                self.provider_status = Some(crate::providers::ProviderStatus::Available);
+                self.notify(
+                    NoticeKind::Success,
+                    format!(
+                        "Source probe OK: {} in {}.",
+                        if page.posts.is_empty() {
+                            "valid but empty listing".to_string()
+                        } else {
+                            format!("{} posts", page.posts.len())
+                        },
+                        latency
+                            .map(|value| format!("{} ms", value.as_millis()))
+                            .unwrap_or_else(|| "unknown time".into())
+                    ),
+                );
+            }
+            Err(error) => {
+                let status = crate::providers::ProviderStatus::from_error(&error);
+                self.health.record(status, Some(error.to_string()), latency);
+                self.provider_status = Some(status);
+                self.notify(NoticeKind::Error, format!("Source probe failed: {error}"));
+            }
+        }
+        self.dirty = true;
     }
 
     // ------------------------------------------------------------------
@@ -3647,6 +4526,12 @@ impl App {
                 name,
                 result,
             } => self.handle_subreddit_loaded(view, request, name, result),
+            AppEvent::ProbeFinished { request, result } => {
+                self.handle_probe_finished(request, result);
+            }
+            AppEvent::SwitchProbeFinished { request, result } => {
+                self.handle_switch_probe_finished(request, result);
+            }
             AppEvent::ImageReady { key, result } => {
                 if let Err(error) = &result {
                     tracing::debug!(
@@ -3704,8 +4589,10 @@ impl App {
                 match result {
                     Ok(page) => view.apply_page(page, true, false),
                     Err(error) => {
-                        view.loading_more = false;
-                        view.has_more = false;
+                        // Keep has_more and the cursor: a failed append must be
+                        // retryable, but automatic requests stay paused until
+                        // the user explicitly asks for another page.
+                        view.set_more_error(error.to_string());
                         error_toast = Some(error);
                     }
                 }
@@ -4005,6 +4892,23 @@ fn describe_feed_error(
         sort.label(),
         spec.title()
     )
+}
+
+fn probe_feed_request(settings: &Settings, provider: &dyn ContentProvider) -> FeedRequest {
+    let spec = default_spec(settings);
+    let mut sort =
+        FeedSort::from_str_loose(&settings.general.default_sort).unwrap_or(FeedSort::Hot);
+    let options = provider.supported_sorts(&spec);
+    if !options.contains(&sort) {
+        sort = options.first().copied().unwrap_or(spec.default_sort());
+    }
+    FeedRequest {
+        spec,
+        sort,
+        top_range: TopRange::Week,
+        after: None,
+        limit: 10,
+    }
 }
 
 fn default_spec(settings: &Settings) -> FeedSpec {

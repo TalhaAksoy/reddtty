@@ -22,6 +22,10 @@ pub struct FeedView {
     pub heights_dirty: bool,
     pub after: Option<String>,
     pub has_more: bool,
+    /// Set when an append request failed. Automatic pagination stays paused
+    /// so a broken source cannot trigger a request storm; the user can retry
+    /// deliberately without losing the existing feed or cursor.
+    pub more_error: Option<String>,
     pub loading_initial: bool,
     pub loading_more: bool,
     pub refreshing: bool,
@@ -51,6 +55,7 @@ impl FeedView {
             heights_dirty: true,
             after: None,
             has_more: false,
+            more_error: None,
             loading_initial: true,
             loading_more: false,
             refreshing: false,
@@ -86,6 +91,7 @@ impl FeedView {
         self.offset = 0;
         self.after = None;
         self.has_more = false;
+        self.more_error = None;
         self.loading_initial = true;
         self.loading_more = false;
         self.refreshing = false;
@@ -148,6 +154,10 @@ impl FeedView {
         self.prefix_height(self.posts.len().saturating_sub(1))
     }
 
+    pub fn max_offset(&self, viewport: u16) -> u32 {
+        self.total_height().saturating_sub(viewport.max(1) as u32)
+    }
+
     /// Snap to a card boundary so a partially visible card never paints over
     /// the feed header. Cards have variable heights, so this is the safest
     /// scrolling model without off-screen buffers.
@@ -171,7 +181,7 @@ impl FeedView {
             self.offset = 0;
         } else {
             self.selected = self.selected.min(self.posts.len() - 1);
-            self.offset = self.snap_offset(self.offset.min(self.max_card_offset()));
+            self.offset = self.offset.min(self.max_offset(self.last_viewport));
         }
     }
 
@@ -210,15 +220,8 @@ impl FeedView {
         if self.posts.is_empty() {
             return;
         }
-        let step = (viewport / 2).max(1) as usize;
-        self.move_selection(
-            if down {
-                step as isize
-            } else {
-                -(step as isize)
-            },
-            viewport,
-        );
+        let step = (viewport / 2).max(1) as i32;
+        self.scroll_lines(if down { step } else { -step }, viewport);
     }
 
     pub fn go_home(&mut self, viewport: u16) {
@@ -235,7 +238,8 @@ impl FeedView {
             return;
         }
         self.selected = self.posts.len() - 1;
-        self.ensure_selected_visible(viewport);
+        self.last_viewport = viewport;
+        self.offset = self.max_offset(viewport);
     }
 
     /// Wheel scrolling moves a card at a time. Cards have variable heights
@@ -246,7 +250,17 @@ impl FeedView {
         if self.posts.is_empty() || viewport == 0 || delta == 0 {
             return;
         }
-        self.move_selection(if delta > 0 { 1 } else { -1 }, viewport);
+        let max = self.max_offset(viewport) as i64;
+        let next = (self.offset as i64 + delta as i64).clamp(0, max) as u32;
+        self.offset = next;
+        let selected_start = self.prefix_height(self.selected);
+        let selected_end =
+            selected_start + self.heights.get(self.selected).copied().unwrap_or(1) as u32;
+        if (selected_end <= next || selected_start >= next.saturating_add(viewport as u32))
+            && let Some(index) = self.index_at_line(next)
+        {
+            self.selected = index;
+        }
     }
 
     pub fn index_at_line(&self, line: u32) -> Option<usize> {
@@ -295,6 +309,9 @@ impl FeedView {
     }
 
     pub fn wants_more(&self, viewport: u16) -> bool {
+        if self.more_error.is_some() {
+            return false;
+        }
         if !self.has_more
             || self.loading_more
             || self.more_request.is_some()
@@ -322,23 +339,22 @@ impl FeedView {
         self.loading_more = false;
         self.refreshing = false;
         self.error = None;
+        self.more_error = None;
 
         if append {
             let mut seen: HashSet<String> = self.posts.iter().map(|p| p.id.clone()).collect();
             let old_after = self.after.clone();
-            let mut added = 0usize;
             for post in page.posts {
                 if seen.insert(post.id.clone()) {
                     self.posts.push(post);
-                    added += 1;
                 }
             }
             let same_cursor = old_after.is_some() && old_after == page.after;
-            self.has_more = page.has_more && !same_cursor && added > 0;
-            self.after = page.after;
-            if added == 0 && !self.has_more {
-                self.after = None;
-            }
+            // A duplicate-only page with a *fresh* cursor is progress: keep
+            // going so pagination can skip past repeated IDs. A repeated
+            // cursor, or an exhausted page, stops.
+            self.has_more = page.has_more && !same_cursor;
+            self.after = if self.has_more { page.after } else { None };
             self.heights_dirty = true;
             return;
         }
@@ -371,7 +387,13 @@ impl FeedView {
         self.loading_initial = false;
         self.loading_more = false;
         self.refreshing = false;
+        self.more_error = None;
         self.error = Some(error);
+    }
+
+    pub fn set_more_error(&mut self, error: String) {
+        self.loading_more = false;
+        self.more_error = Some(error);
     }
 
     #[cfg(test)]
@@ -456,8 +478,11 @@ mod tests {
         v.go_home(8);
         assert_eq!(v.selected, 0);
         assert_eq!(v.offset, 0);
+        v.heights = vec![3; v.posts.len()];
+        v.heights_width = 80;
+        v.heights_dirty = false;
         v.page_move(true, 8);
-        assert!(v.selected > 0);
+        assert!(v.offset > 0);
     }
 
     #[test]
@@ -518,5 +543,129 @@ mod tests {
         assert!(range.start < v.posts.len());
         assert!(range.end <= v.posts.len());
         assert!(range.end > range.start);
+    }
+}
+
+#[cfg(test)]
+mod line_scroll_tests {
+    use super::*;
+
+    fn post(id: &str) -> Post {
+        Post {
+            id: id.into(),
+            subreddit: "rust".into(),
+            author: "a".into(),
+            title: "t".into(),
+            body: String::new(),
+            created_utc: 0,
+            score: 0,
+            num_comments: 0,
+            permalink: "/r/rust/x".into(),
+            content: crate::models::PostContent::Text,
+            flair: None,
+            nsfw: false,
+            spoiler: false,
+            stickied: false,
+            locked: false,
+            removed: false,
+            is_self: true,
+            domain: None,
+            thumbnail: None,
+        }
+    }
+
+    #[test]
+    fn a_tall_card_can_be_scrolled_to_its_last_line() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("tall"), post("next")]);
+        view.heights = vec![40, 12];
+        view.heights_width = 80;
+        view.heights_dirty = false;
+        view.last_viewport = 10;
+        view.scroll_lines(5, 10);
+        assert_eq!(view.offset, 5);
+        assert_eq!(view.selected, 0);
+        view.scroll_lines(1000, 10);
+        assert_eq!(view.offset, view.max_offset(10));
+        assert!(view.offset > 40, "the bottom of the tall card is reachable");
+        view.scroll_lines(-1000, 10);
+        assert_eq!(view.offset, 0);
+        assert_eq!(view.selected, 0);
+    }
+
+    #[test]
+    fn scrolling_into_another_card_moves_selection_without_losing_the_offset() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a"), post("b")]);
+        view.heights = vec![30, 30];
+        view.heights_width = 80;
+        view.heights_dirty = false;
+        view.last_viewport = 10;
+        view.scroll_lines(31, 10);
+        assert_eq!(view.selected, 1);
+        assert_eq!(view.offset, 31);
+    }
+}
+
+#[cfg(test)]
+mod duplicate_page_tests {
+    use super::*;
+
+    fn post(id: &str) -> Post {
+        Post {
+            id: id.into(),
+            subreddit: "rust".into(),
+            author: "a".into(),
+            title: "t".into(),
+            body: String::new(),
+            created_utc: 0,
+            score: 0,
+            num_comments: 0,
+            permalink: "/r/rust/x".into(),
+            content: crate::models::PostContent::Text,
+            flair: None,
+            nsfw: false,
+            spoiler: false,
+            stickied: false,
+            locked: false,
+            removed: false,
+            is_self: true,
+            domain: None,
+            thumbnail: None,
+        }
+    }
+
+    #[test]
+    fn duplicate_only_page_with_a_fresh_cursor_keeps_paginating() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a"), post("b")]);
+        view.after = Some("cursor-1".into());
+        view.has_more = true;
+        view.apply_page(
+            FeedPage {
+                posts: vec![post("b")],
+                after: Some("cursor-2".into()),
+                has_more: true,
+            },
+            true,
+            false,
+        );
+        assert!(view.has_more);
+        assert_eq!(view.after.as_deref(), Some("cursor-2"));
+    }
+
+    #[test]
+    fn repeated_cursor_stops_pagination() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a")]);
+        view.after = Some("cursor-1".into());
+        view.has_more = true;
+        view.apply_page(
+            FeedPage {
+                posts: vec![post("a")],
+                after: Some("cursor-1".into()),
+                has_more: true,
+            },
+            true,
+            false,
+        );
+        assert!(!view.has_more);
+        assert!(view.after.is_none());
     }
 }
