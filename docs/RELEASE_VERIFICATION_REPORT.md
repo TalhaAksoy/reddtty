@@ -17,7 +17,7 @@ Final this sprint:
 |---|---|
 | `cargo fmt --all -- --check` | pass |
 | `cargo clippy --all-targets --all-features -- -D warnings` | pass |
-| `cargo test --locked` | **379 passed, 0 failed, 0 ignored** |
+| `cargo test --locked` | **381 passed, 0 failed, 0 ignored** |
 | `cargo test --locked --all-features` | pass |
 | `cargo build --release --locked` | pass |
 | `cargo build --release --locked --example stress` | pass |
@@ -51,6 +51,13 @@ P1/P2 items below.
 | Refresh could race an append request | P1 | `wants_more` gated on refresh/request/error/cooldown |
 | Redlib blocked page could look like an empty listing | P1 | gate detection + real listing-container check |
 | Two-cursor duplicate cycle could loop | P1 | bounded duplicate-page cap |
+| Line scrolling snapped back during prepare() | P0 | selected card snaps only when fully outside; prepare-preservation test |
+| Modal wheel changed state without repaint / typed into bookmark search | P1 | dirty repaint; search mode ignores wheel |
+| Settings/theme picker could select clipped rows | P1 | scroll offset + visible-row window |
+| NO_COLOR splash/setup emitted RGB | P1 | terminal defaults in splash and setup |
+| Bookmark return consumed on Gallery→Post | P1 | restore only when the bookmarked Post is popped |
+| Muted/semantic contrast on selected rows | P1 | selected_bg added to contrast enforcement/tests |
+| Post body indicator hid the last line | P1 | body viewport reserves the indicator row |
 | CI Windows job unexecuted | High verification gap | Job configured; still not executed in this environment |
 
 No new critical data-loss defect was found in the final review pass.
@@ -188,7 +195,7 @@ Byte probes are not visual proof. See `docs/MANUAL_TERMINAL_TEST_CHECKLIST.md`.
 
 ## Release recommendation
 
-- **Linux/macOS beta:** **BETA READY** for `v0.2.0-beta.2`.
+- **Linux/macOS beta:** **BETA READY** for `v0.2.0-beta.3`.
 - **Windows:** **NOT READY** (experimental; compile job configured but not run).
 - **Stable candidate:** **NOT READY** until Windows runtime, GUI image rendering,
   and the remaining E2E journeys are verified.

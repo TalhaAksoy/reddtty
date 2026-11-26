@@ -58,7 +58,10 @@ async fn run() -> Result<()> {
     if first_run {
         install_panic_hook();
         let mut terminal = ratatui::try_init().context("could not open the setup screen")?;
-        let selected = setup::run(&mut terminal);
+        let selected = setup::run(
+            &mut terminal,
+            cli.no_color || std::env::var_os("NO_COLOR").is_some(),
+        );
         let _ = ratatui::try_restore();
         std::thread::sleep(Duration::from_millis(40));
         match selected.context("could not read the setup screen input")? {

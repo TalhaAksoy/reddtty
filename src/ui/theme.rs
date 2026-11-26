@@ -325,6 +325,7 @@ impl Theme {
             *color = ensure_contrast(*color, self.elevated, 4.5);
             *color = ensure_contrast(*color, self.surface, 4.5);
             *color = ensure_contrast(*color, self.surface_alt, 4.5);
+            *color = ensure_contrast(*color, self.selected_bg, 4.5);
         }
         self.warning = ensure_contrast(self.warning, self.code_bg, 4.5);
         self.on_accent = ensure_contrast(self.on_accent, self.accent, 4.5);

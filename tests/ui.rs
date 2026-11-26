@@ -1548,10 +1548,31 @@ async fn real_long_image_post_card_exceeds_a_short_viewport_and_scrolls() {
             crossterm::event::KeyModifiers::NONE,
         ));
     }
+    let scrolled = app.current_feed().unwrap().offset;
+    assert!(scrolled > 0);
+    app.prepare();
+    assert_eq!(
+        app.current_feed().unwrap().offset,
+        scrolled,
+        "prepare() must not snap line scrolling back to the card start"
+    );
     let terminal = draw(&mut app, 80, 12);
     let text = screen(&terminal);
     assert!(
         !text.contains("╭─") || text.contains("╰"),
         "scrolled card lost its bottom border\n{text}"
     );
+}
+
+#[tokio::test]
+async fn settings_scrolls_to_a_selected_row_on_a_short_terminal() {
+    let (mut app, _provider, _posts) = app_with_posts(80, 17).await;
+    app.open_settings();
+    if let Some(reddtty::app::modal::Modal::Settings(modal)) = &mut app.modal {
+        modal.selected = 6;
+    }
+    app.settings_cursor = 6;
+    let terminal = draw(&mut app, 80, 17);
+    let text = screen(&terminal);
+    assert!(text.contains("Clear read history"), "{text}");
 }

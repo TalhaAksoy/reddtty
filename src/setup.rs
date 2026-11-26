@@ -31,8 +31,8 @@ enum Mode {
     },
 }
 
-pub fn run(terminal: &mut DefaultTerminal) -> io::Result<Option<SetupChoice>> {
-    let theme = if std::env::var_os("NO_COLOR").is_some() {
+pub fn run(terminal: &mut DefaultTerminal, no_color: bool) -> io::Result<Option<SetupChoice>> {
+    let theme = if no_color {
         Theme::no_color()
     } else {
         Theme::dark()

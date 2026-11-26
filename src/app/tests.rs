@@ -61,6 +61,7 @@ impl App {
             library_corrupt: false,
             library_recovery: None,
             return_to_bookmarks: None,
+            bookmark_return_view: None,
             bookmark_delete_return: None,
             custom_redlib_return: None,
             health: SourceHealth::default(),
@@ -1998,4 +1999,22 @@ fn clicking_outside_the_source_picker_cancels_the_candidate() {
         }),
     });
     assert_eq!(app.provider_label, before);
+}
+
+#[test]
+fn gallery_back_returns_to_the_bookmarked_post_not_the_list() {
+    let mut app = App::test_with_posts(Vec::new());
+    let mut image = post("img");
+    image.content = PostContent::Image {
+        url: "demo://img/a.png".into(),
+    };
+    app.library.toggle_bookmark(&image);
+    app.open_bookmarks();
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(matches!(app.nav.last(), Some(View::Post(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Char('v'), KeyModifiers::NONE));
+    assert!(matches!(app.nav.last(), Some(View::Gallery(_))));
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(matches!(app.nav.last(), Some(View::Post(_))));
+    assert!(app.modal.is_none(), "gallery pop must not reopen bookmarks");
 }

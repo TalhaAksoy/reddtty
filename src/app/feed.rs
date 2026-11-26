@@ -159,29 +159,8 @@ impl FeedView {
             .sum()
     }
 
-    fn max_card_offset(&self) -> u32 {
-        self.prefix_height(self.posts.len().saturating_sub(1))
-    }
-
     pub fn max_offset(&self, viewport: u16) -> u32 {
         self.total_height().saturating_sub(viewport.max(1) as u32)
-    }
-
-    /// Snap to a card boundary so a partially visible card never paints over
-    /// the feed header. Cards have variable heights, so this is the safest
-    /// scrolling model without off-screen buffers.
-    fn snap_offset(&self, offset: u32) -> u32 {
-        let mut y = 0u32;
-        let mut best = 0u32;
-        for height in &self.heights {
-            if y <= offset {
-                best = y;
-            } else {
-                break;
-            }
-            y = y.saturating_add(*height as u32 + 1);
-        }
-        best
     }
 
     pub fn clamp_offset(&mut self) {
@@ -203,10 +182,12 @@ impl FeedView {
         let start = self.prefix_height(self.selected);
         let end = start + self.heights.get(self.selected).copied().unwrap_or(1) as u32;
         let viewport = viewport as u32;
-        if start < self.offset || end > self.offset + viewport {
+        // Only snap when the selected card is completely outside the
+        // viewport. Line scrolling inside a tall card must survive prepare().
+        if end <= self.offset || start >= self.offset.saturating_add(viewport) {
             self.offset = start;
         }
-        self.offset = self.snap_offset(self.offset.min(self.max_card_offset()));
+        self.offset = self.offset.min(self.max_offset(viewport as u16));
     }
 
     pub fn move_selection(&mut self, delta: isize, viewport: u16) {

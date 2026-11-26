@@ -14,7 +14,7 @@
     {
       "name": "invalid-config: corrupt backup exists",
       "ok": true,
-      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-invalid-config-d9ylzofd/config.toml.corrupt-20261126T091500-98200-1795684500649143000-0')]"
+      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-invalid-config-8k653e6a/config.toml.corrupt-20261126T092548-821-1795685148131614000-0')]"
     },
     {
       "name": "invalid-config: backup has original bytes",
@@ -34,7 +34,7 @@
     {
       "name": "truncated-config: corrupt backup exists",
       "ok": true,
-      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-truncated-config-mhqv8nk3/config.toml.corrupt-20261126T091502-98243-1795684502640773000-0')]"
+      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-truncated-config-f8fqss6w/config.toml.corrupt-20261126T092550-853-1795685150158805000-0')]"
     },
     {
       "name": "truncated-config: backup has original bytes",
@@ -54,7 +54,7 @@
     {
       "name": "nonutf8-config: corrupt backup exists",
       "ok": true,
-      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-nonutf8-config-gu9uh5un/config.toml.corrupt-20261126T091504-98280-1795684504654931000-0')]"
+      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-nonutf8-config-fdtgqk_l/config.toml.corrupt-20261126T092552-883-1795685152199388000-0')]"
     },
     {
       "name": "nonutf8-config: backup has original bytes",
@@ -74,7 +74,7 @@
     {
       "name": "invalid-library: library backup exists",
       "ok": true,
-      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-invalid-library-0_ypp3s_/library.toml.corrupt-20261126T091506-98311-1795684506677166000-0')]"
+      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-invalid-library-d_svjb2u/library.toml.corrupt-20261126T092554-913-1795685154249362000-0')]"
     },
     {
       "name": "nonutf8-library: warning visible",
@@ -89,7 +89,7 @@
     {
       "name": "nonutf8-library: library backup exists",
       "ok": true,
-      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-nonutf8-library-bcdxnxe_/library.toml.corrupt-20261126T091508-98341-1795684508686834000-0')]"
+      "detail": "[PosixPath('/var/folders/ch/7smf0c210kn_vkd889sr20wm0000gn/T/reddtty-recovery-nonutf8-library-bb_3xcga/library.toml.corrupt-20261126T092556-945-1795685156281660000-0')]"
     },
     {
       "name": "explicit create-new produced valid TOML",

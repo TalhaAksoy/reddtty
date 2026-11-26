@@ -1,38 +1,38 @@
- REDDTTY   ›  Home                                                                                                          ● DEMO   ? Help
- NAVIGATION            │ Home                                                                   25 posts · more │ABOUT
-┃ Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │Home
-  Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │Demo mode: synthetic posts
-                       │ │ r/programming  •  u/clean_code_ish  •  4h ago                            ● unread ││ │and comments, stored
- COMMUNITIES           │ │                                                                                   ││ │locally.
-  r/rust               │ │ The hidden cost of premature abstraction                                          ││ │
-  r/linux              │ │                                                                                   ││ │SUGGESTED COMMUNITIES
-  r/programming        │ │ A good read on why the second use case is often too early to design for.          │┃ │▸ r/rust
+ REDDTTY   ›  Home › ⌕ black hole                                                                                           ● DEMO   ? Help
+ NAVIGATION            │ Search: black hole  search results                                             2 posts │ABOUT
+  Home                 │  Best   Hot   New   Top   Rising   Controversial                                       │Search: black hole
+  Popular              │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │Demo mode: synthetic posts
+                       │ │ r/askscience  •  u/event_horizon  •  2d ago                              ● unread │┃ │and comments, stored
+ COMMUNITIES           │ │                                                                                   │┃ │locally.
+  r/rust               │ │ Visualising a black hole merger                                                   │┃ │
+  r/linux              │ │                                                                                   │┃ │SUGGESTED COMMUNITIES
+  r/programming        │ │ Four frames from a simulation, plus the article that explains the colours.        │┃ │▸ r/rust
   r/technology         │ │                                                                                   │┃ │▸ r/linux
-  r/opensource         │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                 │┃ │▸ r/programming
-  r/unixporn           │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀                                       │┃ │▸ r/technology
-  r/webdev             │ │                               ▄▄▄▄▄▀▄▄▀▀▄▄▀▀                                      ││ │▸ r/opensource
-  r/machinelearning    │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀                                       ││ │▸ r/unixporn
-  r/askscience         │ │                               ▄▄▄▄▄▀▄▄▀▀▄▄▄                                       ││ │
-  r/gaming             │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                 ││ │SHORTCUTS
-                       │ │                                                                                   ││ │j/k   navigate
- FAVORITES             │ │ ▲ 1.8k   ◍ 143   Link  Article                                                    ││ │Enter open post
-  f to add             │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │s     sort
-                       │                                                                                      │ │t     top range
-                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮│ │g     subreddit
-                       │ │ r/askscience  •  u/event_horizon  •  2d ago                              ● unread ││ │/     search
-                       │ │                                                                                   ││ │r     refresh
-                       │ │ Visualising a black hole merger                                                   ││ │o     open browser
-                       │ │                                                                                   ││ │v     image viewer
-                       │ │ Four frames from a simulation, plus the article that explains the colours.        ││ │x     reveal hidden
-                       │ │                                                                                   ││ │b     bookmark
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │m     read / unread
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │i     community info
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │?     help
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
-                       │ │                                     ▀▀▀▀▀▀▀▀                                      ││ │
-                       │ │                                                                                   ││ │
-                       │ │ ▲ 1.7k   ◍ 83   Gallery  Astronomy                                        GALLERY ││ │
-                       │ ╰───────────────────────────────────────────────────────────────────────────────────╯│ │
- h hide · Tab focus    │                                                                                      │ │
+  r/opensource         │ │                                     ▀▀▀▀▀▀▀▀                                      │┃ │▸ r/programming
+  r/unixporn           │ │                                     ▀▀▀▀▀▀▀▀                                      │┃ │▸ r/technology
+  r/webdev             │ │                                     ▀▀▀▀▀▀▀▀                                      │┃ │▸ r/opensource
+  r/machinelearning    │ │                                     ▀▀▀▀▀▀▀▀                                      │┃ │▸ r/unixporn
+  r/askscience         │ │                                     ▀▀▀▀▀▀▀▀                                      │┃ │
+  r/gaming             │ │                                     ▀▀▀▀▀▀▀▀                                      │┃ │SHORTCUTS
+                       │ │                                                                                   │┃ │j/k   navigate
+ FAVORITES             │ │ ▲ 1.7k   ◍ 83   Gallery  Astronomy                                        GALLERY │┃ │Enter open post
+  f to add             │ ╰───────────────────────────────────────────────────────────────────────────────────╯┃ │s     sort
+                       │                                                                                      ┃ │t     top range
+                       │ ╭───────────────────────────────────────────────────────────────────────────────────╮┃ │g     subreddit
+                       │ │ r/linux  •  u/quiet_daemon  •  8h ago                                    ● unread │┃ │/     search
+                       │ │                                                                                   │┃ │r     refresh
+                       │ │ I switched my entire workflow to Linux                                            │┃ │o     open browser
+                       │ │                                                                                   │┃ │v     image viewer
+                       │ │ After using another OS for years, I moved my whole workflow over a long weekend.  │┃ │x     reveal hidden
+                       │ │ The surprises were smaller than I expected.                                       │┃ │b     bookmark
+                       │ │                                                                                   │┃ │m     read / unread
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                │┃ │i     community info
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                                │┃ │?     help
+                       │ │                               ▄▄▄▄▄▄▄▄▄▄▄▄▄▀▀▄▄▄▄▄                                │┃ │
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                │┃ │
+                       │ │                               ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                                │┃ │
+                       │ │                                   ▀▀▀▀▀      ▀▀▀▀▀                                │┃ │
+                       │ │                                                                                   │┃ │
+                       │ │ ▲ 2.4k   ◍ 187   Image  Story                                                     │┃ │
+ h hide · Tab focus    │ ╰───────────────────────────────────────────────────────────────────────────────────╯┃ │
 j/k Navigate · Enter Open · s Sort · g Go · / Search · v Image · ? Help · q Quit

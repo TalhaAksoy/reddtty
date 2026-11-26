@@ -3,22 +3,22 @@
  Why I love building CLI applications with Rust                                                                 │r/rust
                                                                                                                 │The Rust Programming
  ▲ 3.2k points    ◍ 248 comments    [Text]   ·   o to open www.reddit.com                                       │Language
- • The ecosystem has excellent crates for terminals, parsing and HTTP                                           │412k members  ·  8.4k
-                                                                                                                │online
- ▌ The compiler is not fighting you. It is reviewing your work before your users do.                            │
-                                                                                                                │A place for all things
- Here is the smallest argument parser I actually enjoy using:                                                   │Rust: news, questions,
-                                                                                                                │crates and the occasional
-   code                                                                                                         │Ferris drawing.
-   #[derive(clap::Parser)]                                                                                      │
-   struct Args {                                                                                                │POST
-       /// Subreddit to open on launch                                                                          │u/ferris_fan  ·  3.2k
-       #[arg(short, long)]                                                                                      │points  ·  248 comments
-       subreddit: Option<String>,                                                                               │Text
-   }                                                                                                            │
-                                                                                                                │SUGGESTED COMMUNITIES
- The full article covers packaging, cross-compilation and a few mistakes I made with async cleanup. Ask me      │▸ r/rust
- anything about the setup.                                                                                      │▸ r/linux
+                                                                                                                │412k members  ·  8.4k
+ ▌ The compiler is not fighting you. It is reviewing your work before your users do.                            │online
+                                                                                                                │
+ Here is the smallest argument parser I actually enjoy using:                                                   │A place for all things
+                                                                                                                │Rust: news, questions,
+   code                                                                                                         │crates and the occasional
+   #[derive(clap::Parser)]                                                                                      │Ferris drawing.
+   struct Args {                                                                                                │
+       /// Subreddit to open on launch                                                                          │POST
+       #[arg(short, long)]                                                                                      │u/ferris_fan  ·  3.2k
+       subreddit: Option<String>,                                                                               │points  ·  248 comments
+   }                                                                                                            │Text
+                                                                                                                │
+ The full article covers packaging, cross-compilation and a few mistakes I made with async cleanup. Ask me      │SUGGESTED COMMUNITIES
+ anything about the setup.                                                                                      │▸ r/rust
+                                                                                                                │▸ r/linux
                                                                                                        ↕ 25/25  │▸ r/programming
  COMMENTS  248                                                                                    Sort: Best ▾  │▸ r/technology
  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────  │▸ r/opensource

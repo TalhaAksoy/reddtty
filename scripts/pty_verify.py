@@ -171,10 +171,12 @@ def main() -> int:
         feed2 = wait_for(session, "posts")
         save("06-feed-return", feed2)
         assert_seen("returned feed", feed2, "Home")
-        # Fifth Best post is the two-image black-hole gallery in demo data.
-        for _ in range(5):
-            send(session, "j")
-        selected_gallery = capture(session)
+        # Search for the two-image black-hole gallery instead of relying on
+        # demo feed ordering.
+        send(session, "/")
+        send(session, "black hole", literal=True)
+        send(session, "Enter")
+        selected_gallery = wait_for(session, "Visualising a black hole merger")
         save("06b-gallery-post-selected", selected_gallery)
         assert_seen("gallery post selected", selected_gallery, "Visualising a black hole merger")
         send(session, "v")

@@ -184,6 +184,8 @@ pub struct App {
     pending_switch: Option<PendingSwitch>,
     /// Bookmark list state to restore after reading a bookmarked post.
     pub return_to_bookmarks: Option<BookmarksModal>,
+    /// The post view that owns `return_to_bookmarks`.
+    pub bookmark_return_view: Option<crate::event::ViewId>,
     /// Bookmark list state to restore when a delete confirmation is cancelled.
     pub bookmark_delete_return: Option<BookmarksModal>,
     /// Custom-instance form to restore when network consent is cancelled.
@@ -293,6 +295,7 @@ impl App {
             probe_request: None,
             pending_switch: None,
             return_to_bookmarks: None,
+            bookmark_return_view: None,
             bookmark_delete_return: None,
             custom_redlib_return: None,
         };
@@ -701,6 +704,11 @@ impl App {
             self.notify(NoticeKind::Info, "Already at the top level.");
             return;
         }
+        let popped = self.nav.last().map(|view| match view {
+            View::Feed(feed) => feed.id,
+            View::Post(post) => post.id,
+            View::Gallery(gallery) => gallery.id,
+        });
         self.nav.pop();
         self.force_clear = true;
         self.modal = None;
@@ -714,8 +722,11 @@ impl App {
         if matches!(self.nav.last(), Some(View::Feed(_))) {
             self.remember_last_view();
         }
-        if let Some(modal) = self.return_to_bookmarks.take() {
-            self.modal = Some(Modal::Bookmarks(modal));
+        if popped == self.bookmark_return_view {
+            self.bookmark_return_view = None;
+            if let Some(modal) = self.return_to_bookmarks.take() {
+                self.modal = Some(Modal::Bookmarks(modal));
+            }
         }
         self.dirty = true;
     }
@@ -959,6 +970,8 @@ impl App {
     }
 
     pub fn open_bookmarks(&mut self) {
+        self.return_to_bookmarks = None;
+        self.bookmark_return_view = None;
         self.modal = Some(Modal::Bookmarks(BookmarksModal::default()));
         self.dirty = true;
     }
@@ -994,6 +1007,9 @@ impl App {
         }
         self.modal = None;
         self.open_post_object(post);
+        if let Some(View::Post(view)) = self.nav.last() {
+            self.bookmark_return_view = Some(view.id);
+        }
     }
 
     fn remove_bookmark_by_id(&mut self, id: &str) {
@@ -3368,7 +3384,13 @@ impl App {
                 );
                 if let Some(view) = self.post_mut(post_id) {
                     view.last_comments_viewport = rects.comments_list.height;
-                    view.last_body_viewport = rects.body.height;
+                    let body_len = view.body_len();
+                    view.last_body_viewport = if body_len > rects.body.height as usize {
+                        rects.body.height.saturating_sub(1)
+                    } else {
+                        rects.body.height
+                    };
+                    view.clamp_body();
                     view.comments_dirty = view.comments_dirty || view.last_comment_width == 0;
                     view.rebuild_comments(rects.comments_list.width.saturating_sub(2).max(10));
                     view.ensure_comment_visible(rects.comments_list.height);
@@ -4214,7 +4236,14 @@ impl App {
                             | Some(Modal::Appearance(_))
                             | Some(Modal::Recovery(_))
                     );
-                    if scrollable {
+                    let searching_bookmarks = matches!(
+                        self.modal,
+                        Some(Modal::Bookmarks(crate::app::modal::BookmarksModal {
+                            searching: true,
+                            ..
+                        }))
+                    );
+                    if scrollable && !searching_bookmarks {
                         self.handle_modal_key(crossterm::event::KeyEvent::new(
                             if direction > 0 {
                                 crossterm::event::KeyCode::Char('j')
@@ -4223,8 +4252,8 @@ impl App {
                             },
                             crossterm::event::KeyModifiers::NONE,
                         ));
+                        self.dirty = true;
                     }
-                    self.dirty = false;
                     return;
                 }
                 self.scroll_pane(mouse.column, mouse.row, direction);

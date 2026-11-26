@@ -382,8 +382,18 @@ fn render_settings(
             "original preserved; saves blocked".to_string(),
         ));
     }
-    for (index, (title, description)) in rows.iter().enumerate() {
-        let y = inner.y.saturating_add(index as u16 * 2);
+    let visible_rows = (inner.height.saturating_sub(1) / 2).max(1) as usize;
+    let offset = modal
+        .selected
+        .saturating_sub(visible_rows.saturating_sub(1));
+    for (slot, (index, (title, description))) in rows
+        .iter()
+        .enumerate()
+        .skip(offset)
+        .take(visible_rows)
+        .enumerate()
+    {
+        let y = inner.y.saturating_add(slot as u16 * 2);
         if y >= inner.bottom().saturating_sub(1) {
             break;
         }
@@ -547,8 +557,18 @@ fn render_theme_picker(
     modal_frame(frame, rect, "Theme", theme);
     let inner = inner_of(rect);
     hit_map.push(inner, HitTarget::ModalBody);
-    for (index, mode) in crate::config::ThemeMode::ALL.iter().enumerate() {
-        let y = inner.y.saturating_add(index as u16 * 2);
+    let visible_rows = (inner.height.saturating_sub(1) / 2).max(1) as usize;
+    let offset = picker
+        .selected
+        .saturating_sub(visible_rows.saturating_sub(1));
+    for (slot, (index, mode)) in crate::config::ThemeMode::ALL
+        .iter()
+        .enumerate()
+        .skip(offset)
+        .take(visible_rows)
+        .enumerate()
+    {
+        let y = inner.y.saturating_add(slot as u16 * 2);
         if y >= inner.bottom().saturating_sub(1) {
             break;
         }
