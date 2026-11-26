@@ -483,7 +483,9 @@ fn start_input_thread(tx: UnboundedSender<AppEvent>) -> std::io::Result<()> {
 
 fn start_ticker(tx: UnboundedSender<AppEvent>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(250));
+        // 60 Hz while animations are active; idle ticks are cheap and do not
+        // redraw because the app remains clean.
+        let mut interval = tokio::time::interval(Duration::from_millis(16));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             interval.tick().await;

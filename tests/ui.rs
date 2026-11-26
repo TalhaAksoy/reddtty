@@ -1456,6 +1456,7 @@ async fn tall_feed_cards_render_partial_fragments_without_corruption() {
             feed.heights_dirty = false;
             feed.last_viewport = height.saturating_sub(6);
             feed.offset = 4;
+            feed.display_offset = 4;
             feed.selected = 0;
         }
         let terminal = draw(&mut app, width, height);
@@ -1556,6 +1557,9 @@ async fn real_long_image_post_card_exceeds_a_short_viewport_and_scrolls() {
         scrolled,
         "prepare() must not snap line scrolling back to the card start"
     );
+    if let Some(feed) = app.current_feed_mut() {
+        feed.snap_scroll();
+    }
     let terminal = draw(&mut app, 80, 12);
     let text = screen(&terminal);
     assert!(
@@ -1575,4 +1579,23 @@ async fn settings_scrolls_to_a_selected_row_on_a_short_terminal() {
     let terminal = draw(&mut app, 80, 17);
     let text = screen(&terminal);
     assert!(text.contains("Clear read history"), "{text}");
+}
+
+#[tokio::test]
+async fn feed_status_bar_uses_available_width_for_secondary_shortcuts() {
+    let (mut app, _provider, _posts) = app_with_posts(140, 38).await;
+    let terminal = draw(&mut app, 140, 38);
+    let text = screen(&terminal);
+    for needle in ["b Save", "B Saved", "i Info", "m Read", "q Quit"] {
+        assert!(text.contains(needle), "missing {needle:?}:\n{text}");
+    }
+}
+
+#[tokio::test]
+async fn narrow_status_bar_still_keeps_quit_and_help() {
+    let (mut app, _provider, _posts) = app_with_posts(60, 20).await;
+    let terminal = draw(&mut app, 60, 20);
+    let text = screen(&terminal);
+    assert!(text.contains("q Quit"), "{text}");
+    assert!(text.contains("? Help"), "{text}");
 }

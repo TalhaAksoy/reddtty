@@ -16,7 +16,10 @@ pub struct FeedView {
     pub top_range: TopRange,
     pub posts: Vec<Post>,
     pub selected: usize,
+    /// Target viewport offset. Rendering follows `display_offset`.
     pub offset: u32,
+    /// Animated viewport offset used by the renderer.
+    pub display_offset: u32,
     pub heights: Vec<u16>,
     pub heights_width: u16,
     pub heights_compact: bool,
@@ -54,6 +57,7 @@ impl FeedView {
             posts: Vec::new(),
             selected: 0,
             offset: 0,
+            display_offset: 0,
             heights: Vec::new(),
             heights_width: 0,
             heights_compact: false,
@@ -96,6 +100,7 @@ impl FeedView {
         self.heights.clear();
         self.selected = 0;
         self.offset = 0;
+        self.display_offset = 0;
         self.after = None;
         self.has_more = false;
         self.more_error = None;
@@ -167,9 +172,12 @@ impl FeedView {
         if self.posts.is_empty() {
             self.selected = 0;
             self.offset = 0;
+            self.display_offset = 0;
         } else {
             self.selected = self.selected.min(self.posts.len() - 1);
-            self.offset = self.offset.min(self.max_offset(self.last_viewport));
+            let max = self.max_offset(self.last_viewport);
+            self.offset = self.offset.min(max);
+            self.display_offset = self.display_offset.min(max);
         }
     }
 
@@ -220,6 +228,7 @@ impl FeedView {
         }
         self.selected = 0;
         self.offset = 0;
+        self.display_offset = 0;
         self.ensure_selected_visible(viewport);
     }
 
@@ -253,6 +262,37 @@ impl FeedView {
         }
     }
 
+    pub fn scroll_animating(&self) -> bool {
+        self.display_offset != self.offset
+    }
+
+    /// Advance the animated viewport toward the target. Returns true while
+    /// another frame is needed.
+    pub fn advance_scroll_animation(&mut self) -> bool {
+        if self.display_offset == self.offset {
+            return false;
+        }
+        let diff = self.offset as i64 - self.display_offset as i64;
+        let step = (diff / 4).clamp(-12, 12);
+        let step = if step == 0 { diff.signum() } else { step };
+        let limit = self
+            .max_offset(self.last_viewport)
+            .max(self.offset)
+            .max(self.display_offset);
+        let next = (self.display_offset as i64 + step).clamp(0, limit as i64);
+        let next = if (next - self.offset as i64).abs() <= 1 {
+            self.offset
+        } else {
+            next as u32
+        };
+        self.display_offset = next.min(self.max_offset(self.last_viewport));
+        self.display_offset != self.offset
+    }
+
+    pub fn snap_scroll(&mut self) {
+        self.display_offset = self.offset;
+    }
+
     pub fn index_at_line(&self, line: u32) -> Option<usize> {
         let mut y = 0u32;
         for (index, height) in self.heights.iter().enumerate() {
@@ -269,8 +309,8 @@ impl FeedView {
         if self.posts.is_empty() {
             return 0..0;
         }
-        let top = self.offset;
-        let bottom = self.offset + viewport as u32;
+        let top = self.display_offset;
+        let bottom = self.display_offset + viewport as u32;
         let mut start = None;
         let mut y = 0u32;
         for (index, height) in self.heights.iter().enumerate() {
@@ -295,7 +335,7 @@ impl FeedView {
     }
 
     pub fn scrollbar(&self, viewport: u16) -> (u32, u32, u16) {
-        (self.offset, self.total_height(), viewport)
+        (self.display_offset, self.total_height(), viewport)
     }
 
     pub fn wants_more(&self, viewport: u16) -> bool {
@@ -378,6 +418,7 @@ impl FeedView {
         self.after = page.after;
         self.has_more = page.has_more;
         self.heights_dirty = true;
+        self.display_offset = self.display_offset.min(self.max_offset(self.last_viewport));
 
         let target = pending
             .and_then(|id| self.posts.iter().position(|p| p.id == id))
@@ -756,5 +797,75 @@ mod pagination_cycle_tests {
         view.retry_after_until = None;
         view.error = Some("refresh failed".into());
         assert!(!view.wants_more(10));
+    }
+}
+
+#[cfg(test)]
+mod smooth_scroll_tests {
+    use super::*;
+
+    fn post(id: &str) -> Post {
+        Post {
+            id: id.into(),
+            subreddit: "rust".into(),
+            author: "a".into(),
+            title: "t".into(),
+            body: String::new(),
+            created_utc: 0,
+            score: 0,
+            num_comments: 0,
+            permalink: "/r/rust/x".into(),
+            content: crate::models::PostContent::Text,
+            flair: None,
+            nsfw: false,
+            spoiler: false,
+            stickied: false,
+            locked: false,
+            removed: false,
+            is_self: true,
+            domain: None,
+            thumbnail: None,
+        }
+    }
+
+    #[test]
+    fn viewport_animates_toward_the_target_instead_of_jumping() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a"), post("b")]);
+        view.heights = vec![80, 80];
+        view.heights_width = 80;
+        view.heights_dirty = false;
+        view.last_viewport = 20;
+        view.scroll_lines(40, 20);
+        assert_eq!(view.offset, 40);
+        assert_eq!(view.display_offset, 0);
+        let mut frames = 0;
+        while view.advance_scroll_animation() {
+            frames += 1;
+            assert!(view.display_offset <= view.offset);
+            assert!(frames < 200);
+        }
+        assert_eq!(view.display_offset, 40);
+        assert!(frames > 1, "scroll should be spread over multiple frames");
+    }
+
+    #[test]
+    fn upward_animation_is_also_smooth() {
+        let mut view = FeedView::with_posts(ViewId(1), vec![post("a"), post("b")]);
+        view.heights = vec![80, 80];
+        view.heights_width = 80;
+        view.heights_dirty = false;
+        view.last_viewport = 20;
+        view.scroll_lines(60, 20);
+        view.snap_scroll();
+        view.scroll_lines(-60, 20);
+        assert_eq!(view.offset, 0);
+        assert_eq!(view.display_offset, 60);
+        let mut frames = 0;
+        while view.advance_scroll_animation() {
+            frames += 1;
+            assert!(frames < 200);
+        }
+        assert_eq!(view.display_offset, 0);
+        assert!(frames > 1);
     }
 }

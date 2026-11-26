@@ -104,30 +104,30 @@ pub fn render(
             Some(View::Feed(feed)) => {
                 let mut pairs = vec![
                     ("j/k", "Select"),
-                    ("J/K", "Line"),
-                    ("←", "Sidebar"),
                     ("Enter", "Open"),
-                    ("s", "Sort"),
-                    ("t", "Top"),
-                    ("g", "Go"),
-                    ("/", "Search"),
-                    ("r", "Refresh"),
-                    ("R", "Retry"),
                     ("b", "Save"),
                     ("B", "Saved"),
+                    ("s", "Sort"),
+                    ("g", "Go"),
+                    ("/", "Search"),
+                    ("v", "Image"),
+                    ("i", "Info"),
+                    ("m", "Read"),
+                    ("r", "Refresh"),
+                    ("o", "Open"),
+                    ("J/K", "Line"),
+                    ("t", "Top"),
                     ("y", "Copy"),
                     ("Y", "Comments"),
                     ("G", "Sub"),
-                    ("i", "Info"),
-                    ("m", "Read"),
+                    ("R", "Retry"),
                     ("M/A/D", "Mute"),
                     ("u", "Undo"),
+                    ("←", "Sidebar"),
                 ];
                 if feed.has_more || feed.loading_more {
                     pairs.push(("↓", "More"));
                 }
-                pairs.push(("o", "Open"));
-                pairs.push(("v", "Image"));
                 pairs.push(("?", "Help"));
                 pairs.push(("q", "Quit"));
                 pairs
@@ -187,17 +187,25 @@ pub fn render(
     // 70-column cutoff left an 80-column terminal with a truncated line that
     // hid `q`, `?`, `o` and `v`.
     if line_width(&pairs) > area.width as usize {
-        let medium = medium_pairs(view, focus, modal);
-        pairs = if line_width(&medium) <= area.width as usize {
-            medium
+        // Fill the available row greedily instead of switching to a much
+        // shorter fixed tier. This keeps high-value keys such as b/B visible
+        // on wide terminals while still reserving ? and q at the end.
+        let fitted = fit_pairs(&pairs, area.width as usize);
+        if fitted.len() >= 4 {
+            pairs = fitted;
         } else {
-            let compact = compact_pairs(view, focus, modal);
-            if line_width(&compact) <= area.width as usize {
-                compact
+            let medium = medium_pairs(view, focus, modal);
+            pairs = if line_width(&medium) <= area.width as usize {
+                medium
             } else {
-                micro_pairs(view, focus, modal)
-            }
-        };
+                let compact = compact_pairs(view, focus, modal);
+                if line_width(&compact) <= area.width as usize {
+                    compact
+                } else {
+                    micro_pairs(view, focus, modal)
+                }
+            };
+        }
     }
 
     let mut spans: Vec<Span<'static>> = Vec::new();
@@ -233,6 +241,47 @@ fn line_width(pairs: &[(&str, &str)]) -> usize {
             separator + width(key) + 1 + width(description)
         })
         .sum()
+}
+
+fn fit_pairs(
+    pairs: &[(&'static str, &'static str)],
+    available: usize,
+) -> Vec<(&'static str, &'static str)> {
+    let tail: Vec<(&'static str, &'static str)> = pairs
+        .iter()
+        .copied()
+        .filter(|(key, _)| *key == "?" || *key == "q")
+        .collect();
+    let body: Vec<(&'static str, &'static str)> = pairs
+        .iter()
+        .copied()
+        .filter(|(key, _)| *key != "?" && *key != "q")
+        .collect();
+    let tail_width = line_width(&tail);
+    if tail_width > available {
+        return tail;
+    }
+    let budget = available.saturating_sub(tail_width).saturating_sub(
+        if body.is_empty() || tail.is_empty() {
+            0
+        } else {
+            3
+        },
+    );
+    let mut selected: Vec<(&'static str, &'static str)> = Vec::new();
+    for pair in body {
+        let extra = if selected.is_empty() { 0 } else { 3 };
+        if line_width(&selected) + extra + width(pair.0) + 1 + width(pair.1) <= budget {
+            selected.push(pair);
+        }
+    }
+    if !selected.is_empty() && !tail.is_empty() {
+        // Account for the separator between the filled body and the tail.
+        selected.extend(tail);
+    } else {
+        selected = tail;
+    }
+    selected
 }
 
 fn medium_pairs(

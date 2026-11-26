@@ -17,7 +17,7 @@ Final this sprint:
 |---|---|
 | `cargo fmt --all -- --check` | pass |
 | `cargo clippy --all-targets --all-features -- -D warnings` | pass |
-| `cargo test --locked` | **381 passed, 0 failed, 0 ignored** |
+| `cargo test --locked` | **385 passed, 0 failed, 0 ignored** |
 | `cargo test --locked --all-features` | pass |
 | `cargo build --release --locked` | pass |
 | `cargo build --release --locked --example stress` | pass |
@@ -195,7 +195,7 @@ Byte probes are not visual proof. See `docs/MANUAL_TERMINAL_TEST_CHECKLIST.md`.
 
 ## Release recommendation
 
-- **Linux/macOS beta:** **BETA READY** for `v0.2.0-beta.3`.
+- **Linux/macOS beta:** **BETA READY** for `v0.2.0-beta.4`.
 - **Windows:** **NOT READY** (experimental; compile job configured but not run).
 - **Stable candidate:** **NOT READY** until Windows runtime, GUI image rendering,
   and the remaining E2E journeys are verified.

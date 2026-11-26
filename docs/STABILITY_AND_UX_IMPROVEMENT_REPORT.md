@@ -97,8 +97,8 @@ Baseline before changes:
 
 Final:
 
-- **381 tests passed, 0 failed, 0 ignored**
-  (293 library, 2 binary, 15 HTML, 13 provider/image, 58 UI).
+- **385 tests passed, 0 failed, 0 ignored**
+  (295 library, 2 binary, 15 HTML, 13 provider/image, 60 UI).
 - `cargo fmt --all -- --check`: pass.
 - `cargo clippy --all-targets --all-features -- -D warnings`: pass.
 - `cargo build --release --locked`: pass.

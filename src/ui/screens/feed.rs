@@ -83,8 +83,8 @@ pub fn render(
 
     let status_rows = u16::from(feed.more_error.is_some() || feed.loading_more);
     let list_height = lists.list.height.saturating_sub(status_rows);
-    let viewport_top = feed.offset;
-    let viewport_bottom = feed.offset.saturating_add(list_height as u32);
+    let viewport_top = feed.display_offset;
+    let viewport_bottom = feed.display_offset.saturating_add(list_height as u32);
     for index in feed.visible_range(list_height) {
         let Some(post) = feed.posts.get(index) else {
             break;

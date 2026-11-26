@@ -654,7 +654,11 @@ impl App {
         }
         match self.nav.last() {
             Some(View::Feed(f)) => {
-                f.loading_initial || f.loading_more || f.refreshing || f.request.is_some()
+                f.loading_initial
+                    || f.loading_more
+                    || f.refreshing
+                    || f.request.is_some()
+                    || f.scroll_animating()
             }
             Some(View::Post(p)) => {
                 p.comments_loading || p.post_loading || p.comments_request.is_some()
@@ -4549,11 +4553,21 @@ impl App {
                 } else {
                     (self.spinner + 1) % crate::ui::SPINNER.len()
                 };
+                let scrolling = if let Some(View::Feed(feed)) = self.nav.last_mut() {
+                    if self.settings.ui.reduce_motion {
+                        feed.snap_scroll();
+                        false
+                    } else {
+                        feed.advance_scroll_animation()
+                    }
+                } else {
+                    false
+                };
                 let now = Instant::now();
                 let before = self.notifications.len();
                 self.notifications.retain(|n| !n.expired(now));
                 let expired = before != self.notifications.len();
-                self.dirty = expired || self.animating();
+                self.dirty = expired || scrolling || self.animating();
             }
             AppEvent::FeedLoaded {
                 view,
